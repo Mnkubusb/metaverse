@@ -90,7 +90,7 @@ const ElementManager = () => {
     
     try {
       setLoading(true);
-      await adminAPI.updateElement( editingElement?.id as string,);
+      await adminAPI.updateElement( editingElement?.id as string, editingElement?.imageUrl as string);
       
       // Update the element in the local state
       const updatedElements = elements.map(element => 

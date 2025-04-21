@@ -70,11 +70,11 @@ export default function Dashboard() {
               <div className="grid grid-cols-3 gap-4 mb-4">
                 {avatars.map((avatar , index) => (
                   <div 
-                    key={avatar._id || index}
+                    key={avatar.id || index}
                     className={`cursor-pointer border-2 rounded p-2 hover:bg-blue-50 ${
-                      selectedAvatar === avatar._id ? 'border-blue-500 bg-blue-100' : 'border-gray-200'
+                      selectedAvatar === avatar.id ? 'border-blue-500 bg-blue-100' : 'border-gray-200'
                     }`}
-                    onClick={() => handleAvatarSelect(avatar._id)}
+                    onClick={() => handleAvatarSelect(avatar.id)}
                   >
                     <img 
                       src={avatar.imageUrl} 
