@@ -1,0 +1,23 @@
+{
+  "name": "ws",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "npx esbuild src/index.ts --bundle --outdir=dist/index.js --platform=node --tsconfig=tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "npm run build && npm run start"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@repo/db": "workspace:*",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/ws": "^8.18.1",
+    "axios": "^1.8.4",
+    "esbuild": "^0.25.2",
+    "jsonwebtoken": "^9.0.2",
+    "ws": "^8.18.1"
+  }
+}
