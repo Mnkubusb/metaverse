@@ -28,7 +28,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/frontend:latest
+            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/web:latest
             sudo docker stop frontend || true
             sudo docker rm frontend || true
-            sudo docker run -d --name frontend -p 3002:3002 ${{ secrets.DOCKER_USERNAME }}/frontend:latest
+            sudo docker run -d --name frontend -p 3002:3002 ${{ secrets.DOCKER_USERNAME }}/web:latest
