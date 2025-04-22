@@ -8,8 +8,8 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
     "db:generate": "cd ./packages/db && npm i prisma @prisma/client npx prisma generate && cd ../..",
-    "start:http":"cd ./apps/http && npm run dev",
-    "start:ws":"cd ./apps/ws && npm run dev",
+    "start:http":"pnpm db:generate cd ./apps/http && npm run dev",
+    "start:ws":"pnpm db:generate cd ./apps/ws && npm run dev",
     "start:web":"cd ./apps/web && npm run start"
   },
   "devDependencies": {
