@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 export interface defaultElement {
     elementId: string;
     x: number;
@@ -23,30 +23,30 @@ api.interceptors.request.use(
 );
 
 export const authAPI = {
-    signup: (username: string, password: string, type: string) => api.post('/api/v1/signup', { username, password, type }),
-    signin: (username: string, password: string) => api.post('/api/v1/signin', { username, password }),
+    signup: (username: string, password: string, type: string) => api.post('/signup', { username, password, type }),
+    signin: (username: string, password: string) => api.post('/signin', { username, password }),
 };
 
 // User APIs
 export const userAPI = {
-    updateMetadata: (avatarId: string) => api.post('/api/v1/user/metadata', { avatarId }),
-    getBulkMetadata: (userIds: string) => api.get(`/api/v1/user/metadata/bulk?ids=[${userIds}]`),
+    updateMetadata: (avatarId: string) => api.post('/user/metadata', { avatarId }),
+    getBulkMetadata: (userIds: string) => api.get(`/user/metadata/bulk?ids=[${userIds}]`),
 };
 
 // Space APIs
 export const spaceAPI = {
-    createSpace: (name: string, dimensions: string, mapId: string) => api.post('/api/v1/space', { name, dimensions, mapId }),
-    getAllSpaces: () => api.get('/api/v1/space/all'),
-    getSpace: (spaceId: string) => api.get(`/api/v1/space/${spaceId}`),
-    deleteSpace: (spaceId: string) => api.delete(`/api/v1/space/${spaceId}`),
-    addElement: (elementId: string, spaceId: string, x: number, y: number) => api.post('/api/v1/space/element', { elementId, spaceId, x, y }),
-    deleteElement: (id: string) => api.delete('/api/v1/space/element', { data: { id } }),
+    createSpace: (name: string, dimensions: string, mapId: string) => api.post('/space', { name, dimensions, mapId }),
+    getAllSpaces: () => api.get('/space/all'),
+    getSpace: (spaceId: string) => api.get(`/space/${spaceId}`),
+    deleteSpace: (spaceId: string) => api.delete(`/space/${spaceId}`),
+    addElement: (elementId: string, spaceId: string, x: number, y: number) => api.post('/space/element', { elementId, spaceId, x, y }),
+    deleteElement: (id: string) => api.delete('/space/element', { data: { id } }),
 };
 
 // Avatar APIs
 export const avatarAPI = {
-    getAvatars: () => api.get('/api/v1/avatars'),
-    getUserAvatar : (id: string) => api.get('/api/v1/avatar' , {
+    getAvatars: () => api.get('/avatars'),
+    getUserAvatar : (id: string) => api.get('/avatar' , {
         params: {
             id
         }
@@ -54,22 +54,22 @@ export const avatarAPI = {
 };
 
 export const elementAPI = {
-    getElements: () => api.get('/api/v1/elements'),
+    getElements: () => api.get('/elements'),
 }
 
 export const mapAPI = {
-    getMaps: () => api.get('/api/v1/maps'),
+    getMaps: () => api.get('/maps'),
 }
 
 
 // Admin APIs
 export const adminAPI = {
-    createAvatar: (imageUrl: string, name: string) => api.post('/api/v1/admin/avatar', { imageUrl, name }),
-    createElement: (imageUrl: string, width: number, height: number, isStatic: boolean) => api.post('/api/v1/admin/element', {
+    createAvatar: (imageUrl: string, name: string) => api.post('/admin/avatar', { imageUrl, name }),
+    createElement: (imageUrl: string, width: number, height: number, isStatic: boolean) => api.post('/admin/element', {
         imageUrl, width, height, static: isStatic
     }),
-    updateElement: (elementId: string, imageUrl : string) => api.put(`/api/v1/admin/element/${elementId}`, { imageUrl }),
-    createMap: (thumbnail: string, dimensions: string, name: string, defaultElement: defaultElement[]) => api.post('/api/v1/admin/map', {
+    updateElement: (elementId: string, imageUrl : string) => api.put(`/admin/element/${elementId}`, { imageUrl }),
+    createMap: (thumbnail: string, dimensions: string, name: string, defaultElement: defaultElement[]) => api.post('/admin/map', {
         thumbnail, dimensions, name, defaultElement
     }),
 };

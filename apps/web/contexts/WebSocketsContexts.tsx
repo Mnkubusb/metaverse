@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { createContext, useContext, useState, useEffect, useCallback, useMemo, use } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import WebSocketService from '../lib/webSocket';
 import { useAuth } from './authContext';
 
@@ -112,7 +112,7 @@ export const WebSocketProvider = ({ children, spaceId }: {
 
     if (!token || !spaceId) return;
     const wsService = new WebSocketService(
-      'ws://localhost:3001',
+      process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001',
       token,
       spaceId,
       handleMessage,
