@@ -13,8 +13,6 @@ COPY ./turbo.json ./turbo.json
 COPY ./apps/http ./apps/http
 
 RUN pnpm install
-RUN pnpm run db:generate
-RUN pnpm run db:generate
 
 EXPOSE 3000
 

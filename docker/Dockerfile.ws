@@ -13,7 +13,6 @@ COPY ./turbo.json ./turbo.json
 COPY ./apps/ws ./apps/ws
 
 RUN pnpm install
-RUN pnpm run db:generate
 
 EXPOSE 3001
 
