@@ -70,7 +70,7 @@ model mapElements {
   elementId String
   x         Int?
   y         Int?
-  map       Map     @relation(fields: [mapId], references: [id])
+  map       Map     @relation(fields: [mapId], references: [id], onDelete: Cascade )
   element   Element @relation(fields: [elementId], references: [id])
 }
 

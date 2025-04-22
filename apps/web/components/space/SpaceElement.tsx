@@ -2,11 +2,15 @@ import React from 'react';
 
 export type spaceElement = {
     id: string;
-    elementId: string;
-    spaceId: string;
+    element: {
+        id: string;
+        imageUrl: string;
+        width: number;
+        height: number;
+        static: boolean;
+    }
     x: number;
     y: number;
-    imageUrl: string;
 };
 
 const SpaceElement = ({ element, onRemove } : {
@@ -19,12 +23,12 @@ const SpaceElement = ({ element, onRemove } : {
       style={{
         left: `${element.x * 32}px`,
         top: `${element.y * 32}px`,
-        width: `${element.x * 32}px`,
-        height: `${element.y * 32}px`,
+        width: `${element.element.width * 32}px`,
+        height: `${element.element.height * 32}px`,
       }}
     >
       <img 
-        src={element.imageUrl}
+        src={element.element.imageUrl}
         alt={`Element at ${element.x},${element.y}`}
         className="w-full h-full object-contain"
       />

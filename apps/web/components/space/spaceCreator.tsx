@@ -60,9 +60,8 @@ export default function SpaceCreator() {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
+    <div className="p-6">
       <h2 className="text-xl font-bold mb-4">Create New Space</h2>
-      
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           {error}

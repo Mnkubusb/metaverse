@@ -46,6 +46,11 @@ export const spaceAPI = {
 // Avatar APIs
 export const avatarAPI = {
     getAvatars: () => api.get('/api/v1/avatars'),
+    getUserAvatar : (id: string) => api.get('/api/v1/avatar' , {
+        params: {
+            id
+        }
+    }),
 };
 
 export const elementAPI = {
@@ -55,6 +60,7 @@ export const elementAPI = {
 export const mapAPI = {
     getMaps: () => api.get('/api/v1/maps'),
 }
+
 
 // Admin APIs
 export const adminAPI = {

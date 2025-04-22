@@ -133,6 +133,33 @@ router.get("/avatars", async (req, res) => {
     })
 })
 
+router.get("/avatar", async( req, res) => {
+    console.log(req.query.id);
+    if(!req.query.id){
+        res.status(400).json({
+            message: "Avatar id is required"
+        })
+        return
+    }
+    const user = await client.user.findUnique({
+        where: {
+            id: req.query.id as string
+        }
+    });
+    console.log(user);
+    const avatar = await client.avatar.findUnique({
+        where:{
+            id: user?.avatarId as string
+        }
+    });
+
+    res.json({
+        avatar: {
+            imageUrl: avatar?.imageUrl,
+        }
+    })
+})
+
 router.get("/maps", async (req, res) => {
     const maps = await client.map.findMany({
         include:{

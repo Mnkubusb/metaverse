@@ -38,6 +38,7 @@ export default function SpacePage({ params }: {
         fetchSpace();
     }, [id]);
 
+
     if (loading) {
         return (
             <MainLayout>
@@ -68,11 +69,11 @@ export default function SpacePage({ params }: {
 
 
     if (!space) return null;
-    
+
     return (
         <ProtectedRoute>
             <MainLayout>
-                <div className="max-w-6xl mx-auto">
+                <div className="mx-auto">
                     <WebSocketProvider spaceId={id} key={id}>
                         <SpaceGrid id={id} />
                     </WebSocketProvider>

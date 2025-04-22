@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 import React, { useState, useEffect, useRef, } from 'react';
-import { spaceAPI } from '../../lib/api';
+import { avatarAPI, spaceAPI } from '../../lib/api';
 import { useWebSocket } from '../../contexts/WebSocketsContexts';
 import { useAuth } from '../../contexts/authContext';
 import SpaceElement, { spaceElement } from './SpaceElement';
@@ -11,12 +12,9 @@ interface Space {
   elements: spaceElement[];
 }
 
-interface User {
-  id: string;
-  x: number;
-  y: number;
+interface Avatar {
+  imageUrl: string;
 }
-
 const SpaceGrid = (
   { id }: { id: string }
 ) => {
@@ -30,6 +28,8 @@ const SpaceGrid = (
   const gridRef = useRef(null);
   const [currentUser, setCurrentUser] = useState<any>({});
   const [users, setUsers] = useState(new Map());
+  const [userAvatar, setUserAvatar] = useState<Avatar | null>(null);
+
 
   // Load space details
   useEffect(() => {
@@ -51,8 +51,24 @@ const SpaceGrid = (
     fetchSpaceDetails();
   }, [spaceId]);
 
+  useEffect(() => {
+    if (!user) return;
+    const fetchUserAvatar = async () => {
+      try {
+        setLoading(true);
+        const response = await avatarAPI.getUserAvatar(user.id);
+        console.log(response);
+        setUserAvatar(response.data.avatar);
+      } catch (err) {
+        console.log("Internal Error", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchUserAvatar();
+  }, [user])
+
   // Handle WebSocket messages
-  console.log(messages, user);
   useEffect(() => {
 
     if (!messages) return;
@@ -126,8 +142,7 @@ const SpaceGrid = (
 
   }, [messages, user]);
 
-  console.log(users)
-
+  console.log(elements)
   // Handle keyboard movements
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -162,6 +177,24 @@ const SpaceGrid = (
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [space, currentUser, sendMessage, user]);
 
+  useEffect(() => {
+    if (!gridRef.current || !space) return;
+
+    const container = gridRef.current as HTMLDivElement;
+    const tileSize = 32;
+
+    const scrollX = currentUser.x * tileSize - container.clientWidth / 2 + tileSize / 2;
+    const scrollY = currentUser.y * tileSize - container.clientHeight / 2 + tileSize / 2;
+
+    container.scrollTo({
+      left: scrollX,
+      top: scrollY,
+      behavior: 'auto', // ⚡ instant jump with player
+    });
+  }, [currentUser, space]);
+
+
+
   if (loading) return <div className="text-center p-8">Loading space...</div>;
   if (error) return <div className="text-center p-8 text-red-500">{error}</div>;
   if (!space) return <div className="text-center p-8">Space not found</div>;
@@ -177,19 +210,20 @@ const SpaceGrid = (
   }
 
   return (
-    <div className="container mx-auto p-4">
-      <h2 className="text-2xl font-bold mb-4">The Space</h2>
-      <div className="mb-4">
-        <p>Dimensions: {space.dimensions}</p>
-        <p>Users Online: {users.size + (currentUser ? 1 : 0)}</p>
+    <div className="mx-auto w-full h-full">
+      <div className='absolute z-20 p-4'>
+        <h2 className="text-2xl font-bold mb-4">The Space</h2>
+        <div className="mb-4">
+          <p>Dimensions: {space.dimensions}</p>
+          <p>Users Online: {users.size + (currentUser ? 1 : 0)}</p>
+        </div>
       </div>
-
       <div
         ref={gridRef}
         className="relative bg-gray-100 border border-gray-300 overflow-hidden w-full h-full"
         style={{
           width: '100%',
-          height: '80vh',
+          height: '100vh',
           position: 'relative'
         }}
       >
@@ -221,7 +255,6 @@ const SpaceGrid = (
                 height: '32px',
                 left: `${u.x * 32}px`,
                 top: `${u.y * 32}px`,
-                transition: 'left 0.3s, top 0.3s'
               }}
             >
               U
@@ -229,22 +262,22 @@ const SpaceGrid = (
           ))}
 
           {/* Render current user */}
-          <div
-            className="absolute bg-green-500 rounded-full flex items-center justify-center text-white z-10"
+          <div className='absolute z-10 flex flex-col items-center justify-center'
             style={{
               width: '32px',
               height: '32px',
               left: `${currentUser.x * 32}px`,
               top: `${currentUser.y * 32}px`,
-              transition: 'left 0.3s, top 0.3s'
-            }}
-          >
-            Me
+            }}>
+            <h2>
+              {user?.username}
+            </h2>
+            <img
+              src={userAvatar?.imageUrl}
+              alt='Avatar'
+            />
           </div>
         </div>
-      </div>
-      <div className="mt-4 text-center">
-        <p className="text-gray-600">Use WSAD keys to move your character</p>
       </div>
     </div>
   );
