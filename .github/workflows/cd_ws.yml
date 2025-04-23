@@ -33,4 +33,4 @@ jobs:
             sudo docker pull ${{ secrets.DOCKER_USERNAME }}/ws:latest
             sudo docker stop ws || true
             sudo docker rm ws || true
-            sudo docker run --memory="374m" --cpus="0.4" -e DATABASE_URL=${{ secrets.DATABASE_URL }} -d --name ws -p 3001:3001 ${{ secrets.DOCKER_USERNAME }}/ws:latest
+            sudo docker run -d --name ws --memory="374m" --cpus="0.4" -p 3001:3001 ${{ secrets.DOCKER_USERNAME }}/ws:latest
