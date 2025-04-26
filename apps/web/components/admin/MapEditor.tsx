@@ -71,16 +71,17 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
       const fetchMapData = async () => {
         try {
           setIsLoading(true);
-          const response = await api.get(`/api/v1/admin/map/${mapId}`, {
+          const response = await api.get(`/admin/map/${mapId}`, {
             headers: { authorization: `Bearer ${token}` },
           });
-          const { name, thumbnail, dimensions, defaultElement } = response.data;
+          console.log(response.data)
+          const { name, thumbnail, dimensions, elements } = response.data;
           setName(name);
           setThumbnail(thumbnail);
           const [w, h] = dimensions.split('x').map(Number);
           setWidth(w);
           setHeight(h);
-          setDefaultElements(defaultElement || []);
+          setDefaultElements(elements.map((element: any) => ({ ...element, elementId: element.element?.id })) || []);
           setIsLoading(false);
         } catch {
           setError('Failed to load map data');
@@ -126,7 +127,7 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
       ...updatedElements[draggingIndex],
       x,
       y,
-      elementId: updatedElements[draggingIndex]?.elementId || '', 
+      elementId: updatedElements[draggingIndex]?.elementId || '',
     };
     setDefaultElements(updatedElements);
     setDraggingIndex(null);
@@ -151,9 +152,9 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
         defaultElement: defaultElements,
       };
       const response = mapId
-        ? await api.put(`/api/v1/admin/map/${mapId}`, mapData, {
-            headers: { authorization: `Bearer ${token}` },
-          })
+        ? await api.put(`/admin/map/${mapId}`, mapData, {
+          headers: { authorization: `Bearer ${token}` },
+        })
         : await adminAPI.createMap(mapData.thumbnail, mapData.dimensions, mapData.name, mapData.defaultElement);
       setMessage(mapId ? 'Map updated!' : 'Map created!');
       setTimeout(() => router.push('/admin/maps'), 2000);
@@ -204,25 +205,25 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
             if (!element) return null;
             return (
               <Dialog key={index} modal>
-                <DialogTrigger asChild>
-                  <div
-                    className="absolute border border-blue-400 cursor-move"
-                    style={{
-                      top: elem.y * TILE_SIZE,
-                      left: elem.x * TILE_SIZE,
-                      width: element.width * TILE_SIZE,
-                      height: element.height * TILE_SIZE,
-                    }}
-                    draggable
-                    onDragStart={() => handleDragStart(index)}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedElementIndex(index);
-                    }}
-                  >
+                <div
+                  className="absolute border border-blue-400 cursor-move"
+                  style={{
+                    top: elem.y * TILE_SIZE,
+                    left: elem.x * TILE_SIZE,
+                    width: element.width * TILE_SIZE,
+                    height: element.height * TILE_SIZE,
+                  }}
+                  draggable
+                  onDragStart={() => handleDragStart(index)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedElementIndex(index);
+                  }}
+                >
+                  <DialogTrigger asChild>
                     <img src={element.imageUrl} alt="" className="w-full h-full object-contain" />
-                  </div>
-                </DialogTrigger>
+                  </DialogTrigger>
+                </div>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Edit Element</DialogTitle>

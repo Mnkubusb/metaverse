@@ -7,7 +7,7 @@ export default function Home() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  // Redirect based on authentication status
+  
   React.useEffect(() => {
     if (!loading) {
       if (user) {
@@ -19,7 +19,7 @@ export default function Home() {
   }, [user, loading, router]);
 
   return (
-    <div className="flex justify-center items-center h-screen bg-black">
+    <div className="flex justify-center items-center h-screen">
       <div className="text-center flex justify-center items-center flex-col gap-2">
         <h1 className="text-4xl font-bold mb-6">Virtual Space Platform</h1>
         <p className="text-xl mb-8">Create and explore virtual spaces</p>

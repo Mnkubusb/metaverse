@@ -16,7 +16,7 @@ interface Map {
   }>;
 }
 
-const MapManager: React.FC = () => {
+const  MapManager: React.FC = () => {
   const { token } = useAuth();
   const router = useRouter();
   const [maps, setMaps] = useState<Map[]>([]);
@@ -30,7 +30,7 @@ const MapManager: React.FC = () => {
     const fetchMaps = async () => {
       try {
         setIsLoading(true);
-        const response = await api.get('/api/v1/admin/maps', {
+        const response = await api.get('/admin/maps', {
           headers: {
             authorization: `Bearer ${token}`
           }
@@ -59,7 +59,7 @@ const MapManager: React.FC = () => {
 
     try {
       setIsLoading(true);
-      await api.delete(`/api/v1/admin/map/${deleteId}`, {
+      await api.delete(`/admin/map/${deleteId}`, {
         headers: {
           authorization: `Bearer ${token}`
         }

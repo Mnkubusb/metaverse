@@ -1,6 +1,8 @@
 "use client"
 import React, { useState, useEffect } from 'react';
 import { avatarAPI, adminAPI } from '../../lib/api';
+import CanvasAvatar from '../avatar/canvasAvatar';
+
 
 export interface Avatar {
     id: string;
@@ -17,7 +19,6 @@ const AvatarManager = () => {
     imageUrl: ''
   });
 
-  // Fetch all avatars on component mount
   useEffect(() => {
     fetchAvatars();
   }, []);
@@ -50,7 +51,6 @@ const AvatarManager = () => {
     try {
       setLoading(true);
       const response = await adminAPI.createAvatar(newAvatar.imageUrl, newAvatar.name);
-      
       setAvatars([...avatars, response.data]);
       setNewAvatar({
         name: '',
@@ -68,17 +68,13 @@ const AvatarManager = () => {
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-6">Avatar Manager</h1>
-      
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           {error}
         </div>
       )}
-      
-      {/* Create Avatar Form */}
       <div className="bg-white shadow-md rounded p-6 mb-6">
         <h2 className="text-xl font-semibold mb-4">Create New Avatar</h2>
-        
         <form onSubmit={handleCreateAvatar}>
           <div className="mb-4">
             <label className="block text-gray-700 mb-2" htmlFor="name">
@@ -94,7 +90,6 @@ const AvatarManager = () => {
               required
             />
           </div>
-          
           <div className="mb-4">
             <label className="block text-gray-700 mb-2" htmlFor="imageUrl">
               Image URL
@@ -109,7 +104,6 @@ const AvatarManager = () => {
               required
             />
           </div>
-          
           {newAvatar.imageUrl && (
             <div className="mb-4">
               <label className="block text-gray-700 mb-2">Preview</label>
@@ -126,7 +120,6 @@ const AvatarManager = () => {
               </div>
             </div>
           )}
-          
           <div className="flex justify-end">
             <button
               type="submit"
@@ -138,8 +131,6 @@ const AvatarManager = () => {
           </div>
         </form>
       </div>
-      
-      {/* Avatars List */}
       <div className="bg-white shadow-md rounded p-6">
         <h2 className="text-xl font-semibold mb-4">Avatars</h2>
         
@@ -150,17 +141,9 @@ const AvatarManager = () => {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {avatars.map(avatar => (
-              <div key={avatar.id} className="border rounded p-3 text-center">
-                <div className="w-20 h-20 mx-auto mb-2 overflow-hidden rounded-full bg-gray-100">
-                  <img
-                    src={avatar.imageUrl}
-                    alt={avatar.name}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.onerror = null;
-                      e.currentTarget.src = '/placeholder-avatar.png';
-                    }}
-                  />
+              <div key={avatar.id} className="p-3 text-center mx-auto">
+                <div className="w-8 h-8 overflow-hidden">
+                  <CanvasAvatar imageUrl={avatar.imageUrl} />
                 </div>
                 <h3 className="font-medium text-sm truncate">{avatar.name}</h3>
               </div>

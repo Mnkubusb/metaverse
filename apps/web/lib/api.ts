@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 export interface defaultElement {
     elementId: string;
     x: number;
@@ -72,6 +72,7 @@ export const adminAPI = {
     createMap: (thumbnail: string, dimensions: string, name: string, defaultElement: defaultElement[]) => api.post('/admin/map', {
         thumbnail, dimensions, name, defaultElement
     }),
+    getMaps: () => api.get('/admin/maps'),
 };
 
 export default api;

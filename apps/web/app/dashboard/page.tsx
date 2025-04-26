@@ -10,44 +10,23 @@ import { Space } from '../../components/space/spaceLists';
 
 export default function Dashboard() {
   const [spaces, setSpaces] = useState<Space[] | []>([]);
-  // const [avatars, setAvatars] = useState<Avatar[] | []>([]);
-  // const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  // const { user } = useAuth();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch spaces
         const spacesResponse = await spaceAPI.getAllSpaces();
         setSpaces(spacesResponse.data.spaces || []);
-
-        // Fetch avatars
-        // const avatarsResponse = await avatarAPI.getAvatars();
-        // setAvatars(avatarsResponse.data.avatars || []);
-
         setIsLoading(false);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
         setIsLoading(false);
       }
     };
-
     fetchData();
   }, []);
 
-  // const handleAvatarSelect = async (avatarId: string) => {
-  //   try {
-  //     setSelectedAvatar(avatarId);
-  //     const response = await userAPI.updateMetadata(avatarId);
-  //     console.log('Avatar updated:', response.data);
-  //   } catch (error) {
-  //     console.error('Error updating avatar:', error);
-  //   }
-  // };
-
   const recentSpaces = spaces.slice(0, 5);
-  console.log('recentSpaces', recentSpaces);
 
   if (isLoading) {
     return (
@@ -63,29 +42,7 @@ export default function Dashboard() {
     <ProtectedRoute>
       <MainLayout>
         <div className="max-w-screen mx-auto w-full h-full my-4">
-          {/* <h1 className="text-3xl font-bold mb-6 font-geist-sans flex justify-center ">Welcome, {user?.username}</h1> */}
           <div className="flex lg:w-6xl w-4xl gap-8 mx-auto">
-            {/* <div className="p-6 rounded-lg shadow">
-              <h2 className="text-xl font-semibold mb-4">Your Avatar</h2>
-              <div className="grid grid-cols-3 gap-4 mb-4">
-                {avatars.map((avatar) => (
-                  <div 
-                    key={avatar.id}
-                    className={`cursor-pointer border-2 rounded p-2 hover:bg-blue-50 ${
-                      selectedAvatar === avatar.id ? 'border-blue-500 bg-blue-100' : 'border-gray-200'
-                    }`}
-                    onClick={() => handleAvatarSelect(avatar.id)}
-                  >
-                    <img 
-                      src={avatar.imageUrl} 
-                      alt={avatar.name} 
-                      className="w-full h-auto"
-                    />
-                    <p className="text-center mt-2 text-sm">{avatar.name}</p>
-                  </div>
-                ))}
-              </div>
-            </div> */}
             <div className="px-4 w-full">
               <div className="flex justify-between items-center mb-4">
                 <div className='flex justify-between items-center gap-2'>
@@ -114,9 +71,6 @@ export default function Dashboard() {
                         </div>
                         <div>
                           <p className="font-medium ml-1">{space.name}</p>
-                          {/* <p className="text-sm text-gray-500">
-                            {space.usersCount || 0} users active
-                          </p> */}
                         </div>
                       </Link>
                     </li>
@@ -125,12 +79,6 @@ export default function Dashboard() {
               ) : (
                 <p className="text-gray-500">No spaces available.</p>
               )}
-
-              {/* <div className="mt-6">
-                <Link href="/spaces" className="block w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded text-center">
-                  Explore Spaces
-                </Link>
-              </div> */}
             </div>
           </div>
         </div>

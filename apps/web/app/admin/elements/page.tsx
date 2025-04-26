@@ -38,6 +38,7 @@ export default function ElementManager() {
   const [isEditing, setIsEditing] = useState(false);
   const [currentElementId, setCurrentElementId] = useState<string | null>(null);
   const [formError, setFormError] = useState('');
+  const [formSuccess, setFormSuccess] = useState('');
   const router = useRouter();
 
   useEffect(() => {
@@ -101,6 +102,8 @@ export default function ElementManager() {
       if (isEditing && currentElementId) {
         await adminAPI.updateElement(currentElementId , formData.imageUrl);
       } else {
+        formData.width = Number(formData.width);
+        formData.height = Number(formData.height);
         await adminAPI.createElement(
           formData.imageUrl,
           formData.width,
@@ -108,7 +111,7 @@ export default function ElementManager() {
           formData.isStatic
         );
       }
-      
+      setFormSuccess("Element saved successfully!");
       resetForm();
       fetchElements();
     } catch (error) {
@@ -163,6 +166,11 @@ export default function ElementManager() {
                 {formError && (
                   <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
                     {formError}
+                  </div>
+                )}
+                {formSuccess && (
+                  <div className="bg-green-500 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                    {formSuccess}
                   </div>
                 )}
                 

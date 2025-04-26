@@ -11,9 +11,9 @@ export default function Navbar() {
 
   return (
     <nav className={`"bg-white font-geist-sans text-black drop-shadow-xl shadow-lg flex items-center " + ${isSpace ? 'w-14 h-screen flex-col' : 'h-16 p-8 px-44'}`} >
-      <Link href="/" className="text-xl font-bold mt-5">
+      <Link href="/" className={"text-xl font-bold "  + (isSpace ? 'mt-5' : 'flex justify-center items-center gap-2')  }>
         {isSpace ? <>
-          <img src="/vercel.svg" alt="Metaverse" className="w-10 h-10" /> </> : "Metaverse"}
+          <img src="/logoipsum-370.svg" alt="Metaverse" className="w-10 h-10" /> </> : <><img src="/logoipsum-370.svg" alt="Metaverse" className="w-10 h-10" /> Metaverse </>}
       </Link>
       <div className={"flex gap-4 p-2 font-geist-sans w-full justify-between " + (isSpace ? 'flex-col ' : ' space-x-4 ml-20')}>
         {isAuthenticated ? (

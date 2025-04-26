@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import MainLayout from '../../../components/layout/MainLayout';
 import ProtectedRoute from '../../../components/auth/protectedRoute';
 import Link from 'next/link';
-import { spaceAPI } from '../../../lib/api';
+import { adminAPI, avatarAPI, elementAPI, spaceAPI } from '../../../lib/api';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -18,13 +18,16 @@ export default function AdminDashboard() {
   const router = useRouter();
 
   useEffect(() => {
-    // In a real application, we would have a dedicated API endpoint to fetch admin stats
-    // For this example, we'll use the spaces endpoint and simulate the other stats
     const fetchStats = async () => {
       try {
         const spacesResponse = await spaceAPI.getAllSpaces();
+        const elementResponse = await elementAPI.getElements();
+        const MapResponse = await adminAPI.getMaps();
+        const avatarsResponse = await avatarAPI.getAvatars();
+        const avatars = avatarsResponse.data.avatars || [];
         const spaces = spacesResponse.data.spaces || [];
-        // Count unique elements across all spaces
+        const elements = elementResponse.data.elements || [];
+        const Maps = MapResponse.data.maps || [];
         interface Space {
           elements?: Element[];
         }
@@ -33,21 +36,11 @@ export default function AdminDashboard() {
           elementId: string;
         }
 
-        const uniqueElements = new Set<string>();
-        spaces.forEach((space: Space) => {
-          if (space.elements) {
-            space.elements.forEach((element: Element) => {
-              uniqueElements.add(element.elementId);
-            });
-          }
-        });
-
         setStats({
           spaces: spaces.length,
-          elements: uniqueElements.size,
-          // These would come from actual API endpoints in a real app
-          maps: 5,
-          avatars: 8,
+          elements: elements.length,
+          maps: Maps.length,
+          avatars: avatars.length,
           users: 25
         });
       } catch (error) {

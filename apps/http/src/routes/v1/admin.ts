@@ -7,6 +7,7 @@ export const adminRouter = Router();
 
 adminRouter.post("/element", adminMiddleware, async (req, res) => {
     const parsedData = CreateElementSchema.safeParse(req.body);
+    console.log(parsedData.data)
     if(!parsedData.success){
         res.status(400).json({
             message: "validation failed"
@@ -71,6 +72,7 @@ adminRouter.delete("/map/:mapId", adminMiddleware, async (req, res) => {
     })  
 })
 adminRouter.get("/map/:mapId", adminMiddleware, async (req, res) => {
+    console.log(req.body)
     const map = await client.map.findUnique({
         where: {
             id: req.params.mapId
@@ -88,7 +90,10 @@ adminRouter.get("/map/:mapId", adminMiddleware, async (req, res) => {
         })
         return
     }
+    console.log(map)
     res.status(200).json({
+        name: map.name,
+        thumbnail: map.thumbnail,
         dimensions: `${map.width}x${map.height}`,
         elements: map.mapElements.map(e => ({
             id: e.id,

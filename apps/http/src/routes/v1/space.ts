@@ -39,6 +39,7 @@ spaceRouter.post("/" ,userMiddleware, async (req, res) => {
             mapElements: true,
             width: true,
             height: true,
+            thumbnail: true
         }
     })
     if(!map){
@@ -53,6 +54,7 @@ spaceRouter.post("/" ,userMiddleware, async (req, res) => {
                 width: map?.width as number,
                 height: map?.height as number,
                 creatorId: req.userId!, 
+                thumbnail: map?.thumbnail
             }
         })
 
@@ -73,7 +75,6 @@ spaceRouter.post("/" ,userMiddleware, async (req, res) => {
         message: "Space created"
     });
 });
-
 
 spaceRouter.delete("/element", userMiddleware, async (req, res) => {
 
@@ -239,6 +240,7 @@ spaceRouter.get("/:spaceId",userMiddleware, async (req, res) => {
     }
 
     res.status(200).json({
+        name: space.name,
         dimensions: `${space.width}x${space.height}`,
         elements: space.elements.map(e => ({
             id: e.id,

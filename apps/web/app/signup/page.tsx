@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/authContext';
+import { avatarAPI, userAPI } from '@/lib/api';
 
 const Signup = () => {
   const [username, setUsername] = useState('');
@@ -40,7 +41,11 @@ const Signup = () => {
     }
     
     const result = await signup(username, password, type as "user" | "admin");
-    console.log(result);
+    const response = await avatarAPI.getAvatars();
+    const avatars = response.data;
+    const randomAvatar = avatars[Math.floor(Math.random() * avatars.length)];
+    await userAPI.updateMetadata(randomAvatar.id);
+    
     if (result.success) {
       router.push('/login?registered=true');
     } else {
