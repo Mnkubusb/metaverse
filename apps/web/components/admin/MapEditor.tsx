@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @next/next/no-img-element */
 "use client"
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -184,7 +187,6 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
           ))}
         </div>
       </div>
-
       <div className="flex-1 relative overflow-hidden">
         <div
           ref={gridRef}
