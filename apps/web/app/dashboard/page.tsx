@@ -2,8 +2,7 @@
 import { useEffect, useState } from 'react';
 import MainLayout from '../../components/layout/MainLayout';
 import ProtectedRoute from '../../components/auth/protectedRoute';
-import { useAuth } from '../../contexts/authContext';
-import { spaceAPI, avatarAPI, userAPI } from '../../lib/api';
+import { spaceAPI } from '../../lib/api';
 import Link from 'next/link';
 // import { Avatar } from '../../components/admin/avatarManager';
 import { Space } from '../../components/space/spaceLists';
@@ -32,7 +31,7 @@ export default function Dashboard() {
     return (
       <MainLayout>
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500" />
         </div>
       </MainLayout>
     );
@@ -41,7 +40,7 @@ export default function Dashboard() {
   return (
     <ProtectedRoute>
       <MainLayout>
-        <div className="max-w-screen mx-auto w-full h-full my-4">
+        <div className="max-w-screen mx-auto w-full my-4">
           <div className="flex lg:w-6xl w-4xl gap-8 mx-auto">
             <div className="px-4 w-full">
               <div className="flex justify-between items-center mb-4">
@@ -50,7 +49,7 @@ export default function Dashboard() {
                   <div className='w-[0.5px] h-3 bg-gray-500 border'/>
                   <h2 className="text-md font-semibold text-gray-400 font-geist-sans">My Spaces</h2>
                 </div>
-                <Link href="/spaces" className="bg-blue-500 p-2 text-white font-geist-sans font-medium px-2 rounded-md hover:bg-blue-700 flex justify-center items-center shadow">
+                <Link href="/spaces" className="bg-blue-500 p-2 text-white font-geist-sans font-medium px-4 rounded-md hover:bg-blue-700 flex justify-center items-center shadow">
                   + Create Space
                 </Link>
               </div>

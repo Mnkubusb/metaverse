@@ -13,7 +13,7 @@ export default function Navbar() {
     <nav className={`"bg-white font-geist-sans text-black drop-shadow-xl shadow-lg flex items-center " + ${isSpace ? 'w-14 h-screen flex-col' : 'h-16 p-8 px-44'}`} >
       <Link href="/" className={"text-xl font-bold "  + (isSpace ? 'mt-5' : 'flex justify-center items-center gap-2')  }>
         {isSpace ? <>
-          <img src="/logoipsum-370.svg" alt="Metaverse" className="w-10 h-10" /> </> : <><img src="/logoipsum-370.svg" alt="Metaverse" className="w-10 h-10" /> Metaverse </>}
+          <img src="/logoipsum-371.svg" alt="Metaverse" className="w-10 h-10" /> </> : <><img src="/logoipsum-371.svg" alt="Metaverse" className="w-10 h-10" /> Metaverse </>}
       </Link>
       <div className={"flex gap-4 p-2 font-geist-sans w-full justify-between " + (isSpace ? 'flex-col ' : ' space-x-4 ml-20')}>
         {isAuthenticated ? (
@@ -56,7 +56,7 @@ export default function Navbar() {
             <div className={`${isSpace ? 'mt-80' : ''} `}>
               <button
                 onClick={logout}
-                className="hover:bg-gray-100 rounded-md p-[6px] px-3 w-fit"
+                className="hover:bg-gray-100 rounded-md p-[6px] px-3 w-fit cursor-pointer"
               >
                 {isSpace ? <>
                   <BiLogOut size={16} />

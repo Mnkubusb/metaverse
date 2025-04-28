@@ -70,7 +70,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signup = async (username: string, password: string, type: "user" | "admin") => {
     try {
       const response = await authAPI.signup(username, password, type);
-      console.log(response);
+      console.log("Here",response);
       return { success: true, data: response.data };
     } catch (error) {
       console.error('Signup error:', error);

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/authContext';
 import { avatarAPI, userAPI } from '@/lib/api';
+import { toast } from 'sonner';
 
 const Signup = () => {
   const [username, setUsername] = useState('');
@@ -21,32 +22,29 @@ const Signup = () => {
     }
   }, [user, loading, router]);
 
-  const handleSubmit = async (e : React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     if (!username || !password) {
       setError('Username and password are required');
       return;
     }
-    
+
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
-    
+
     if (password.length < 8) {
       setError('Password must be at least 8 characters long');
       return;
     }
-    
+
     const result = await signup(username, password, type as "user" | "admin");
-    const response = await avatarAPI.getAvatars();
-    const avatars = response.data;
-    const randomAvatar = avatars[Math.floor(Math.random() * avatars.length)];
-    await userAPI.updateMetadata(randomAvatar.id);
-    
+
     if (result.success) {
+      toast.success('Signup successful');
       router.push('/login?registered=true');
     } else {
       setError(result.error || 'Failed to sign up');
@@ -68,13 +66,13 @@ const Signup = () => {
     <div className="flex justify-center items-center min-h-screen bg-gray-100">
       <div className="bg-white p-8 rounded shadow-md w-full max-w-md">
         <h1 className="text-2xl font-bold mb-6 text-center">Sign Up</h1>
-        
+
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
             {error}
           </div>
         )}
-        
+
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label className="block text-gray-700 mb-2" htmlFor="username">
@@ -89,7 +87,7 @@ const Signup = () => {
               required
             />
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-gray-700 mb-2" htmlFor="password">
               Password
@@ -106,7 +104,7 @@ const Signup = () => {
               Password must be at least 8 characters long
             </p>
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-gray-700 mb-2" htmlFor="confirmPassword">
               Confirm Password
@@ -120,7 +118,7 @@ const Signup = () => {
               required
             />
           </div>
-          
+
           <div className="mb-6">
             <label className="block text-gray-700 mb-2" htmlFor="type">
               Account Type
@@ -135,7 +133,7 @@ const Signup = () => {
               <option value="admin">Administrator</option>
             </select>
           </div>
-          
+
           <button
             type="submit"
             className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
@@ -143,7 +141,7 @@ const Signup = () => {
             Sign Up
           </button>
         </form>
-        
+
         <div className="mt-4 text-center">
           <p>
             Already have an account?{' '}

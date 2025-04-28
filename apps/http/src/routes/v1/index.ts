@@ -11,8 +11,9 @@ import { JWT_SECRET } from "../../config";
 export const router = Router();
 
 router.post("/signup", async (req, res) => {
+    console.log(req.body)
     const parsedData = SignupSchema.safeParse(req.body);
-
+    console.log(parsedData)
     if (!parsedData.success) {
         res.status(400).json({
             message: "Invalid data",
@@ -22,7 +23,6 @@ router.post("/signup", async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(parsedData.data.password, 10);
-
     try {
         // Check if the user already exists
         const existingUser = await client.user.findUnique({
@@ -30,8 +30,8 @@ router.post("/signup", async (req, res) => {
                 username: parsedData.data.username,
             }
         });
-
         if (existingUser) {
+            console.log(existingUser)
             res.status(400).json({
                 message: "User already exists",
             });
@@ -45,7 +45,6 @@ router.post("/signup", async (req, res) => {
                 role: parsedData.data.type === "admin" ? "Admin" : "User",
             }
         })
-
         res.status(200).json({
             userId: user.id,
         })

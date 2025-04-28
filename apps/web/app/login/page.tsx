@@ -12,7 +12,6 @@ const Login = () => {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect if already logged in
     if (!loading && user) {
       router.push('/dashboard');
     }
