@@ -4,7 +4,6 @@ import MainLayout from '../../components/layout/MainLayout';
 import ProtectedRoute from '../../components/auth/protectedRoute';
 import { spaceAPI } from '../../lib/api';
 import Link from 'next/link';
-// import { Avatar } from '../../components/admin/avatarManager';
 import { Space } from '../../components/space/spaceLists';
 
 export default function Dashboard() {
