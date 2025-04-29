@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 import React, { useState, useEffect, useRef, useCallback, } from 'react';
 import { avatarAPI, spaceAPI } from '../../lib/api';
@@ -22,20 +21,20 @@ const SpaceGrid = (
 ) => {
   const spaceId = id;
   const { user } = useAuth();
-  const { sendMessage, messages, connected } = useWebSocket();
+  const { sendMessage, connected , currentUser , users } = useWebSocket();
   const [space, setSpace] = useState<Space | null>(null);
   const [elements, setElements] = useState<spaceElement[] | []>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const gridRef = useRef(null);
-  const [currentUser, setCurrentUser] = useState<any>({});
-  const [users, setUsers] = useState(new Map());
+  // const [currentUser, setCurrentUser] = useState<any>({});
+  // const [users, setUsers] = useState(new Map());
   const [userAvatar, setUserAvatar] = useState<Avatar | null>(null);
   const [frame, setFrame] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const animationRef = useRef<number | null>(null)
-  // const [direction, setDirection] = useState<"down" | "up" | "left" | "right" | null>(null);
-  // const [isMoving, setIsMoving] = useState(false);
+  const [direction, setDirection] = useState<"down" | "up" | "left" | "right" | null>(null);
+  const [isMoving, setIsMoving] = useState(false);
 
 
 
@@ -75,76 +74,76 @@ const SpaceGrid = (
     fetchUserAvatar();
   }, [user]);
 
-  useEffect(() => {
+  // useEffect(() => {
 
-    if (!messages) return;
+  //   if (!messages) return;
 
-    const lastMessage = messages[messages.length - 1]
-    const { type, payload } = lastMessage;
+  //   const lastMessage = messages[messages.length - 1]
+  //   const { type, payload } = lastMessage;
 
-    switch (type) {
-      case 'space-joined': {
-        setCurrentUser({
-          x: payload.spawn.x,
-          y: payload.spawn.y,
-          userId: payload.userId
-        });
-        const userMap = new Map();
-        payload.users.forEach((user: any) => {
-          userMap.set(user.userId, user);
-        });
-        setUsers(userMap);
-        break;
-      }
+  //   switch (type) {
+  //     case 'space-joined': {
+  //       setCurrentUser({
+  //         x: payload.spawn.x,
+  //         y: payload.spawn.y,
+  //         userId: payload.userId
+  //       });
+  //       const userMap = new Map();
+  //       payload.users.forEach((user: any) => {
+  //         userMap.set(user.userId, user);
+  //       });
+  //       setUsers(userMap);
+  //       break;
+  //     }
 
-      case 'user-joined':
-        setUsers(prev => {
-          const newUsers = new Map(prev);
-          newUsers.set(payload.userId, {
-            x: payload.x,
-            y: payload.y,
-            userId: payload.userId
-          });
-          return newUsers;
-        });
-        break;
+  //     case 'user-joined':
+  //       setUsers(prev => {
+  //         const newUsers = new Map(prev);
+  //         newUsers.set(payload.userId, {
+  //           x: payload.x,
+  //           y: payload.y,
+  //           userId: payload.userId
+  //         });
+  //         return newUsers;
+  //       });
+  //       break;
 
-      case 'move':
-        setUsers(prev => {
-          const newUsers = new Map(prev);
-          newUsers.set(payload.userId, {
-            x: payload.x,
-            y: payload.y,
-            userId: payload.userId
-          });
-          return newUsers;
-        });
-        break;
-      case 'movement-accepted':
-        setCurrentUser((prev: any) => ({
-          ...prev,
-          x: payload.x,
-          y: payload.y
-        }));
-        break;
-      case 'movement-rejected':
-        setCurrentUser((prev: any) => ({
-          ...prev,
-          x: payload.x,
-          y: payload.y
-        }));
-        break;
+  //     case 'move':
+  //       setUsers(prev => {
+  //         const newUsers = new Map(prev);
+  //         newUsers.set(payload.userId, {
+  //           x: payload.x,
+  //           y: payload.y,
+  //           userId: payload.userId
+  //         });
+  //         return newUsers;
+  //       });
+  //       break;
+  //     case 'movement-accepted':
+  //       setCurrentUser((prev: any) => ({
+  //         ...prev,
+  //         x: payload.x,
+  //         y: payload.y
+  //       }));
+  //       break;
+  //     case 'movement-rejected':
+  //       setCurrentUser((prev: any) => ({
+  //         ...prev,
+  //         x: payload.x,
+  //         y: payload.y
+  //       }));
+  //       break;
 
-      case 'user-left':
-        setUsers(prev => {
-          const newUsers = new Map(prev);
-          newUsers.delete(payload.userId);
-          return newUsers;
-        });
-        break;
-    }
+  //     case 'user-left':
+  //       setUsers(prev => {
+  //         const newUsers = new Map(prev);
+  //         newUsers.delete(payload.userId);
+  //         return newUsers;
+  //       });
+  //       break;
+  //   }
 
-  }, [messages, user]);
+  // }, [messages, user]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -155,25 +154,26 @@ const SpaceGrid = (
       switch (e.key) {
         case 'w':
           newY = Math.max(0, currentUser.y - 1);
-          setFrame(2);
+          setDirection("up");
           break;
         case 's':
           newY = Math.min((maxHeight as number * 32) - 1, currentUser.y + 1);
-          setFrame(0);
+          setDirection("down");
           break;
         case 'a':
           newX = Math.max(0, currentUser.x - 1);
-          setFrame(3);
+          setDirection("left");
           break;
         case 'd':
           newX = Math.min((maxWidth as number * 32) - 1, currentUser.x + 1);
-          setFrame(1);
+          setDirection("right");
           break;
         default:
           return;
       }
 
       if (newX !== currentUser.x || newY !== currentUser.y) {
+        setIsMoving(true);
         sendMessage('move', { x: newX, y: newY, userId: user?.id });
       }
     };
@@ -181,26 +181,26 @@ const SpaceGrid = (
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [space, currentUser, sendMessage, user, frame]);
 
-  // useEffect(() => {
-  //   if (!isMoving || direction === null) return;
+  useEffect(() => {
+    if (!isMoving || direction === null) return;
 
-  //   const baseFrameMap = {
-  //     down: 0,
-  //     right: 6,
-  //     left: 12,
-  //     up: 18
-  //   };
+    const baseFrameMap = {
+      down: 0,
+      right: 6,
+      left: 12,
+      up: 18
+    };
+    setFrame(baseFrameMap[direction])
+    const interval = setInterval(() => {
+      setFrame(prev => {
+        const base = baseFrameMap[direction];
+        const next = prev + 1;
+        return next < base || next >= base + 6 ? base : next;
+      });
+    }, 160);
 
-  //   const interval = setInterval(() => {
-  //     setFrame(prev => {
-  //       const base = baseFrameMap[direction];
-  //       const next = prev + 1;
-  //       return next < base || next >= base + 6 ? base : next;
-  //     });
-  //   }, 160);
-
-  //   return () => clearInterval(interval);
-  // }, [direction, isMoving]);
+    return () => clearInterval(interval);
+  }, [direction, isMoving]);
 
 
 const drawGame = useCallback(() => {
@@ -249,10 +249,10 @@ const drawGame = useCallback(() => {
     ctx.stroke();
 
     const player = new Sprite({
-      resource: userAvatar?.imageUrl as string,
-      frameSize: new Vector2(32, 32),
-      hFrames: 4,
-      vFrames: 1,
+      resource: "/Characters/WalkAnimations.png",
+      frameSize: new Vector2(80, 80),
+      hFrames: 5,
+      vFrames: 5,
       frame,
       scale: 1,
     })
@@ -261,7 +261,7 @@ const drawGame = useCallback(() => {
     elements.filter((element) => element.element.static === false).map((element) => {
       const elements = new Sprite({
         resource: element.element.imageUrl,
-        frameSize: new Vector2(32, 32),
+        frameSize: new Vector2(element.element.width, element.element.height),
       })
       elements.drawImage(ctx, element.x * 32, element.y * 32);
     })
@@ -270,8 +270,21 @@ const drawGame = useCallback(() => {
     const targetY = currentUser.y * 8
 
     ctx.fillStyle = '#000';
-    ctx.fillText(user?.username as string, targetX - 8, targetY - 10);
+    ctx.fillText(user?.username as string, targetX + 15, targetY + 8);
     player.drawImage(ctx, targetX, targetY);
+
+    Array.from(users.values()).map((user) => {
+      const player2 = new Sprite({
+        resource: "/Characters/WalkAnimations.png",
+        frameSize: new Vector2(80, 80),
+        hFrames: 5,
+        vFrames: 5,
+        frame: 0,
+        scale: 1,
+      })
+      ctx.fillText(user.id, user.x * 8 + 15, user.y * 8 + 8);
+      player2.drawImage(ctx, user.x * 8, user.y * 8);
+    })
 
     elements.filter((element) => element.element.static === true).map((element) => {
       const elements = new Sprite({
@@ -284,7 +297,7 @@ const drawGame = useCallback(() => {
     ctx.restore();
 
     animationRef.current = requestAnimationFrame(drawGame)
-  }, [space, currentUser, frame, elements, userAvatar , user]);
+  }, [space, currentUser, frame, elements , user , users]);
 
   useEffect(() => {
     if (!space) return;
@@ -296,14 +309,15 @@ const drawGame = useCallback(() => {
     };
   }, [space, drawGame])
 
-  // useEffect(() => {
-  //   const handleKeyUp = () => {
-  //     setIsMoving(false);
-  //   };
 
-  //   window.addEventListener("keyup", handleKeyUp);
-  //   return () => window.removeEventListener("keyup", handleKeyUp);
-  // }, []);
+  useEffect(() => {
+    const handleKeyUp = () => {
+      setIsMoving(false);
+    };
+
+    window.addEventListener("keyup", handleKeyUp);
+    return () => window.removeEventListener("keyup", handleKeyUp);
+  }, []);
 
 
   if (loading) return <div className="text-center p-8">Loading space...</div>;
