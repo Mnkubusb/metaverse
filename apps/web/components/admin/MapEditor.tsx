@@ -1,5 +1,5 @@
+/* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
@@ -154,7 +154,6 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
     const rect = gridRef.current!.getBoundingClientRect();
     const x = Math.floor((e.clientX - rect.left) / TILE_SIZE);
     const y = Math.floor((e.clientY - rect.top) / TILE_SIZE);
-
     setDefaultElements(prev => [...prev, { elementId: selectedElement, x, y }]);
   };
 
@@ -230,7 +229,7 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
   };
 
   return (
-    <div className="flex h-[calc(100vh-64px)]">
+    <div className="flex h-screen p-4">
       <div className="w-[280px] border-r overflow-y-auto p-4">
         <h2 className="text-lg font-semibold mb-4">Elements</h2>
         <div className="grid grid-cols-2 gap-2">
@@ -258,6 +257,17 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
           onMouseUp={handleMouseUp}
           onMouseMove={handleMouseMove}
         />
+        <div className="absolute top-4 left-4 z-10">
+            <div className="col-span-2">
+              <Button
+                variant="destructive"
+                className="w-full"
+                onClick={() => removeElement(selectedElementIndex as number)}
+              >
+                Remove Selected Element
+              </Button>
+            </div>
+        </div>
 
         <div className="absolute top-4 right-4 z-10">
           <Dialog>
@@ -268,10 +278,8 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
               <DialogHeader>
                 <DialogTitle>{mapId ? "Edit Map" : "Create New Map"}</DialogTitle>
               </DialogHeader>
-
               {error && <p className="text-red-600 mb-2">{error}</p>}
               {message && <p className="text-green-600 mb-2">{message}</p>}
-
               <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
                 <div>
                   <input
@@ -311,18 +319,6 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
                   </Button>
                 </div>
               </form>
-
-              {selectedElementIndex !== null && (
-                <div className="col-span-2">
-                  <Button
-                    variant="destructive"
-                    className="w-full"
-                    onClick={() => removeElement(selectedElementIndex)}
-                  >
-                    Remove Selected Element
-                  </Button>
-                </div>
-              )}
             </DialogContent>
           </Dialog>
         </div>

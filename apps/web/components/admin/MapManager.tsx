@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -40,7 +41,8 @@ const  MapManager: React.FC = () => {
           setMaps(response.data.maps);
         }
         setIsLoading(false);
-      } catch (err) {
+      } catch (e) {
+        console.log(e)
         setError('Failed to load maps');
         setIsLoading(false);
       }
@@ -70,7 +72,8 @@ const  MapManager: React.FC = () => {
       setShowDeleteModal(false);
       setDeleteId(null);
       setIsLoading(false);
-    } catch (err) {
+    } catch (e) {
+      console.log(e)
       setError('Failed to delete map');
       setIsLoading(false);
     }

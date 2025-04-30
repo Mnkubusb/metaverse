@@ -190,7 +190,11 @@ const SpaceGrid = (
       left: 12,
       up: 18
     };
-    setFrame(baseFrameMap[direction])
+    setFrame(prev => {
+      const base = baseFrameMap[direction];
+      const next = prev + 1;
+      return next < base || next >= base + 6 ? base : next;
+    });
     const interval = setInterval(() => {
       setFrame(prev => {
         const base = baseFrameMap[direction];
@@ -221,8 +225,8 @@ const drawGame = useCallback(() => {
     const canvasHeight = canvasRef.current?.height || window.innerHeight;
     const tileSize = 32;
 
-    const playerPixelX = currentUser.x * 8
-    const playerPixelY = currentUser.y * 8
+    const playerPixelX = currentUser.x * 4
+    const playerPixelY = currentUser.y * 4
 
     const camX = playerPixelX - canvasWidth / 2;
     const camY = playerPixelY - canvasHeight / 2;
@@ -249,7 +253,7 @@ const drawGame = useCallback(() => {
     ctx.stroke();
 
     const player = new Sprite({
-      resource: "/Characters/WalkAnimations.png",
+      resource: userAvatar?.imageUrl as string || "/Characters/WalkAnimations.png",
       frameSize: new Vector2(80, 80),
       hFrames: 5,
       vFrames: 5,
@@ -257,17 +261,16 @@ const drawGame = useCallback(() => {
       scale: 1,
     })
 
-
     elements.filter((element) => element.element.static === false).map((element) => {
       const elements = new Sprite({
         resource: element.element.imageUrl,
-        frameSize: new Vector2(element.element.width, element.element.height),
+        frameSize: new Vector2(element.element.width * 32 , element.element.height * 32),
       })
       elements.drawImage(ctx, element.x * 32, element.y * 32);
     })
 
-    const targetX = currentUser.x * 8
-    const targetY = currentUser.y * 8
+    const targetX = currentUser.x * 4
+    const targetY = currentUser.y * 4
 
     ctx.fillStyle = '#000';
     ctx.fillText(user?.username as string, targetX + 15, targetY + 8);
@@ -275,15 +278,15 @@ const drawGame = useCallback(() => {
 
     Array.from(users.values()).map((user) => {
       const player2 = new Sprite({
-        resource: "/Characters/WalkAnimations.png",
-        frameSize: new Vector2(80, 80),
-        hFrames: 5,
-        vFrames: 5,
+        resource: userAvatar?.imageUrl as string || "/Characters/WalkAnimations.png",
+        frameSize: new Vector2(64, 64),
+        hFrames: 4,
+        vFrames: 4,
         frame: 0,
         scale: 1,
       })
-      ctx.fillText(user.id, user.x * 8 + 15, user.y * 8 + 8);
-      player2.drawImage(ctx, user.x * 8, user.y * 8);
+      ctx.fillText(user.id, user.x * 4 + 15, user.y * 4 + 8);
+      player2.drawImage(ctx, user.x * 4, user.y * 4);
     })
 
     elements.filter((element) => element.element.static === true).map((element) => {
@@ -297,7 +300,7 @@ const drawGame = useCallback(() => {
     ctx.restore();
 
     animationRef.current = requestAnimationFrame(drawGame)
-  }, [space, currentUser, frame, elements , user , users]);
+  }, [space, currentUser, frame, elements , user , users , userAvatar]);
 
   useEffect(() => {
     if (!space) return;

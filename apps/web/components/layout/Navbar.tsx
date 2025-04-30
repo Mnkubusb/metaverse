@@ -8,19 +8,20 @@ import { FaRegistered } from 'react-icons/fa';
 export default function Navbar() {
   const { isAuthenticated, isAdmin, logout } = useAuth();
   const isSpace = usePathname().includes('space');
+  const isMap = usePathname().includes('maps');
 
   return (
-    <nav className={`"bg-white font-geist-sans text-black drop-shadow-xl shadow-lg flex items-center " + ${isSpace ? 'w-14 h-screen flex-col' : 'h-16 p-8 px-44'}`} >
-      <Link href="/" className={"text-xl font-bold "  + (isSpace ? 'mt-5' : 'flex justify-center items-center gap-2')  }>
-        {isSpace ? <>
+    <nav className={`"bg-white font-geist-sans text-black drop-shadow-xl shadow-lg flex items-center " + ${isSpace || isMap ? 'w-14 h-screen flex-col' : 'h-16 p-8 px-44'}`} >
+      <Link href="/" className={"text-xl font-bold "  + (isSpace || isMap ? 'mt-5' : 'flex justify-center items-center gap-2')  }>
+        {isSpace || isMap ? <>
           <img src="/logoipsum-371.svg" alt="Metaverse" className="w-10 h-10" /> </> : <><img src="/logoipsum-371.svg" alt="Metaverse" className="w-10 h-10" /> Metaverse </>}
       </Link>
-      <div className={"flex gap-4 p-2 font-geist-sans w-full justify-between " + (isSpace ? 'flex-col ' : ' space-x-4 ml-20')}>
+      <div className={"flex gap-4 p-2 font-geist-sans w-full justify-between " + (isSpace || isMap ? 'flex-col ' : ' space-x-4 ml-20')}>
         {isAuthenticated ? (
           <>
-            <div className={`${isSpace ? 'flex flex-col gap-8 mt-10' : 'flex'} `}>
+            <div className={`${isSpace || isMap ? 'flex flex-col gap-8 mt-10' : 'flex'} `}>
               <Link href="/dashboard" className="hover:bg-gray-100 rounded-md p-[6px] px-3 w-fit">
-                {isSpace ? <>
+                {isSpace || isMap ? <>
                   <MdDashboard size={16} />
                 </>
                   : 
@@ -31,7 +32,7 @@ export default function Navbar() {
                 }
               </Link>
               <Link href="/spaces" className="hover:bg-gray-100 rounded-md p-[6px] px-3 w-fit">
-                {isSpace ? <>
+                {isSpace || isMap ? <>
                   <MdSpaceDashboard size={16} />
                 </>
                   : <div className='flex gap-2 justify-center items-center'>
@@ -42,7 +43,7 @@ export default function Navbar() {
               {isAdmin && (
                 <>
                   <Link href="/admin/dashboard" className="hover:bg-gray-100 rounded-md p-[6px] px-3 w-fit">
-                    {isSpace ? <>
+                    {isSpace || isMap ? <>
                       <MdAdminPanelSettings size={16} />
                     </>
                       : <div className='flex gap-2 justify-center items-center'>
@@ -53,12 +54,12 @@ export default function Navbar() {
                 </>
               )}
             </div>
-            <div className={`${isSpace ? 'mt-80' : ''} `}>
+            <div className={`${isSpace || isMap ? 'mt-80' : ''} `}>
               <button
                 onClick={logout}
                 className="hover:bg-gray-100 rounded-md p-[6px] px-3 w-fit cursor-pointer"
               >
-                {isSpace ? <>
+                {isSpace || isMap ? <>
                   <BiLogOut size={16} />
                 </>
                   :<div className='flex gap-2 justify-center items-center'>

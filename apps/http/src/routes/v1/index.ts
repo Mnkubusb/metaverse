@@ -185,6 +185,17 @@ router.get("/maps", async (req, res) => {
     })
 })
 
+router.get("/users", async (req, res) => {
+    const users = await client.user.findMany();
+    res.json({
+        users: users.map(u => ({
+            id: u.id,
+            username: u.username,
+            role: u.role,
+        }))
+    });
+})
+
 
 router.use("/user", userRouter);
 router.use("/space", spaceRouter);

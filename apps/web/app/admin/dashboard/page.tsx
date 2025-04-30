@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import MainLayout from '../../../components/layout/MainLayout';
 import ProtectedRoute from '../../../components/auth/protectedRoute';
 import Link from 'next/link';
-import { adminAPI, avatarAPI, elementAPI, spaceAPI } from '../../../lib/api';
+import { adminAPI, avatarAPI, elementAPI, spaceAPI, userAPI } from '../../../lib/api';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -24,24 +24,19 @@ export default function AdminDashboard() {
         const elementResponse = await elementAPI.getElements();
         const MapResponse = await adminAPI.getMaps();
         const avatarsResponse = await avatarAPI.getAvatars();
+        const userResponse = await userAPI.getUsers();
         const avatars = avatarsResponse.data.avatars || [];
         const spaces = spacesResponse.data.spaces || [];
         const elements = elementResponse.data.elements || [];
         const Maps = MapResponse.data.maps || [];
-        interface Space {
-          elements?: Element[];
-        }
-
-        interface Element {
-          elementId: string;
-        }
+        const users = userResponse.data.users || [];
 
         setStats({
           spaces: spaces.length,
           elements: elements.length,
           maps: Maps.length,
           avatars: avatars.length,
-          users: 25
+          users: users.length || 0
         });
       } catch (error) {
         console.error('Error fetching admin stats:', error);
@@ -99,29 +94,31 @@ export default function AdminDashboard() {
   return (
     <ProtectedRoute adminOnly={true}>
       <MainLayout>
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-6xl mx-auto mt-8">
           <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
           
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-3 gap-2">
             {adminCards.map((card) => (
               <Link 
                 href={card.link} 
                 key={card.title}
-                className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow"
+                className="bg-[#f7f9fa] rounded-md  shadow p-6 hover:shadow-md transition-shadow"
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-lg font-medium text-gray-600">{card.title}</p>
-                    <p className="text-3xl font-bold mt-2">{card.count}</p>
+                <div className="flex flex-col">
+                  <div className='flex items-end justify-end'>
+                    <div className="text-3xl">{card.icon}</div>
                   </div>
-                  <div className="text-4xl">{card.icon}</div>
+                  <div >
+                    <p className="text-base font-normal text-gray-400">{card.title}</p>
+                    <p className="text-2xl font-medium mt-1">{card.count + "  " + card.title}</p>
+                  </div>
                 </div>
               </Link>
             ))}
           </div>
 
-          <div className="mt-10 grid md:grid-cols-2 gap-8">
-            <div className="bg-white rounded-lg shadow p-6">
+          <div className="my-4 grid md:grid-cols-2 gap-4">
+            <div className="bg-[#f7f9fa]  rounded-lg shadow p-6">
               <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
               <div className="space-y-2">
                 <button 
@@ -145,7 +142,7 @@ export default function AdminDashboard() {
               </div>
             </div>
             
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-[#f7f9fa]  rounded-lg shadow p-6">
               <h2 className="text-xl font-semibold mb-4">System Status</h2>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
