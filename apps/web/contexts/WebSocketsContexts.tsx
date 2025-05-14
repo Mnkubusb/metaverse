@@ -155,9 +155,9 @@ export const WebSocketProvider = ({ children, spaceId }: {
     messages,
   }), [connected, users, currentUser, messages]);
 
-  return <WebSocketContext.Provider value={{ ...value, sendMessage, moveUser }} >
-    {connected ? children : <div>Connecting WebSocket...</div>}
-  </WebSocketContext.Provider>;
+  return  <WebSocketContext.Provider value={{ ...value, sendMessage, moveUser }} >
+              {connected ? children : <div>Connecting WebSocket...</div>}
+          </WebSocketContext.Provider>;
 };
 
 export const useWebSocket = () => useContext(WebSocketContext);

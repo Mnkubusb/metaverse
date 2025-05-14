@@ -25,11 +25,9 @@ export default class WebSocketService {
     }
 
     this.socket = new WebSocket(this.url);
-
     this.socket.onopen = () => {
       console.log('WebSocket connected');
       this.isConnected = true;
-      // Only join after the connection is established
       this.joinSpace(); 
     };
 

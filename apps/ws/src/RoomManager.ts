@@ -6,7 +6,6 @@ export class RoomManager {
     static instance: RoomManager;
     private constructor() {
         this.rooms = new Map();
-
     }
 
     static getInstance() {

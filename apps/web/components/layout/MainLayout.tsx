@@ -9,9 +9,7 @@ export default function MainLayout({ children } : { children: React.ReactNode })
 
   return (
     <div className={`"min-h-screen overflow-x-hidden " + ${isSpace || isMap ? 'flex' : ''} `}>
-      {isMap ? " " 
-      : <Navbar />
-      }
+        <Navbar />
       <main className="w-full">
         {children}
       </main>

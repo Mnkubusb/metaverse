@@ -225,8 +225,8 @@ const drawGame = useCallback(() => {
     const canvasHeight = canvasRef.current?.height || window.innerHeight;
     const tileSize = 32;
 
-    const playerPixelX = currentUser.x * 4
-    const playerPixelY = currentUser.y * 4
+    const playerPixelX = currentUser.x * 8
+    const playerPixelY = currentUser.y * 8
 
     const camX = playerPixelX - canvasWidth / 2;
     const camY = playerPixelY - canvasHeight / 2;
@@ -269,8 +269,8 @@ const drawGame = useCallback(() => {
       elements.drawImage(ctx, element.x * 32, element.y * 32);
     })
 
-    const targetX = currentUser.x * 4
-    const targetY = currentUser.y * 4
+    const targetX = currentUser.x * 8
+    const targetY = currentUser.y * 8
 
     ctx.fillStyle = '#000';
     ctx.fillText(user?.username as string, targetX + 15, targetY + 8);
@@ -285,8 +285,8 @@ const drawGame = useCallback(() => {
         frame: 0,
         scale: 1,
       })
-      ctx.fillText(user.id, user.x * 4 + 15, user.y * 4 + 8);
-      player2.drawImage(ctx, user.x * 4, user.y * 4);
+      ctx.fillText(user.id, user.x * 8 + 15, user.y * 8 + 8);
+      player2.drawImage(ctx, user.x * 8, user.y * 8);
     })
 
     elements.filter((element) => element.element.static === true).map((element) => {
