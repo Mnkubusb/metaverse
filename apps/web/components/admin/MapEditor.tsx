@@ -47,6 +47,7 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
   const [message, setMessage] = useState("");
   const [selectedTool, setSelectedTool] = useState<"hand" | "stamp">("stamp");
   const [showSidebar, setShowSidebar] = useState(true);
+  const [tile , setTile] = useState({ x: 0 , y: 0});
 
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -112,9 +113,20 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
     ctx.fillStyle = "#f1fafb";
     ctx.fillRect(0, 0, width * TILE_SIZE, height * TILE_SIZE);
 
+    if (tile) { 
+      ctx.strokeStyle = '#d91507';
+      ctx.lineWidth = 2 / scale;
+      ctx.strokeRect(
+      tile.x * TILE_SIZE,
+      tile.y * TILE_SIZE,
+      TILE_SIZE,
+      TILE_SIZE
+      );
+    }
+
     ctx.strokeStyle = "#ccc";
     ctx.lineWidth = 1 / scale;
-
+    
     for (let x = 0; x <= width; x++) {
       ctx.beginPath();
       ctx.moveTo(x * TILE_SIZE, 0);
@@ -140,7 +152,7 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
         );
       }
     }
-  }, [defaultElements, availableElements, width, height, offset, scale]);
+  }, [defaultElements, availableElements, width, height, offset, scale , tile]);
 
   useEffect(() => {
     const canvas = gridRef.current;
@@ -164,6 +176,7 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
       const rect = gridRef.current!.getBoundingClientRect();
       const x = Math.floor((e.clientX - rect.left - offset.x) / (TILE_SIZE * scale));
       const y = Math.floor((e.clientY - rect.top - offset.y) / (TILE_SIZE * scale));
+      setTile({ x, y });
       const clickedIndex = defaultElements.findIndex(elem => elem.x === x && elem.y === y);
       if (clickedIndex !== -1) {
         setDraggingIndex(clickedIndex);
@@ -179,6 +192,7 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
       const rect = gridRef.current!.getBoundingClientRect();
       const x = Math.floor((e.clientX - rect.left - offset.x) / (TILE_SIZE * scale));
       const y = Math.floor((e.clientY - rect.top - offset.y) / (TILE_SIZE * scale));
+      setTile({x,y});
       setDefaultElements(prev => {
         const updated = [...prev];
         updated[draggingIndex] = { ...updated[draggingIndex], x, y, elementId: updated[draggingIndex]?.elementId as string };
@@ -192,12 +206,30 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
     setDraggingIndex(null);
   };
   
+  useEffect(() => {
+    const canvas = gridRef.current;
+    if (!canvas) return;
+    const handleMouseHover = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.floor((e.clientX - rect.left - offset.x) / (TILE_SIZE * scale));
+      const y = Math.floor((e.clientY - rect.top - offset.y) / (TILE_SIZE * scale));
+      setTile({ x, y });
+      drawGrid(canvas.getContext("2d")!);
+    };
+
+    canvas.addEventListener("mousemove", handleMouseHover);
+
+    return () => {
+      canvas.removeEventListener("mousemove", handleMouseHover);
+    };
+  }, [offset, scale, drawGrid]);
 
   const handleGridClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!selectedElement || selectedTool === "hand" || isPanning) return;
     const rect = gridRef.current!.getBoundingClientRect();
     const x = Math.floor((e.clientX - rect.left - offset.x) / (TILE_SIZE * scale));
     const y = Math.floor((e.clientY - rect.top - offset.y) / (TILE_SIZE * scale));
+    setTile({ x, y });
     setDefaultElements(prev => [...prev, { elementId: selectedElement, x, y }]);
   };
 
