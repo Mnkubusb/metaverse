@@ -1,84 +1,114 @@
-# Turborepo starter
+# 🌐 VirtuSpace — A 2D Metaverse Platform
 
-This Turborepo starter is maintained by the Turborepo core team.
+Welcome to **VirtuSpace**, a real-time 2D metaverse where users can explore, interact, and collaborate in custom-built virtual spaces. Whether it's virtual classrooms, office rooms, lounges, or event halls, VirtuSpace enables meaningful digital presence through pixel-art environments and seamless multiplayer interactions.
 
-## Using this example
+---
 
-Run the following command:
+## 🚀 Features
 
-```sh
-npx create-turbo@latest
+- 🗺️ **Interactive 2D Worlds**  
+  Walk, sit, and chat in tile-based spaces designed for social and professional engagement.
+
+- 🎨 **Map Editor (ZEP-style)**  
+  Build and customize rooms like offices, cafés, or campuses with a drag-and-drop canvas editor.
+
+- 🧍‍♂️ **Multiplayer Avatars**  
+  See others in real time. Each user has a pixel avatar with emotes and presence indicators.
+
+- 🧠 **AI-Powered Assistance** *(Coming Soon)*  
+  Virtual assistant NPCs and productivity bots using LLMs.
+
+- 💬 **Real-Time Chat & Proximity Voice** *(Coming Soon)*  
+  Chat publicly or initiate private voice conversations based on avatar proximity.
+
+- 🔐 **Authentication & Room Permissions**  
+  Role-based access for rooms: Admins, Members, Guests.
+
+- 📦 **Plugin Architecture**  
+  Extend the platform with custom widgets, games, or tools inside rooms.
+
+---
+
+## 🛠️ Built With
+
+- **Frontend**: Next.js, TailwindCSS, Canvas API
+- **Backend**: Node.js, WebSocket
+- **Database**: PostgreSQL with Prisma ORM  
+- **Realtime**: Liveblocks + Custom WebSocket layers  
+- **Assets**: Custom 32×32 pixel sprites (top-down RPG style)
+
+---
+
+## 📸 Preview
+
+![VirtuSpace Screenshot](./assets/virtu-preview.gif)
+
+---
+
+## 🧪 How to Run Locally
+
+```bash
+# 1. Clone the repo
+git clone https://github.com/Mnkubusb/metaverse.git
+cd metaverse
+
+# 2. Install dependencies
+npm install
+
+# 3. Setup environment variables
+cp .env.example .env
+# Fill in your DB credentials and Liveblocks API keys
+
+# 4. Run the development server
+npm run dev
 ```
 
-## What's inside?
+> The app will be available at `http://localhost:3000`
 
-This Turborepo includes the following packages/apps:
+---
 
-### Apps and Packages
-
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
+## 📁 Project Structure
 
 ```
-cd my-turborepo
-pnpm build
+/ws                 # WebSocket Layer
+/http               # Backend Layer
+/web                # Frontend
+/public/assets      # Sprites, tilesets, UI icons
+/components         # Reusable UI and game logic components
+/lib                # Utility functions
+/db                 # Database schema and migrations
 ```
 
-### Develop
+---
 
-To develop all apps and packages, run the following command:
+## 🧠 Future Roadmap
 
-```
-cd my-turborepo
-pnpm dev
-```
+- 🌍 User-generated worlds with teleportation
+- 📱 Mobile support
+- 🕹️ Mini-games inside rooms
+- 🌐 Public and private metaverse hubs
+- 🤖 AI-generated room layout suggestions
 
-### Remote Caching
+---
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+## 🤝 Contributing
 
-Turborepo can use a technique known as [Remote Caching](https://turbo.build/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+Contributions, ideas, and feedback are welcome!  
+1. Fork the project  
+2. Create a feature branch  
+3. Submit a pull request  
+4. Join the Discord (coming soon) to collaborate live!
 
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
+---
 
-```
-cd my-turborepo
-npx turbo login
-```
+## 📄 License
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+This project is licensed under the MIT License.
 
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
+---
 
-```
-npx turbo link
-```
+## 👨‍💻 Built by Manik Chand Sahu
 
-## Useful Links
+> Full-stack Web Developer | Next.js Expert | Building immersive digital experiences
 
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turbo.build/docs/core-concepts/monorepos/running-tasks)
-- [Caching](https://turbo.build/docs/core-concepts/caching)
-- [Remote Caching](https://turbo.build/docs/core-concepts/remote-caching)
-- [Filtering](https://turbo.build/docs/core-concepts/monorepos/filtering)
-- [Configuration Options](https://turbo.build/docs/reference/configuration)
-- [CLI Usage](https://turbo.build/docs/reference/command-line-reference)
+[🔗 Portfolio](https://manik-chand-sahu.vercel.app) • [🐦 Twitter](https://twitter.com/ManikChandSahu6) • [💼 LinkedIn](https://linkedin.com/in/manik-chand-sahu)
