@@ -7,7 +7,7 @@ import api, { adminAPI, elementAPI } from "../../lib/api";
 import { useAuth } from "../../contexts/authContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import {  BabyIcon, BoxSelect, BrickWall, Copy, Cuboid, EraserIcon,  HandIcon, LucideBaby, Minus, RotateCcw, RotateCw, Scaling, StampIcon, Triangle} from "lucide-react";
+import { BabyIcon, BoxSelect, BrickWall, Copy, Cuboid, EraserIcon, Files, HandIcon, LucideBaby, Minus, RotateCcw, RotateCw, Scaling, StampIcon, Triangle } from "lucide-react";
 
 interface Element {
   id: string;
@@ -35,26 +35,28 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
 
   const [name, setName] = useState("");
   const [thumbnail, setThumbnail] = useState("");
-  const [width, setWidth] = useState(20);
-  const [height, setHeight] = useState(15);
+  const [width, setWidth] = useState(100);
+  const [height, setHeight] = useState(100);
   const [availableElements, setAvailableElements] = useState<Element[]>([]);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [defaultElements, setDefaultElements] = useState<DefaultElement[]>([]);
-  const [selectedElementIndex, setSelectedElementIndex] = useState<number | null>(null);
+  // const [selectedElementIndex, setSelectedElementIndex] = useState<number | null>(null);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [selectedTool, setSelectedTool] = useState<"hand" | "stamp">("stamp");
+  const [selectedTool, setSelectedTool] = useState<"hand" | "stamp" | "erase" | "select" | "copy">("stamp");
+  const [selectedLayer, setselectedLayer] = useState<"floor" | "wall" | "objects" | "top-objects" >("floor");
   const [showSidebar, setShowSidebar] = useState(true);
-  const [tile , setTile] = useState({ x: 0 , y: 0});
-
+  const tileRef = useRef({ x: 0, y: 0 });
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
-  const panStart = useRef({ x: 0, y: 0 });
+  const [lastPanPosition, setLastPanPosition] = useState({ x: 0, y: 0 });
+  // const panStart = useRef({ x: 0, y: 0 });
 
   const gridRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const imagesCache = useRef<Map<string, HTMLImageElement>>(new Map());
 
   useEffect(() => {
@@ -113,20 +115,14 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
     ctx.fillStyle = "#f1fafb";
     ctx.fillRect(0, 0, width * TILE_SIZE, height * TILE_SIZE);
 
-    if (tile) { 
-      ctx.strokeStyle = '#d91507';
-      ctx.lineWidth = 2 / scale;
-      ctx.strokeRect(
-      tile.x * TILE_SIZE,
-      tile.y * TILE_SIZE,
-      TILE_SIZE,
-      TILE_SIZE
-      );
-    }
+    const { x, y } = tileRef.current;
+    ctx.strokeStyle = '#d91507';
+    ctx.lineWidth = 2 / scale;
+    ctx.strokeRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
 
     ctx.strokeStyle = "#ccc";
     ctx.lineWidth = 1 / scale;
-    
+
     for (let x = 0; x <= width; x++) {
       ctx.beginPath();
       ctx.moveTo(x * TILE_SIZE, 0);
@@ -152,7 +148,7 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
         );
       }
     }
-  }, [defaultElements, availableElements, width, height, offset, scale , tile]);
+  }, [defaultElements, availableElements, width, height, offset, scale]);
 
   useEffect(() => {
     const canvas = gridRef.current;
@@ -162,7 +158,7 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
     drawGrid(ctx);
   }, [drawGrid]);
 
-  const handleWheel = (e: React.WheelEvent) => {
+const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const delta = -e.deltaY / 500;
     setScale(prev => Math.min(Math.max(prev + delta, 0.5), 3));
@@ -171,28 +167,60 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (selectedTool === "hand" && (e.button === 1 || e.button === 0)) {
       setIsPanning(true);
-      panStart.current = { x: e.clientX - offset.x, y: e.clientY - offset.y };
-    } else if (selectedTool === "stamp") {
+      setLastPanPosition({ x: e.clientX, y: e.clientY });
+    } else if (selectedTool === "stamp" || selectedTool === "select") {
       const rect = gridRef.current!.getBoundingClientRect();
       const x = Math.floor((e.clientX - rect.left - offset.x) / (TILE_SIZE * scale));
       const y = Math.floor((e.clientY - rect.top - offset.y) / (TILE_SIZE * scale));
-      setTile({ x, y });
+      tileRef.current = { x, y };
       const clickedIndex = defaultElements.findIndex(elem => elem.x === x && elem.y === y);
       if (clickedIndex !== -1) {
         setDraggingIndex(clickedIndex);
-        setSelectedElementIndex(clickedIndex);
       }
     }
   };
 
+const clampOffset = (newOffset: { x: number; y: number }) => {
+    const container = containerRef.current;
+    if (!container) return newOffset;
+
+    const viewportWidth = container.clientWidth;
+    const viewportHeight = container.clientHeight;
+
+    const mapWidthInPx = width * TILE_SIZE * scale;
+    const mapHeightInPx = height * TILE_SIZE * scale;
+
+    const minX = Math.min(0, viewportWidth - mapWidthInPx);
+    const minY = Math.min(0, viewportHeight - mapHeightInPx);
+    const maxX = 0;
+    const maxY = 0;
+
+    return {
+      x: Math.min(maxX, Math.max(minX, newOffset.x)),
+      y: Math.min(maxY, Math.max(minY, newOffset.y)),
+    };
+  };
+
+
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (isPanning) {
-      setOffset({ x: e.clientX - panStart.current.x, y: e.clientY - panStart.current.y });
-    } else if (draggingIndex !== null && selectedTool === "stamp" ) {
+    if (isPanning && lastPanPosition) {
+      const dx = e.clientX - lastPanPosition.x;
+      const dy = e.clientY - lastPanPosition.y;
+
+      const newOffset = {
+        x: offset.x + dx,
+        y: offset.y + dy,
+      };
+
+      const clampedOffset = clampOffset(newOffset);
+      setOffset(clampedOffset);
+      setLastPanPosition({ x: e.clientX, y: e.clientY });
+
+    } else if (draggingIndex !== null && selectedTool === "stamp" || draggingIndex !== null && selectedTool === "select") {
       const rect = gridRef.current!.getBoundingClientRect();
       const x = Math.floor((e.clientX - rect.left - offset.x) / (TILE_SIZE * scale));
       const y = Math.floor((e.clientY - rect.top - offset.y) / (TILE_SIZE * scale));
-      setTile({x,y});
+      tileRef.current = { x, y };
       setDefaultElements(prev => {
         const updated = [...prev];
         updated[draggingIndex] = { ...updated[draggingIndex], x, y, elementId: updated[draggingIndex]?.elementId as string };
@@ -205,7 +233,7 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
     setIsPanning(false);
     setDraggingIndex(null);
   };
-  
+
   useEffect(() => {
     const canvas = gridRef.current;
     if (!canvas) return;
@@ -213,7 +241,7 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
       const rect = canvas.getBoundingClientRect();
       const x = Math.floor((e.clientX - rect.left - offset.x) / (TILE_SIZE * scale));
       const y = Math.floor((e.clientY - rect.top - offset.y) / (TILE_SIZE * scale));
-      setTile({ x, y });
+      tileRef.current = { x, y };
       drawGrid(canvas.getContext("2d")!);
     };
 
@@ -225,13 +253,21 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
   }, [offset, scale, drawGrid]);
 
   const handleGridClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!selectedElement || selectedTool === "hand" || isPanning) return;
+    if (selectedTool === "hand" || isPanning) return;
     const rect = gridRef.current!.getBoundingClientRect();
     const x = Math.floor((e.clientX - rect.left - offset.x) / (TILE_SIZE * scale));
     const y = Math.floor((e.clientY - rect.top - offset.y) / (TILE_SIZE * scale));
-    setTile({ x, y });
-    setDefaultElements(prev => [...prev, { elementId: selectedElement, x, y }]);
+    tileRef.current = { x, y };
+    if (selectedTool === "erase") {
+      setDefaultElements(prev => prev.filter((element) => !(element.x === x && element.y === y)));
+      return;
+    }
+    if (!selectedElement) return;
+    if (selectedTool === "stamp") {
+      setDefaultElements(prev => [...prev, { elementId: selectedElement, x, y }]);
+    }
   };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -249,7 +285,9 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
       };
       if (mapId) {
         await api.put(`/admin/map/${mapId}`, mapData, {
-          headers: { authorization: `Bearer ${token}` },
+          headers: {
+            authorization: `Bearer ${token}`,
+          },
         });
         setMessage("Map updated!");
       } else {
@@ -264,87 +302,108 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
     }
   };
 
-  const removeElement = (index: number) => {
-    setDefaultElements(prev => prev.filter((_, i) => i !== index));
-    setSelectedElementIndex(null);
-  };
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSelectedTool("select");
+        setDraggingIndex(null);
+      } else if (e.key === "v") {
+        setSelectedTool("select");
+      } else if (e.key === "c") {
+        setSelectedTool("copy");
+      } else if (e.key === "x") {
+        setSelectedTool("erase");
+      } else if (e.key === "z") {
+        setSelectedTool("hand");
+      }else if (e.key === "s") {
+        setSelectedTool("stamp");
+      }
+    };
 
-  const cursorStyle = selectedTool === "hand" ? "grab" : "default";
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    }; 
+  },[selectedTool]);
 
   return (
     <>
       <div className="flex items-center justify-between bg-white shadow border-b h-16 pr-2">
         <div className="flex">
           <Button variant={showSidebar ? "icon" : "outline"} onClick={() => setShowSidebar(prev => !prev)}
-             size={"icon"} className="border-none"
-            >
-             <div className="flex flex-col justify-center items-center text-xs size-full ">
-              <Cuboid strokeWidth={0.5} className="size-6"/>
-              Floor
-             </div>
-          </Button>
-          <Button variant={"outline"} 
-             size={"icon"} className="border-none"
-            >
-             <div className="flex flex-col justify-center items-center text-xs size-full ">
-              <BrickWall strokeWidth={0.5} className="size-6"/>
-              Wall
-             </div>
-          </Button>
-          <Button variant={"outline"}
-             size={"icon"} className="border-none"
-            >
-             <div className="flex flex-col justify-center items-center text-xs size-full relative">
-              <Triangle strokeWidth={0.5} className="size-6 relative fill-gray-300 left-1 -top-1" />
-              <BabyIcon strokeWidth={0.5} className="size-6 z-10 fill-background absolute top-5 right-8"  />
-              Objects
-             </div>
-          </Button>
-          <Button variant={"outline"}
-             size={"icon"} className="border-none"
-            >
-             <div className="flex flex-col justify-center items-center text-xs size-full relative">
-              <Triangle strokeWidth={0.5}  className="size-6 absolute z-10 top-4 right-4 fill-gray-300"   />
-              <LucideBaby strokeWidth={0.5} className="size-6"/>
-              Top Objects
-             </div>
-          </Button>
-          <Minus className="rotate-90 text-gray-200 my-auto scale-200 border-none" strokeWidth={0.5}/>
-          <Button variant={"outline"} size={"icon"}>
+            size={"icon"} className="border-none"
+          >
             <div className="flex flex-col justify-center items-center text-xs size-full ">
-              <BoxSelect strokeWidth={0.5} className="size-6" />
-              Select
+              <Cuboid strokeWidth={0.5} className="size-6" />
+              Floor(1)
             </div>
           </Button>
-          <Button variant={selectedTool === "stamp" ? "icon" : "outline"} 
+          <Button variant={"outline"}
+            size={"icon"} className="border-none"
+          >
+            <div className="flex flex-col justify-center items-center text-xs size-full ">
+              <BrickWall strokeWidth={0.5} className="size-6" />
+              Wall(2)
+            </div>
+          </Button>
+          <Button variant={"outline"}
+            size={"icon"} className="border-none"
+          >
+            <div className="flex flex-col justify-center items-center text-xs size-full relative">
+              <Triangle strokeWidth={0.5} className="size-6 relative fill-gray-300 left-1 -top-1" />
+              <BabyIcon strokeWidth={0.5} className="size-6 z-10 fill-background absolute top-5 right-8" />
+              Objects(3)
+            </div>
+          </Button>
+          <Button variant={"outline"}
+            size={"icon"} className="border-none"
+          >
+            <div className="flex flex-col justify-center items-center text-xs size-full relative">
+              <Triangle strokeWidth={0.5} className="size-6 absolute z-10 top-4 right-4 fill-gray-300" />
+              <LucideBaby strokeWidth={0.5} className="size-6" />
+              Top Objects(4)
+            </div>
+          </Button>
+          <Minus className="rotate-90 text-gray-200 my-auto scale-200 border-none" strokeWidth={0.5} />
+          <Button variant={selectedTool === "select" ? "icon" : "outline"} size={"icon"}
+            onClick={() => setSelectedTool("select")}
+          >
+            <div className="flex flex-col justify-center items-center text-xs size-full ">
+              <BoxSelect strokeWidth={0.5} className="size-6" />
+              Select(V)
+            </div>
+          </Button>
+          <Button variant={selectedTool === "stamp" ? "icon" : "outline"}
             size={"icon"}
-            onClick={() => setSelectedTool(prev => (prev === "hand" ? "stamp" : "hand"))}
+            onClick={() => setSelectedTool("stamp")}
           >
             <div className="flex flex-col justify-center items-center text-xs size-full ">
               <StampIcon strokeWidth={0.5} className="size-6" />
-              Stamp
+              Stamp(S)
             </div>
           </Button>
-          <Button variant={"outline"} onClick={() => removeElement(selectedElementIndex as number)} size={"icon"}>
+          <Button variant={selectedTool === "erase" ? "icon" : "outline"} size={"icon"}
+            onClick={() => setSelectedTool("erase")}
+          >
             <div className="flex flex-col justify-center items-center text-xs size-full ">
               <EraserIcon strokeWidth={0.5} className="size-6" />
-              Erase
+              Erase(X)
             </div>
           </Button>
-          <Button
-            variant={selectedTool === "hand" ? "icon" : "outline"}
-            size={"icon"}
-            onClick={() => setSelectedTool(prev => (prev === "hand" ? "stamp" : "hand"))}
+          <Button variant={selectedTool === "hand" ? "icon" : "outline"} size={"icon"}
+            onClick={() => setSelectedTool("hand")}
           >
             <div className="flex flex-col justify-center items-center text-xs size-full ">
               <HandIcon strokeWidth={0.5} className="size-6" />
-              Hand Tool
+              Hand Tool(Z)
             </div>
           </Button>
-          <Button variant={"outline"} size={"icon"}>
+          <Button variant={selectedTool === "copy" ? "icon" : "outline"} size={"icon"}
+            onClick={() => setSelectedTool("copy")}
+          >
             <div className="flex flex-col justify-center items-center text-xs size-full ">
               <Copy strokeWidth={0.5} className="size-6" />
-              Copy
+              Copy(C)
             </div>
           </Button>
           <Minus className="rotate-90 text-gray-200 my-auto scale-200 border-none" strokeWidth={0.5} />
@@ -371,7 +430,10 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
         </div>
         <Dialog>
           <DialogTrigger asChild>
-            <Button variant={"icon"}  className="rounded-full px-6 text-white"  >{mapId ? "Edit Map" : "Create Map"}</Button>
+            <Button variant={"icon"} className="rounded-full flex justify-center items-center gap-2 px-6 text-white"  >
+              <Files stroke="white"  className="size-4" />
+              {mapId ? "Save Map" : "Create Map"}
+            </Button>
           </DialogTrigger>
           <DialogContent className="max-w-4xl">
             <DialogHeader>
@@ -396,31 +458,27 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
         </Dialog>
       </div>
       <div className="flex h-[calc(100vh-65px)] flex-row-reverse">
-        {showSidebar && (
-          <div className="w-[280px] border-r overflow-y-auto p-4 z-10 bg-background">
-            <h2 className="text-lg font-semibold mb-4">Elements</h2>
-            <div className="grid grid-cols-2 gap-2">
+        {showSidebar && selectedLayer === "floor" && (
+          <div className="w-[350px] border-r overflow-y-auto p-4 z-10 bg-background">
+            <h2 className="text-lg font-semibold mb-4">Floors</h2>
+            <div className="grid grid-cols-4 gap-2">
               {availableElements.map((element) => (
                 <div
                   key={element.id}
-                  className={`p-2 border rounded cursor-pointer ${selectedElement === element.id ? "border-blue-500": ""}`}
+                  className={`rounded cursor-pointer ${ selectedElement === element.id ? "border border-blue-500" : ""}`}
                   onClick={() => setSelectedElement(element.id)}
                 >
-                  <img src={element.imageUrl} alt="" className="w-full h-16 object-contain" />
-                  <p className="text-xs text-center">
-                    {element.width}x{element.height}
-                  </p>
+                  <img src={element.imageUrl} alt="" className="w-full h-12 object-contain" />
                 </div>
               ))}
             </div>
           </div>
         )}
-        <div className="flex-1 relative w-full h-[calc(100vh-70px)] overflow-hidden">
+        <div className="flex-1 relative w-full h-[calc(100vh-70px)] overflow-hidden" ref={containerRef}>
           <canvas
             ref={gridRef}
             width={width * TILE_SIZE}
             height={height * TILE_SIZE}
-            className="absolute inset-0 bg-gray-500"
             onClick={handleGridClick}
             onMouseDown={handleMouseDown}
             onMouseUp={handleMouseUp}
@@ -428,7 +486,10 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
             onMouseLeave={handleMouseUp}
             onWheel={handleWheel}
             style={{
-              cursor: cursorStyle,
+              position: "absolute",
+              width: width * TILE_SIZE,
+              height: height * TILE_SIZE,
+              cursor: `url(/cursors/${selectedTool}.png), auto`,
             }}
           />
         </div>

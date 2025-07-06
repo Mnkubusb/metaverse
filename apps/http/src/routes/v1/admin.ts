@@ -72,7 +72,6 @@ adminRouter.delete("/map/:mapId", adminMiddleware, async (req, res) => {
     })  
 })
 adminRouter.get("/map/:mapId", adminMiddleware, async (req, res) => {
-    console.log(req.body)
     const map = await client.map.findUnique({
         where: {
             id: req.params.mapId
@@ -90,7 +89,6 @@ adminRouter.get("/map/:mapId", adminMiddleware, async (req, res) => {
         })
         return
     }
-    console.log(map)
     res.status(200).json({
         name: map.name,
         thumbnail: map.thumbnail,
@@ -175,28 +173,75 @@ adminRouter.put("/map/:mapId", adminMiddleware, async (req, res) => {
         return
     }
 
-    const map = await client.map.update({
-        where: {
-            id: req.params.mapId
-        },
-        data: {
-            name: parsedData.data.name,
-            width: parseInt(parsedData.data.dimensions.split("x")[0]),
-            height: parseInt(parsedData.data.dimensions.split("x")[1]),
-            thumbnail: parsedData.data.thumbnail,
-            mapElements: {
-                create: parsedData.data.defaultElement.map(e => ({
-                    elementId: e.elementId,
-                    x: e.x,
-                    y: e.y
-                }))
-            }
-        }
-    })
-    res.status(200).json({
-        id: map.id
-    })
-})
+    const { name, dimensions, thumbnail, defaultElement } = parsedData.data;
+    const [width, height] = dimensions.split("x").map(Number);
+    const mapId = req.params.mapId;
+
+    try {
+        // 1. Update map meta (no transaction needed)
+        const map = await client.map.update({
+            where: { id: mapId },
+            data: { name, width, height, thumbnail }
+        });
+
+        // 2. Get existing element IDs for the map
+        const existingElements = await client.mapElements.findMany({
+            where: { mapId },
+            select: { id: true }
+        });
+
+        const existingIds = new Set(existingElements.map(e => e.id));
+        const incomingIds = new Set(defaultElement.filter(e => e.id).map(e => e.id!));
+
+        // 3. Identify elements to delete
+        const toDelete = [...existingIds].filter(id => !incomingIds.has(id));
+
+        // 4. Separate elements to create and update
+        const toUpdate = defaultElement.filter(e => e.id);
+        const toCreate = defaultElement.filter(e => !e.id);
+
+        // 5. Perform deletions, creations, and updates
+        await client.$transaction([
+            ...(toDelete.length > 0
+                ? [
+                    client.mapElements.deleteMany({
+                        where: { id: { in: toDelete } }
+                    })
+                ]
+                : []),
+
+            ...(toCreate.length > 0
+                ? [
+                    client.mapElements.createMany({
+                        data: toCreate.map(e => ({
+                            x: e.x,
+                            y: e.y,
+                            elementId: e.elementId,
+                            mapId
+                        }))
+                    })
+                ]
+                : []),
+
+            // Updates can be run in parallel and outside transaction if needed
+        ]);
+
+        // 6. Update existing elements in parallel (no need to be in transaction)
+        await Promise.all(
+            toUpdate.map(e =>
+                client.mapElements.update({
+                    where: { id: e.id },
+                    data: { x: e.x, y: e.y }
+                })
+            )
+        );
+        
+        res.status(200).json({ id: map.id });
+    } catch (error) {
+        console.error("Map update failed:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
 adminRouter.put("/element/:elementId", adminMiddleware, async (req, res) => {
     const parsedData = UpdateElementSchema.safeParse(req.body);
     if(!parsedData.success){
