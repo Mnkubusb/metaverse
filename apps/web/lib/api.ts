@@ -66,8 +66,8 @@ export const mapAPI = {
 // Admin APIs
 export const adminAPI = {
     createAvatar: (imageUrl: string, name: string) => api.post('/admin/avatar', { imageUrl, name }),
-    createElement: (imageUrl: string, width: number, height: number, isStatic: boolean) => api.post('/admin/element', {
-        imageUrl, width, height, static: isStatic
+    createElement: (imageUrl: string, width: number, height: number, isStatic: boolean , layer : string) => api.post('/admin/element', {
+        imageUrl, width, height, static: isStatic , layer
     }),
     updateElement: (elementId: string, imageUrl : string) => api.put(`/admin/element/${elementId}`, { imageUrl }),
     createMap: (thumbnail: string, dimensions: string, name: string, defaultElement: defaultElement[]) => api.post('/admin/map', {

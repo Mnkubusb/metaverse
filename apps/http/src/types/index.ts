@@ -37,6 +37,7 @@ export const CreateElementSchema = z.object({
     width: z.number(),
     height: z.number(),
     static: z.boolean(),
+    layer: z.enum(["floor","wall","objects","topObjects"])
 })
 
 export const UpdateElementSchema = z.object({

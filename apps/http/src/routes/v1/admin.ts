@@ -20,7 +20,8 @@ adminRouter.post("/element", adminMiddleware, async (req, res) => {
            imageUrl: parsedData.data.imageUrl,
            width: parsedData.data.width,
            height: parsedData.data.height,
-           static: parsedData.data.static
+           static: parsedData.data.static,
+           layer: parsedData.data.layer
        }
    }) 
 

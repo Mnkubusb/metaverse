@@ -40,7 +40,6 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
   const [availableElements, setAvailableElements] = useState<Element[]>([]);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [defaultElements, setDefaultElements] = useState<DefaultElement[]>([]);
-  // const [selectedElementIndex, setSelectedElementIndex] = useState<number | null>(null);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -53,8 +52,8 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [lastPanPosition, setLastPanPosition] = useState({ x: 0, y: 0 });
-  // const panStart = useRef({ x: 0, y: 0 });
-
+  const [history, setHistory] = useState<DefaultElement[][]>([]);
+  const [redoStack, setRedoStack] = useState<DefaultElement[][]>([]);
   const gridRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const imagesCache = useRef<Map<string, HTMLImageElement>>(new Map());
@@ -157,6 +156,12 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
     if (!ctx) return;
     drawGrid(ctx);
   }, [drawGrid]);
+
+  const pushToHistory = (newState: DefaultElement[]) => {
+    setHistory((prev) => [...prev, defaultElements]); 
+    setRedoStack([]); 
+    setDefaultElements(newState); 
+  };
 
 const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();

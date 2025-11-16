@@ -15,6 +15,7 @@ interface Space {
     width: number;
     height: number;
     isStatic?: boolean;
+    layer: string;
   }
 
   interface ElementMapValue {
@@ -24,6 +25,7 @@ interface Space {
     height: number;
     isStatic: boolean;
     usageCount: number;
+    layer: string;
   }
 
 export default function ElementManager() {
@@ -33,7 +35,8 @@ export default function ElementManager() {
     imageUrl: '',
     width: 50,
     height: 50,
-    isStatic: true
+    isStatic: true,
+    layer: "floor"
   });
   const [isEditing, setIsEditing] = useState(false);
   const [currentElementId, setCurrentElementId] = useState<string | null>(null);
@@ -69,6 +72,7 @@ export default function ElementManager() {
             width: element.width,
             height: element.height,
             isStatic: element.isStatic || false,
+            layer: element.layer,
             usageCount: 1
           } as ElementMapValue);
         } else {
@@ -108,7 +112,8 @@ export default function ElementManager() {
           formData.imageUrl,
           formData.width,
           formData.height,
-          formData.isStatic
+          formData.isStatic,
+          formData.layer
         );
       }
       setFormSuccess("Element saved successfully!");
@@ -125,7 +130,8 @@ export default function ElementManager() {
       imageUrl: element.imageUrl,
       width: element.width,
       height: element.height,
-      isStatic: element.isStatic as boolean
+      isStatic: element.isStatic as boolean,
+      layer: element.layer
     });
     setCurrentElementId(element.elementId);
     setIsEditing(true);
@@ -136,7 +142,8 @@ export default function ElementManager() {
       imageUrl: '',
       width: 50,
       height: 50,
-      isStatic: true
+      isStatic: true,
+      layer: 'floor'
     });
     setIsEditing(false);
     setCurrentElementId(null);
@@ -220,6 +227,20 @@ export default function ElementManager() {
                     </div>
                   </div>
                   
+                  <div>
+                    <label htmlFor="layer">
+                      Layer
+                    </label>
+                    <input type="text"
+                      value={formData.layer}
+                      name='layer'
+                      onChange={handleInputChange}
+                      className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                      required
+                      min="1"
+                    />
+                  </div>
+
                   <div className="mb-6">
                     <label className="flex items-center">
                       <input

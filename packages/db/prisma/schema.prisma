@@ -14,6 +14,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Layer {
+  floor
+  wall
+  objects
+  topObjects
+}
 model User {
   id       String  @id @unique @default(cuid())
   username String  @unique
@@ -51,6 +57,7 @@ model Element {
   height      Int
   static      Boolean
   imageUrl    String
+  layer       Layer
   spaces      spaceElements[]
   mapElements mapElements[]
 }
