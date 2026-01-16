@@ -21,7 +21,9 @@ interface DefaultElement {
   elementId: string;
   x: number;
   y: number;
+  layer: "floor" | "wall" | "objects" | "top-objects" | undefined;
 }
+
 
 interface MapEditorProps {
   mapId?: string;
@@ -45,7 +47,7 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [selectedTool, setSelectedTool] = useState<"hand" | "stamp" | "erase" | "select" | "copy">("stamp");
-  const [selectedLayer, setselectedLayer] = useState<"floor" | "wall" | "objects" | "top-objects" >("floor");
+  const [selectedLayer, setselectedLayer] = useState<"floor" | "wall" | "objects" | "top-objects">("floor");
   const [showSidebar, setShowSidebar] = useState(true);
   const tileRef = useRef({ x: 0, y: 0 });
   const [scale, setScale] = useState(1);
@@ -158,12 +160,12 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
   }, [drawGrid]);
 
   const pushToHistory = (newState: DefaultElement[]) => {
-    setHistory((prev) => [...prev, defaultElements]); 
-    setRedoStack([]); 
-    setDefaultElements(newState); 
+    setHistory((prev) => [...prev, defaultElements]);
+    setRedoStack([]);
+    setDefaultElements(newState);
   };
 
-const handleWheel = (e: React.WheelEvent) => {
+  const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const delta = -e.deltaY / 500;
     setScale(prev => Math.min(Math.max(prev + delta, 0.5), 3));
@@ -185,7 +187,7 @@ const handleWheel = (e: React.WheelEvent) => {
     }
   };
 
-const clampOffset = (newOffset: { x: number; y: number }) => {
+  const clampOffset = (newOffset: { x: number; y: number }) => {
     const container = containerRef.current;
     if (!container) return newOffset;
 
@@ -228,7 +230,7 @@ const clampOffset = (newOffset: { x: number; y: number }) => {
       tileRef.current = { x, y };
       setDefaultElements(prev => {
         const updated = [...prev];
-        updated[draggingIndex] = { ...updated[draggingIndex], x, y, elementId: updated[draggingIndex]?.elementId as string };
+        updated[draggingIndex] = { ...updated[draggingIndex], x, y, elementId: updated[draggingIndex]?.elementId as string, layer: updated[draggingIndex]?.layer };
         return updated;
       });
     }
@@ -269,7 +271,7 @@ const clampOffset = (newOffset: { x: number; y: number }) => {
     }
     if (!selectedElement) return;
     if (selectedTool === "stamp") {
-      setDefaultElements(prev => [...prev, { elementId: selectedElement, x, y }]);
+      setDefaultElements(prev => [...prev, { elementId: selectedElement, x, y, layer: selectedLayer }]);
     }
   };
 
@@ -320,7 +322,7 @@ const clampOffset = (newOffset: { x: number; y: number }) => {
         setSelectedTool("erase");
       } else if (e.key === "z") {
         setSelectedTool("hand");
-      }else if (e.key === "s") {
+      } else if (e.key === "s") {
         setSelectedTool("stamp");
       }
     };
@@ -328,8 +330,8 @@ const clampOffset = (newOffset: { x: number; y: number }) => {
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
-    }; 
-  },[selectedTool]);
+    };
+  }, [selectedTool]);
 
   return (
     <>
@@ -436,7 +438,7 @@ const clampOffset = (newOffset: { x: number; y: number }) => {
         <Dialog>
           <DialogTrigger asChild>
             <Button variant={"icon"} className="rounded-full flex justify-center items-center gap-2 px-6 text-white"  >
-              <Files stroke="white"  className="size-4" />
+              <Files stroke="white" className="size-4" />
               {mapId ? "Save Map" : "Create Map"}
             </Button>
           </DialogTrigger>
@@ -470,7 +472,7 @@ const clampOffset = (newOffset: { x: number; y: number }) => {
               {availableElements.map((element) => (
                 <div
                   key={element.id}
-                  className={`rounded cursor-pointer ${ selectedElement === element.id ? "border border-blue-500" : ""}`}
+                  className={`rounded cursor-pointer ${selectedElement === element.id ? "border border-blue-500" : ""}`}
                   onClick={() => setSelectedElement(element.id)}
                 >
                   <img src={element.imageUrl} alt="" className="w-full h-12 object-contain" />

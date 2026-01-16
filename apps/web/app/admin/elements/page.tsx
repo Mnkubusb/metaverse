@@ -4,6 +4,7 @@ import MainLayout from '../../../components/layout/MainLayout';
 import ProtectedRoute from '../../../components/auth/protectedRoute';
 import { adminAPI, spaceAPI } from '../../../lib/api';
 import { useRouter } from 'next/navigation';
+import ElementManager from '@/components/admin/ElementsManager';
 
 interface Space {
     elements?: Element[];
@@ -28,7 +29,7 @@ interface Space {
     layer: string;
   }
 
-export default function ElementManager() {
+export default function ElementManagerPage() {
   const [elements, setElements] = useState<ElementMapValue[] | []>([]);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
@@ -152,7 +153,7 @@ export default function ElementManager() {
   return (
     <ProtectedRoute adminOnly={true}>
       <MainLayout>
-        <div className="max-w-6xl mx-auto">
+        {/* <div className="max-w-6xl mx-auto">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold">Element Manager</h1>
             <button
@@ -332,7 +333,8 @@ export default function ElementManager() {
               </div>
             </div>
           </div>
-        </div>
+        </div> */}
+        <ElementManager />
       </MainLayout>
     </ProtectedRoute>
   );
