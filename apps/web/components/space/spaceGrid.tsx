@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect, useRef, useCallback, } from 'react';
-import { avatarAPI, spaceAPI } from '../../lib/api';
+import { avatarAPI, spaceAPI, userAPI } from '../../lib/api';
 import { useWebSocket } from '../../contexts/WebSocketsContexts';
 import { useAuth } from '../../contexts/authContext';
 import { spaceElement } from './SpaceElement';
@@ -30,6 +30,8 @@ const SpaceGrid = (
   // const [currentUser, setCurrentUser] = useState<any>({});
   // const [users, setUsers] = useState(new Map());
   const [userAvatar, setUserAvatar] = useState<Avatar | null>(null);
+  // Cache of userId -> avatarUrl for other players
+  const [otherAvatars, setOtherAvatars] = useState<Map<string, string>>(new Map());
   const [frame, setFrame] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const animationRef = useRef<number | null>(null)
@@ -61,18 +63,33 @@ const SpaceGrid = (
     if (!user) return;
     const fetchUserAvatar = async () => {
       try {
-        setLoading(true);
         const response = await avatarAPI.getUserAvatar(user.id);
-        console.log(response);
         setUserAvatar(response.data.avatar);
       } catch (err) {
-        console.log("Internal Error", err);
-      } finally {
-        setLoading(false);
+        // avatar fetch failure is non-fatal, fall back to default sprite
       }
     }
     fetchUserAvatar();
   }, [user]);
+
+  // Fetch avatars for all other users whenever the users map changes
+  useEffect(() => {
+    if (users.size === 0) return;
+    const userIds = Array.from(users.keys()).filter((id): id is string => !!id);
+    if (userIds.length === 0) return;
+    const uncached = userIds.filter(id => !otherAvatars.has(id));
+    if (uncached.length === 0) return;
+    userAPI.getBulkMetadata(uncached).then(res => {
+      const avatarData: { userId: string; avatarId: string }[] = res.data.avatars;
+      setOtherAvatars(prev => {
+        const next = new Map(prev);
+        avatarData.forEach(({ userId, avatarId }) => {
+          if (avatarId) next.set(userId, avatarId);
+        });
+        return next;
+      });
+    }).catch(() => {});
+  }, [users]);
 
   // useEffect(() => {
 
@@ -276,17 +293,18 @@ const drawGame = useCallback(() => {
     ctx.fillText(user?.username as string, targetX + 15, targetY + 8);
     player.drawImage(ctx, targetX, targetY);
 
-    Array.from(users.values()).map((user) => {
+    Array.from(users.values()).map((otherUser) => {
+      const avatarUrl = otherAvatars.get(otherUser.userId) || "/Characters/WalkAnimations.png";
       const player2 = new Sprite({
-        resource: userAvatar?.imageUrl as string || "/Characters/WalkAnimations.png",
+        resource: avatarUrl,
         frameSize: new Vector2(64, 64),
         hFrames: 4,
         vFrames: 4,
         frame: 0,
         scale: 1,
       })
-      ctx.fillText(user.id, user.x * 8 + 15, user.y * 8 + 8);
-      player2.drawImage(ctx, user.x * 8, user.y * 8);
+      ctx.fillText(otherUser.userId ?? "", otherUser.x * 8 + 15, otherUser.y * 8 + 8);
+      player2.drawImage(ctx, otherUser.x * 8, otherUser.y * 8);
     })
 
     elements.filter((element) => element.element.static === true).map((element) => {
@@ -300,7 +318,7 @@ const drawGame = useCallback(() => {
     ctx.restore();
 
     animationRef.current = requestAnimationFrame(drawGame)
-  }, [space, currentUser, frame, elements , user , users , userAvatar]);
+  }, [space, currentUser, frame, elements, user, users, userAvatar, otherAvatars]);
 
   useEffect(() => {
     if (!space) return;

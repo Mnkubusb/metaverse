@@ -41,7 +41,6 @@ export default function SpaceCreator() {
     e.preventDefault();
     setSelectedMap(maps.find((map) => map.id === e.target.value) || null);
     setDimensions(selectedMap?.width + 'x' + selectedMap?.height || '')
-    console.log(inputRef.current?.value, selectedMap);
     setMapId(e.target.value);
   }
 

@@ -1,1 +1,1 @@
-export const JWT_SECRET = "metaverse_secret";
+export const JWT_SECRET = process.env.JWT_SECRET ?? (() => { throw new Error("JWT_SECRET env var is not set") })();

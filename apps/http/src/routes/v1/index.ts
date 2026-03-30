@@ -11,9 +11,7 @@ import { JWT_SECRET } from "../../config";
 export const router = Router();
 
 router.post("/signup", async (req, res) => {
-    console.log(req.body)
     const parsedData = SignupSchema.safeParse(req.body);
-    console.log(parsedData)
     if (!parsedData.success) {
         res.status(400).json({
             message: "Invalid data",
@@ -31,7 +29,6 @@ router.post("/signup", async (req, res) => {
             }
         });
         if (existingUser) {
-            console.log(existingUser)
             res.status(400).json({
                 message: "User already exists",
             });
@@ -93,7 +90,7 @@ router.post("/signin", async (req, res) => {
         const token = jwt.sign({
             userId: user.id,
             role: user.role,
-        }, JWT_SECRET);
+        }, JWT_SECRET, { expiresIn: "7d" });
 
         res.status(200).json({
             token
@@ -109,7 +106,12 @@ router.post("/signin", async (req, res) => {
 
 
 router.get("/elements", async (req, res) => {
-    const elements = await client.element.findMany();
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(100, parseInt(req.query.limit as string) || 50);
+    const elements = await client.element.findMany({
+        skip: (page - 1) * limit,
+        take: limit,
+    });
     res.json({
         elements: elements.map(e => ({
             id: e.id,
@@ -117,23 +119,31 @@ router.get("/elements", async (req, res) => {
             width: e.width,
             height: e.height,
             static: e.static
-        }))
+        })),
+        page,
+        limit,
     })
 });
 
 router.get("/avatars", async (req, res) => {
-    const avatars = await client.avatar.findMany();
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(100, parseInt(req.query.limit as string) || 50);
+    const avatars = await client.avatar.findMany({
+        skip: (page - 1) * limit,
+        take: limit,
+    });
     res.json({
         avatars: avatars.map(a => ({
             id: a.id,
             imageUrl: a.imageUrl,
             name: a.name
-        }))
+        })),
+        page,
+        limit,
     })
 })
 
 router.get("/avatar", async( req, res) => {
-    console.log(req.query.id);
     if(!req.query.id){
         res.status(400).json({
             message: "Avatar id is required"
@@ -145,7 +155,6 @@ router.get("/avatar", async( req, res) => {
             id: req.query.id as string
         }
     });
-    console.log(user);
     const avatar = await client.avatar.findUnique({
         where:{
             id: user?.avatarId as string
@@ -186,13 +195,20 @@ router.get("/maps", async (req, res) => {
 })
 
 router.get("/users", async (req, res) => {
-    const users = await client.user.findMany();
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(100, parseInt(req.query.limit as string) || 50);
+    const users = await client.user.findMany({
+        skip: (page - 1) * limit,
+        take: limit,
+    });
     res.json({
         users: users.map(u => ({
             id: u.id,
             username: u.username,
             role: u.role,
-        }))
+        })),
+        page,
+        limit,
     });
 })
 

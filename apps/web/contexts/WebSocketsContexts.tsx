@@ -33,12 +33,7 @@ export const WebSocketProvider = ({ children, spaceId }: {
   const { token } = useAuth();
 
   const handleMessage = useCallback((message: any) => {
-    console.log('WS message received:', message);
-    setMessages(prevMessages => {
-      const newMessages = [...prevMessages, message];
-      console.log("setMessages called. New messages:", newMessages);
-      return newMessages;
-    });
+    setMessages(prevMessages => [...prevMessages, message]);
     switch (message.type) {
       case 'space-joined': {
         setCurrentUser({

@@ -7,7 +7,7 @@ export default class WebSocketService {
   private isConnected: boolean;
   private onMessageCallback: (message: any) => void;
   private onCloseCallback: () => void;
-  
+
   constructor(url: string, token: string, spaceId: string, onMessage: (message: any) => void, onClose: () => void) {
     this.url = url || '';
     this.token = token;
@@ -18,7 +18,6 @@ export default class WebSocketService {
     this.isConnected = false;
   }
 
-
   connect() {
     if (this.socket) {
       this.socket.close();
@@ -26,14 +25,12 @@ export default class WebSocketService {
 
     this.socket = new WebSocket(this.url);
     this.socket.onopen = () => {
-      console.log('WebSocket connected');
       this.isConnected = true;
-      this.joinSpace(); 
+      this.joinSpace();
     };
 
     this.socket.onmessage = (event) => {
       const message = JSON.parse(event.data);
-      console.log('Received message:', message);
       if (this.onMessageCallback) {
         this.onMessageCallback(message);
       }
@@ -44,7 +41,6 @@ export default class WebSocketService {
     };
 
     this.socket.onclose = () => {
-      console.log('WebSocket disconnected');
       this.isConnected = false;
       if (this.onCloseCallback) {
         this.onCloseCallback();
@@ -55,14 +51,9 @@ export default class WebSocketService {
   }
 
   joinSpace() {
-    console.log(this.socket?.readyState)
-    // Check if socket exists and is in an open state
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN || !this.spaceId || !this.token) {
-      console.log('Cannot join space - socket not ready or missing credentials');
       return;
     }
-    
-    console.log("Joining space:", this.spaceId);
     this.sendMessage({
       type: 'join',
       payload: {
@@ -76,12 +67,9 @@ export default class WebSocketService {
     type: string;
     payload: any;
   }) {
-    // Check if socket exists and is in an open state
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
-      console.log('Cannot send message - socket not ready');
       return;
     }
-    
     this.socket.send(JSON.stringify(message));
   }
 

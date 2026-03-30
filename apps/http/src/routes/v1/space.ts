@@ -7,7 +7,6 @@ export const spaceRouter = Router();
 
 spaceRouter.post("/" ,userMiddleware, async (req, res) => {
     const parseData = CreateSpaceSchema.safeParse(req.body);
-    console.log(parseData)
     if (!parseData.success) {
         res.status(400).json({
             message: "Invalid data",
@@ -94,7 +93,6 @@ spaceRouter.delete("/element", userMiddleware, async (req, res) => {
             space: true
         }
     })
-    console.log(spaceElement?.space.creatorId, req.userId)
     if(!spaceElement?.space.creatorId || spaceElement?.space.creatorId !== req.userId){
         res.status(403).json({
             message: "You are not the creator of this space"
@@ -190,16 +188,16 @@ spaceRouter.post("/element", userMiddleware, async(req, res) => {
         }
     });
 
-    if(parsedData.data.x > space?.width! || parsedData.data.y > space?.height! || parsedData.data.x < 0 || parsedData.data.y < 0){
-        res.status(400).json({
-            message: "Element out of bounds"
+    if(!space){
+        res.status(403).json({
+            message: "Space not found"
         })
         return
     }
 
-    if(!space){
-        res.status(403).json({
-            message: "Space not found"
+    if(parsedData.data.x > space.width || parsedData.data.y > space.height || parsedData.data.x < 0 || parsedData.data.y < 0){
+        res.status(400).json({
+            message: "Element out of bounds"
         })
         return
     }

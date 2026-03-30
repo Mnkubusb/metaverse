@@ -31,7 +31,7 @@ export const authAPI = {
 export const userAPI = {
     getUsers: () => api.get('/users'),
     updateMetadata: (avatarId: string) => api.post('/user/metadata', { avatarId }),
-    getBulkMetadata: (userIds: string) => api.get(`/user/metadata/bulk?ids=[${userIds}]`),
+    getBulkMetadata: (userIds: string[]) => api.get(`/user/metadata/bulk?ids=${encodeURIComponent(JSON.stringify(userIds))}`),
 };
 
 // Space APIs

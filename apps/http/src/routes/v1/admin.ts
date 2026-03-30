@@ -7,7 +7,6 @@ export const adminRouter = Router();
 
 adminRouter.post("/element", adminMiddleware, async (req, res) => {
     const parsedData = CreateElementSchema.safeParse(req.body);
-    console.log(parsedData.data)
     if(!parsedData.success){
         res.status(400).json({
             message: "validation failed"
@@ -110,7 +109,6 @@ adminRouter.get("/map/:mapId", adminMiddleware, async (req, res) => {
 })
 
 adminRouter.get("/maps", adminMiddleware, async (req, res) => {
-    console.log(req.body)
     const maps = await client.map.findMany({
         include: {
             mapElements: {
@@ -136,9 +134,7 @@ adminRouter.get("/maps", adminMiddleware, async (req, res) => {
     })
 })
 adminRouter.post("/map",adminMiddleware, async (req, res) => {
-    console.log(req.body)
     const parsedData = CreateMapSchema.safeParse(req.body);
-    console.log(parsedData.data)
     if(!parsedData.success){
         res.status(400).json({
             message: "validation failed"

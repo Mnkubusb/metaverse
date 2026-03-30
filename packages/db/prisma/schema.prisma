@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../node_modules/.prisma/client"
@@ -20,14 +17,15 @@ enum Layer {
   objects
   topObjects
 }
+
 model User {
   id       String  @id @unique @default(cuid())
   username String  @unique
-  password String  
+  password String
   avatarId String?
   role     Role
   spaces   Space[]
-  avatar   Avatar?  @relation(fields: [avatarId], references: [id])
+  avatar   Avatar? @relation(fields: [avatarId], references: [id])
 }
 
 model Space {
@@ -39,6 +37,8 @@ model Space {
   creatorId String
   creator   User            @relation(fields: [creatorId], references: [id])
   elements  spaceElements[]
+
+  @@index([creatorId])
 }
 
 model spaceElements {
@@ -49,6 +49,9 @@ model spaceElements {
   y         Int
   space     Space   @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   element   Element @relation(fields: [elementId], references: [id])
+
+  @@index([spaceId])
+  @@index([elementId])
 }
 
 model Element {
@@ -75,10 +78,12 @@ model mapElements {
   id        String  @id @unique @default(cuid())
   mapId     String
   elementId String
-  x         Int?
-  y         Int?
-  map       Map     @relation(fields: [mapId], references: [id], onDelete: Cascade )
+  x         Int
+  y         Int
+  map       Map     @relation(fields: [mapId], references: [id], onDelete: Cascade)
   element   Element @relation(fields: [elementId], references: [id])
+
+  @@index([mapId])
 }
 
 model Avatar {

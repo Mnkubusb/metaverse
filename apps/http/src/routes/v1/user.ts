@@ -42,7 +42,14 @@ userRouter.post("/metadata", userMiddleware, async (req, res) => {
 userRouter.get("/metadata/bulk", async (req, res) => {
     
     const userIdString = (req.query.ids ?? "[]") as string;
-    const userIds = (userIdString).slice(1, userIdString?.length-2).split(",");
+    let userIds: string[] = [];
+    try {
+        userIds = JSON.parse(userIdString);
+        if (!Array.isArray(userIds)) userIds = [];
+    } catch {
+        res.status(400).json({ message: "ids must be a JSON array" });
+        return;
+    }
 
     const metadata = await client.user.findMany({
         where: {

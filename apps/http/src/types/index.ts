@@ -16,8 +16,14 @@ export const UpdateMetaDataSchema = z.object({
 })
 
 export const CreateSpaceSchema = z.object({
-    name: z.string(),
-    dimensions : z.string().regex(/^[0-9]{1,4}x[0-9]{1,4}$/),
+    name: z.string().min(1).max(100),
+    dimensions: z.string().regex(/^[0-9]{1,3}x[0-9]{1,3}$/).refine(
+        (d) => {
+            const [w, h] = d.split("x").map(Number);
+            return w >= 1 && w <= 200 && h >= 1 && h <= 200;
+        },
+        { message: "Dimensions must be between 1x1 and 200x200" }
+    ),
     mapId: z.string().optional(),
 })
 
