@@ -53,17 +53,35 @@ git clone https://github.com/Mnkubusb/metaverse.git
 cd metaverse
 
 # 2. Install dependencies
-npm install
+pnpm install
 
 # 3. Setup environment variables
 cp .env.example .env
-# Fill in your DB credentials and Liveblocks API keys
+# The default DATABASE_URL points to the local Docker Postgres instance
 
-# 4. Run the development server
-npm run dev
+# 4. Start Postgres
+pnpm db:up
+
+# 5. Apply the existing Prisma migrations
+pnpm db:migrate
+
+# 6. Generate Prisma client
+pnpm db:generate
+
+# 7. Run the apps
+pnpm start:http
+pnpm start:ws
+pnpm --dir apps/web run dev
 ```
 
-> The app will be available at `http://localhost:3000`
+The local services will be available at:
+
+- Web app: `http://localhost:3002`
+- HTTP API: `http://localhost:3000/api/v1`
+- WebSocket server: `ws://localhost:3001`
+- Postgres: `postgresql://postgres:postgres@localhost:5433/metaverse`
+
+If you were previously using a Neon connection string, replace it in your local `.env` with the Docker URL from `.env.example`.
 
 ---
 

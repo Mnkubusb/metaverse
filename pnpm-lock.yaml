@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      '@prisma/client':
+        specifier: ^6.19.1
+        version: 6.19.1(prisma@6.19.1(typescript@5.8.2))(typescript@5.8.2)
     devDependencies:
       prettier:
         specifier: ^3.5.3
@@ -3670,6 +3674,11 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.19.1
 
+  '@prisma/client@6.19.1(prisma@6.19.1(typescript@5.8.2))(typescript@5.8.2)':
+    optionalDependencies:
+      prisma: 6.19.1(typescript@5.8.2)
+      typescript: 5.8.2
+
   '@prisma/client@6.19.1(prisma@6.19.1(typescript@5.8.3))(typescript@5.8.3)':
     optionalDependencies:
       prisma: 6.19.1(typescript@5.8.3)
@@ -5911,6 +5920,16 @@ snapshots:
   prelude-ls@1.2.1: {}
 
   prettier@3.5.3: {}
+
+  prisma@6.19.1(typescript@5.8.2):
+    dependencies:
+      '@prisma/config': 6.19.1
+      '@prisma/engines': 6.19.1
+    optionalDependencies:
+      typescript: 5.8.2
+    transitivePeerDependencies:
+      - magicast
+    optional: true
 
   prisma@6.19.1(typescript@5.8.3):
     dependencies:

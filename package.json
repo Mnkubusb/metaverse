@@ -7,10 +7,17 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
-    "db:generate": "cd ./packages/db && npm i prisma @prisma/client npx prisma generate && cd ../..",
-    "start:http":"pnpm db:generate cd ./apps/http && npm run dev",
-    "start:ws":"pnpm db:generate cd ./apps/ws && npm run dev",
-    "start:web":"cd ./apps/web && npm run start"
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:generate": "pnpm --dir ./packages/db exec prisma generate",
+    "db:migrate": "sh -ac 'set -a && . ./.env && set +a && pnpm --dir ./packages/db exec prisma migrate deploy'",
+    "db:seed": "sh -ac 'set -a && . ./.env && set +a && pnpm --dir ./packages/db exec node scripts/seed.js'",
+    "start:http": "pnpm db:generate && pnpm --dir ./apps/http run dev",
+    "start:ws": "pnpm db:generate && pnpm --dir ./apps/ws run dev",
+    "start:web": "pnpm --dir ./apps/web run start"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.1"
   },
   "devDependencies": {
     "prettier": "^3.5.3",
