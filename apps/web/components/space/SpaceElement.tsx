@@ -1,5 +1,7 @@
 import React from 'react';
 
+export type elementLayer = "floor" | "wall" | "objects" | "topObjects";
+
 export type spaceElement = {
     id: string;
     element: {
@@ -8,6 +10,7 @@ export type spaceElement = {
         width: number;
         height: number;
         static: boolean;
+        layer?: elementLayer;
     }
     x: number;
     y: number;

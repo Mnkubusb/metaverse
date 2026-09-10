@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useCallback, } from 'react';
 import { avatarAPI, spaceAPI, userAPI } from '../../lib/api';
 import { useWebSocket } from '../../contexts/WebSocketsContexts';
 import { useAuth } from '../../contexts/authContext';
-import { spaceElement } from './SpaceElement';
+import { elementLayer, spaceElement } from './SpaceElement';
 import { Sprite } from '@/class/Sprite';
 import { Vector2 } from '@/types/Vector2';
 
@@ -278,13 +278,24 @@ const drawGame = useCallback(() => {
       scale: 1,
     })
 
-    elements.filter((element) => element.element.static === false).map((element) => {
-      const elements = new Sprite({
-        resource: element.element.imageUrl,
-        frameSize: new Vector2(element.element.width * 32 , element.element.height * 32),
-      })
-      elements.drawImage(ctx, element.x * 32, element.y * 32);
-    })
+    // Elements draw by layer, not by `static`: floor and wall go under the
+    // avatar, topObjects (ceiling lamps and the like) go over it. Anything
+    // without a layer falls back to `objects` so older maps still render.
+    const drawLayer = (layer: elementLayer) => {
+      elements
+        .filter((element) => (element.element.layer ?? "objects") === layer)
+        .forEach((element) => {
+          const sprite = new Sprite({
+            resource: element.element.imageUrl,
+            frameSize: new Vector2(element.element.width * 32, element.element.height * 32),
+          })
+          sprite.drawImage(ctx, element.x * 32, element.y * 32);
+        })
+    }
+
+    drawLayer("floor");
+    drawLayer("wall");
+    drawLayer("objects");
 
     const targetX = currentUser.x * 8
     const targetY = currentUser.y * 8
@@ -307,13 +318,7 @@ const drawGame = useCallback(() => {
       player2.drawImage(ctx, otherUser.x * 8, otherUser.y * 8);
     })
 
-    elements.filter((element) => element.element.static === true).map((element) => {
-      const elements = new Sprite({
-        resource: element.element.imageUrl,
-        frameSize: new Vector2(element.element.width * 32, element.element.height * 32),
-      })
-      elements.drawImage(ctx, element.x * 32, element.y * 32);
-    })
+    drawLayer("topObjects");
 
     ctx.restore();
 

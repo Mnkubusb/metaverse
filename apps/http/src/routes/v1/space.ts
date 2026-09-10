@@ -248,6 +248,7 @@ spaceRouter.get("/:spaceId",userMiddleware, async (req, res) => {
                 width: e.element.width,
                 height: e.element.height,
                 static: e.element.static,
+                layer: e.element.layer,
             },
             x: e.x,
             y: e.y,
