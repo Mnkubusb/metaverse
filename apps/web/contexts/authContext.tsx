@@ -34,11 +34,11 @@ const AuthContext = createContext<{
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState("");
-  const [loading, setLoading] = useState(false);
+  // true until the stored session has been read, so protected pages don't redirect on first render
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    setLoading(false);
     // Check for stored auth on load
     const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
@@ -46,6 +46,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
     }
+    setLoading(false);
   }, []);
 
   const login = async (username: string, password: string) => {

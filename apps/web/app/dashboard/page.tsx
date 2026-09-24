@@ -6,6 +6,7 @@ import ProtectedRoute from '../../components/auth/protectedRoute';
 import { spaceAPI } from '../../lib/api';
 import Link from 'next/link';
 import { Space } from '../../components/space/spaceLists';
+import CreateSpaceDialog from '../../components/space/spaceCreator';
 
 export default function Dashboard() {
   const [spaces, setSpaces] = useState<Space[] | []>([]);
@@ -49,9 +50,11 @@ export default function Dashboard() {
                   <div className='w-[0.5px] h-3 bg-gray-500 border'/>
                   <h2 className="text-md font-semibold text-gray-400 font-geist-sans">My Spaces</h2>
                 </div>
-                <Link href="/spaces" className="bg-blue-500 p-2 text-white font-geist-sans font-medium px-4 rounded-md hover:bg-blue-700 flex justify-center items-center shadow">
-                  + Create Space
-                </Link>
+                <CreateSpaceDialog trigger={
+                  <button type="button" className="bg-blue-500 p-2 text-white font-geist-sans font-medium px-4 rounded-md hover:bg-blue-700 flex justify-center items-center shadow">
+                    + Create Space
+                  </button>
+                } />
               </div>
 
               {recentSpaces.length > 0 ? (
