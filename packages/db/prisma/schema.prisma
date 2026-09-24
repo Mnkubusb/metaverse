@@ -34,6 +34,9 @@ model Space {
   width     Int
   height    Int
   thumbnail String?
+  // Tile where players appear when they join; null = pick the nearest free tile to the centre
+  spawnX    Int?
+  spawnY    Int?
   creatorId String
   creator   User            @relation(fields: [creatorId], references: [id])
   elements  spaceElements[]
@@ -71,6 +74,8 @@ model Map {
   height      Int
   name        String
   thumbnail   String
+  spawnX      Int?
+  spawnY      Int?
   mapElements mapElements[]
 }
 

@@ -15,7 +15,10 @@ interface Element {
   width: number;
   height: number;
   static: boolean;
+  layer?: "floor" | "wall" | "objects" | "topObjects";
 }
+
+const LAYER_ORDER = { floor: 0, wall: 1, objects: 2, topObjects: 3 } as const;
 
 interface DefaultElement {
   elementId: string;
@@ -136,9 +139,13 @@ const MapEditor: React.FC<MapEditorProps> = ({ mapId }) => {
       ctx.lineTo(width * TILE_SIZE, y * TILE_SIZE);
       ctx.stroke();
     }
-    for (const elem of defaultElements) {
+    const defs = new Map(availableElements.map(e => [e.id, e]));
+    const layerOf = (el: DefaultElement) => LAYER_ORDER[defs.get(el.elementId)?.layer ?? "floor"];
+    const sorted = [...defaultElements].sort((a, b) =>
+      layerOf(a) - layerOf(b) || (a.y + (defs.get(a.elementId)?.height ?? 1)) - (b.y + (defs.get(b.elementId)?.height ?? 1)));
+    for (const elem of sorted) {
       const img = imagesCache.current.get(elem.elementId);
-      const elementDef = availableElements.find(e => e.id === elem.elementId);
+      const elementDef = defs.get(elem.elementId);
       if (img && elementDef) {
         ctx.drawImage(
           img,

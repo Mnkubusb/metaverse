@@ -15,64 +15,50 @@ spaceRouter.post("/" ,userMiddleware, async (req, res) => {
         return
     };
 
-    if(!parseData.data.mapId){
-        const space = await client.space.create({
-            data: {
-                name: parseData.data.name,
-                width: parseInt(parseData.data.dimensions.split("x")[0]),
-                height: parseInt(parseData.data.dimensions.split("x")[1]),
-                creatorId: req.userId!, 
-            }
-        })
+    const { name, dimensions, mapId } = parseData.data;
 
-        res.status(200).json({
-            spaceId: space.id,
-            message: "Space created"
+    if (!mapId) {
+        const [width, height] = dimensions.split("x").map(Number);
+        const space = await client.space.create({
+            data: { name, width: width!, height: height!, creatorId: req.userId },
         });
+        res.status(200).json({ spaceId: space.id, message: "Space created" });
+        return;
     }
 
     const map = await client.map.findUnique({
-        where:{
-            id: parseData.data.mapId
-        }, select:{
-            mapElements: true,
-            width: true,
-            height: true,
-            thumbnail: true
-        }
-    })
-    if(!map){
-        res.status(403).json({
-            message: "Map not found"
-        })
+        where: { id: mapId },
+        select: { mapElements: true, width: true, height: true, thumbnail: true, spawnX: true, spawnY: true },
+    });
+    if (!map) {
+        res.status(404).json({ message: "Map not found" });
+        return;
     }
-    const space = await client.$transaction(async () => {
-        const space = await client.space.create({
-            data: {
-                name: parseData.data.name,
-                width: map?.width as number,
-                height: map?.height as number,
-                creatorId: req.userId!, 
-                thumbnail: map?.thumbnail
-            }
-        })
 
-        await client.spaceElements.createMany({
-            data: map?.mapElements.map(e => ({
+    const space = await client.$transaction(async (tx) => {
+        const space = await tx.space.create({
+            data: {
+                name,
+                width: map.width,
+                height: map.height,
+                thumbnail: map.thumbnail,
+                spawnX: map.spawnX,
+                spawnY: map.spawnY,
+                creatorId: req.userId,
+            },
+        });
+        await tx.spaceElements.createMany({
+            data: map.mapElements.map((e) => ({
                 spaceId: space.id,
                 elementId: e.elementId,
-                x: e.x!,
-                y: e.y!,
-            }) as any) || []
-        })
-
-        return space
-    })
-
-    res.status(200).json({
-        spaceId: space.id,
-        message: "Space created"
+                x: e.x,
+                y: e.y,
+            })),
+        });
+        return space;
     });
+
+    res.status(200).json({ spaceId: space.id, message: "Space created" });
 });
 
 spaceRouter.delete("/element", userMiddleware, async (req, res) => {
@@ -240,6 +226,7 @@ spaceRouter.get("/:spaceId",userMiddleware, async (req, res) => {
     res.status(200).json({
         name: space.name,
         dimensions: `${space.width}x${space.height}`,
+        spawn: space.spawnX !== null && space.spawnY !== null ? { x: space.spawnX, y: space.spawnY } : null,
         elements: space.elements.map(e => ({
             id: e.id,
             element: {
@@ -248,6 +235,7 @@ spaceRouter.get("/:spaceId",userMiddleware, async (req, res) => {
                 width: e.element.width,
                 height: e.element.height,
                 static: e.element.static,
+                layer: e.element.layer,
             },
             x: e.x,
             y: e.y,

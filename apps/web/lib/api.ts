@@ -54,8 +54,21 @@ export const avatarAPI = {
     }),
 };
 
+// The /elements endpoint is paginated (max 100 per page); callers here need the whole catalogue.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getAllElements(): Promise<{ data: { elements: any[] } }> {
+    const elements = [];
+    for (let page = 1; ; page++) {
+        const res = await api.get('/elements', { params: { page, limit: 100 } });
+        elements.push(...res.data.elements);
+        if (res.data.elements.length < 100) {
+            return { data: { elements } };
+        }
+    }
+}
+
 export const elementAPI = {
-    getElements: () => api.get('/elements'),
+    getElements: getAllElements,
 }
 
 export const mapAPI = {

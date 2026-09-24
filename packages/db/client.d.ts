@@ -1,3 +1,3 @@
-declare const client: import("@prisma/client").PrismaClient;
+declare const client: import("./node_modules/.prisma/client").PrismaClient;
 
 export default client;

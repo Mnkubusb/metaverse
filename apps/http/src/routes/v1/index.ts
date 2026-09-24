@@ -118,7 +118,8 @@ router.get("/elements", async (req, res) => {
             imageUrl: e.imageUrl,
             width: e.width,
             height: e.height,
-            static: e.static
+            static: e.static,
+            layer: e.layer,
         })),
         page,
         limit,
@@ -151,19 +152,13 @@ router.get("/avatar", async( req, res) => {
         return
     }
     const user = await client.user.findUnique({
-        where: {
-            id: req.query.id as string
-        }
-    });
-    const avatar = await client.avatar.findUnique({
-        where:{
-            id: user?.avatarId as string
-        }
+        where: { id: String(req.query.id) },
+        select: { avatar: { select: { imageUrl: true } } },
     });
 
     res.json({
         avatar: {
-            imageUrl: avatar?.imageUrl,
+            imageUrl: user?.avatar?.imageUrl ?? null,
         }
     })
 })
@@ -185,6 +180,8 @@ router.get("/maps", async (req, res) => {
             thumbnail: m.thumbnail,
             width: m.width,
             height: m.height,
+            spawnX: m.spawnX,
+            spawnY: m.spawnY,
             defaultElement: m.mapElements.map(e => ({
                 elementId: e.elementId,
                 x: e.x,

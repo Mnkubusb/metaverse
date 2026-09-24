@@ -3,6 +3,9 @@ import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { spaceAPI, mapAPI, defaultElement } from '../../lib/api';
 
+// Seeded by packages/db/scripts/seed.js; preselected when available.
+const DEFAULT_MAP_ID = 'gec-bilaspur-campus';
+
 interface Map {
   id: string;
   name: string;
@@ -27,8 +30,10 @@ export default function SpaceCreator() {
     const fetchMaps = async () => {
       try {
         const response = await mapAPI.getMaps();
-        const maps = response.data.maps || [];
+        const maps: Map[] = response.data.maps || [];
         setMaps(maps);
+        const campus = maps.find((m) => m.id === DEFAULT_MAP_ID);
+        if (campus) selectMap(campus);
       } catch (err) {
         console.error('Error fetching maps:', err);
       }
@@ -37,11 +42,15 @@ export default function SpaceCreator() {
     fetchMaps();
   }, []);
 
+  function selectMap(map: Map | null) {
+    setSelectedMap(map);
+    setMapId(map?.id ?? '');
+    if (map) setDimensions(`${map.width}x${map.height}`);
+  }
+
   const handleMapChange = (e: ChangeEvent<HTMLSelectElement>) => {
     e.preventDefault();
-    setSelectedMap(maps.find((map) => map.id === e.target.value) || null);
-    setDimensions(selectedMap?.width + 'x' + selectedMap?.height || '')
-    setMapId(e.target.value);
+    selectMap(maps.find((map) => map.id === e.target.value) || null);
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -99,6 +108,7 @@ export default function SpaceCreator() {
             value={dimensions}
             onChange={(e) => setDimensions(e.target.value)}
             placeholder="e.g. 100x200"
+            disabled={!!selectedMap}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
             required
           />
@@ -114,13 +124,17 @@ export default function SpaceCreator() {
             onChange={handleMapChange}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
           >
-            <option value="">-- Select a Map --</option>
+            <option value="">-- Empty space --</option>
             {maps.map((map) => (
               <option key={map.id} value={map.id}>
                 {map.name} ({map.width}x{map.height})
               </option>
             ))}
           </select>
+          {selectedMap?.thumbnail && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={selectedMap.thumbnail} alt={`${selectedMap.name} preview`} className="mt-3 w-full rounded border" />
+          )}
         </div>
 
         <div className="flex justify-end">
