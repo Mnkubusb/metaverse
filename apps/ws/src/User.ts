@@ -5,6 +5,7 @@ import client from "@repo/db/client";
 import jwt, { JwtPayload } from "jsonwebtoken"
 import { JWT_SECRET } from "./config";
 import type { SpaceGrid } from "./SpaceGrid";
+import { ChatRateLimiter, cleanChatText, recentChat, saveChatMessage } from "./chat";
 
 const HEARTBEAT_INTERVAL = 30_000; // 30 seconds
 const HEARTBEAT_TIMEOUT = 10_000;  // 10 seconds to pong
@@ -30,6 +31,7 @@ export class User {
     private spaceId?: string;
     private grid?: SpaceGrid;
     private lastMoveAt = 0;
+    private chatLimiter = new ChatRateLimiter();
     private ws: WebSocket;
     private heartbeatInterval?: ReturnType<typeof setInterval>;
     private heartbeatTimeout?: ReturnType<typeof setTimeout>;
@@ -94,9 +96,10 @@ export class User {
                         return;
                     }
                     const rooms = RoomManager.getInstance();
-                    const [grid, dbUser] = await Promise.all([
+                    const [grid, dbUser, chat] = await Promise.all([
                         rooms.getGrid(spaceId),
                         client.user.findUnique({ where: { id: userId }, select: { username: true } }),
+                        recentChat(spaceId).catch(() => []),
                     ]);
                     if (!grid || !dbUser) {
                         this.ws.close();
@@ -115,6 +118,7 @@ export class User {
                         payload: {
                             userId: this.userId,
                             spawn: { x: this.x, y: this.y },
+                            chat,
                             users: rooms.rooms.get(spaceId)
                                 ?.filter((u) => u.id !== this.id)
                                 .map((u) => ({ userId: u.userId, username: u.username, x: u.x, y: u.y })) ?? []
@@ -124,6 +128,28 @@ export class User {
                         type: "user-joined",
                         payload: { x: this.x, y: this.y, userId: this.userId, username: this.username }
                     }, this, spaceId);
+                    break;
+                }
+                case "chat": {
+                    if (!this.spaceId || !this.userId || !this.username) return;
+                    const text = cleanChatText(parsedData.payload?.text);
+                    if (!text) {
+                        this.send({ type: "chat-rejected", payload: { reason: "invalid" } });
+                        return;
+                    }
+                    if (!this.chatLimiter.take()) {
+                        this.send({ type: "chat-rejected", payload: { reason: "rate-limited" } });
+                        return;
+                    }
+                    try {
+                        const message = await saveChatMessage(this.spaceId, this.userId, this.username, text);
+                        // everyone in the room, sender included, so the sender sees the stored message
+                        this.send({ type: "chat", payload: message });
+                        RoomManager.getInstance().broadcast({ type: "chat", payload: message }, this, this.spaceId);
+                    } catch (err) {
+                        console.error("Failed to save chat message", err);
+                        this.send({ type: "chat-rejected", payload: { reason: "error" } });
+                    }
                     break;
                 }
                 case "move": {

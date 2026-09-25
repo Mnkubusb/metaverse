@@ -5,6 +5,7 @@ import { useWebSocket } from '../../contexts/WebSocketsContexts';
 import { useAuth } from '../../contexts/authContext';
 import { spaceElement } from './SpaceElement';
 import { buildWalkability } from '@/lib/collision';
+import ChatPanel from './ChatPanel';
 
 interface Space {
   name: string;
@@ -29,6 +30,7 @@ interface Actor {
 
 const TILE = 32;
 const STEP_MS = 140;            // time to walk one tile
+const BUBBLE_MS = 6000;         // how long a chat message floats above its author
 const DEFAULT_AVATAR = "/Characters/WalkAnimations.png";
 const GROUND_TILES = ["/Tiles/BasicTiles8.png", "/Tiles/BasicTiles22.png"];
 
@@ -89,7 +91,7 @@ async function renderBackground(width: number, height: number, elements: spaceEl
 
 const SpaceGrid = ({ id }: { id: string }) => {
   const { user } = useAuth();
-  const { moveUser, serverPosition, users, selfId } = useWebSocket();
+  const { moveUser, serverPosition, users, selfId, chat } = useWebSocket();
   const [space, setSpace] = useState<Space | null>(null);
   const [error, setError] = useState("");
   const [loadingArt, setLoadingArt] = useState(true);
@@ -102,6 +104,9 @@ const SpaceGrid = ({ id }: { id: string }) => {
   const othersRef = useRef<Map<string, Actor>>(new Map());
   const heldRef = useRef<Direction[]>([]);
   const lastStepRef = useRef(0);
+  const bubblesRef = useRef<Map<string, { text: string; until: number }>>(new Map());
+  // history loaded on join shouldn't pop up as bubbles
+  const chatSeenRef = useRef(chat.length);
 
   const dims = useMemo(() => {
     if (!space) return null;
@@ -215,6 +220,17 @@ const SpaceGrid = ({ id }: { id: string }) => {
     for (const uid of [...actors.keys()]) if (!users.has(uid)) actors.delete(uid);
   }, [users, otherAvatars, selfId]);
 
+  // --- chat bubbles -----------------------------------------------------------
+  useEffect(() => {
+    const fresh = chat.slice(chatSeenRef.current);
+    chatSeenRef.current = chat.length;
+    const now = performance.now();
+    for (const m of fresh) {
+      if (m.system || !m.userId) continue;
+      bubblesRef.current.set(m.userId, { text: m.text, until: now + BUBBLE_MS });
+    }
+  }, [chat]);
+
   // --- input ----------------------------------------------------------------
   useEffect(() => {
     const isTyping = (e: KeyboardEvent) =>
@@ -276,6 +292,81 @@ const SpaceGrid = ({ id }: { id: string }) => {
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(a.name, px, py);
+    };
+
+    const wrap = (ctx: CanvasRenderingContext2D, text: string, maxWidth: number, maxLines: number) => {
+      const words = text.split(' ');
+      const lines: string[] = [];
+      let line = '';
+      for (const w of words) {
+        const next = line ? `${line} ${w}` : w;
+        if (ctx.measureText(next).width > maxWidth && line) {
+          lines.push(line);
+          line = w;
+        } else {
+          line = next;
+        }
+      }
+      if (line) lines.push(line);
+      if (lines.length > maxLines) {
+        lines.length = maxLines;
+        lines[maxLines - 1] = lines[maxLines - 1]!.replace(/.{0,2}$/, '…');
+      }
+      // hard-cut single words that are still too wide
+      return lines.map((l) => {
+        while (ctx.measureText(l).width > maxWidth && l.length > 1) l = l.slice(0, -2) + '…';
+        return l;
+      });
+    };
+
+    // Lays out every live bubble, nudging later ones upward so nearby players' bubbles don't overlap.
+    const drawBubbles = (ctx: CanvasRenderingContext2D, speakers: [string, Actor][], now: number) => {
+      ctx.font = "12px ui-sans-serif, system-ui, sans-serif";
+      const placed: { x: number; y: number; w: number; h: number }[] = [];
+      const items = speakers
+        .map(([id, a]) => ({ id, a, bubble: bubblesRef.current.get(id) }))
+        .filter((it): it is { id: string; a: Actor; bubble: { text: string; until: number } } => {
+          if (!it.bubble) return false;
+          if (now > it.bubble.until) { bubblesRef.current.delete(it.id); return false; }
+          return true;
+        })
+        .sort((p, q) => q.a.ry - p.a.ry); // nearest to the camera keeps its natural spot
+      for (const { a, bubble } of items) {
+        const lines = wrap(ctx, bubble.text, 180, 3);
+        const w = Math.max(...lines.map((l) => ctx.measureText(l).width)) + 16;
+        const h = lines.length * 15 + 10;
+        const cx = a.rx * TILE + TILE / 2;
+        const tip = a.ry * TILE - 36;
+        const rect = { x: cx - w / 2, y: tip - h, w, h };
+        for (let moved = true; moved;) {
+          moved = false;
+          for (const r of placed) {
+            if (rect.x < r.x + r.w && r.x < rect.x + rect.w && rect.y < r.y + r.h && r.y < rect.y + rect.h) {
+              rect.y = r.y - rect.h - 4;
+              moved = true;
+            }
+          }
+        }
+        placed.push(rect);
+        // fade out over the last half second
+        ctx.globalAlpha = Math.min(1, (bubble.until - now) / 500);
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = "rgba(20,20,28,0.25)";
+        ctx.beginPath();
+        ctx.roundRect(rect.x, rect.y, w, h, 8);
+        if (rect.y + h === tip) {
+          ctx.moveTo(cx - 5, tip);
+          ctx.lineTo(cx, tip + 6);
+          ctx.lineTo(cx + 5, tip);
+        }
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = "#1a1d24";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        lines.forEach((l, i) => ctx.fillText(l, cx, rect.y + 5 + i * 15));
+        ctx.globalAlpha = 1;
+      }
     };
 
     const tick = (now: number) => {
@@ -347,13 +438,14 @@ const SpaceGrid = ({ id }: { id: string }) => {
         if (ready(img)) ctx.drawImage(img, e.x * TILE, e.y * TILE, e.element.width * TILE, e.element.height * TILE);
       }
       actors.forEach((a) => drawName(ctx, a));
+      drawBubbles(ctx, [[selfId, self], ...othersRef.current.entries()], now);
       ctx.restore();
 
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [dims, loadingArt, isWalkable, sprites, moveUser]);
+  }, [dims, loadingArt, isWalkable, sprites, moveUser, selfId]);
 
   if (error) return <div className="text-center p-8 text-red-500">{error}</div>;
   if (!space) return <div className="text-center p-8">Loading space...</div>;
@@ -362,11 +454,12 @@ const SpaceGrid = ({ id }: { id: string }) => {
     <div className="relative w-full h-screen overflow-hidden bg-[#2f3b2a]">
       <div className="absolute z-20 m-4 rounded-lg bg-black/60 px-4 py-3 text-white shadow-lg">
         <h2 className="text-lg font-bold">{space.name}</h2>
-        <p className="text-sm opacity-80">{users.size + 1} online · move with WASD / arrow keys</p>
+        <p className="text-sm opacity-80">{users.size + 1} online · move with WASD / arrow keys · Enter to chat</p>
       </div>
       {loadingArt && (
         <div className="absolute inset-0 z-10 flex items-center justify-center text-white">Loading map...</div>
       )}
+      <ChatPanel />
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" style={{ imageRendering: "pixelated" }} />
     </div>
   );

@@ -18,6 +18,18 @@ export interface ServerPosition {
   seq: number;
 }
 
+export interface ChatMessage {
+  id: string;
+  userId: string | null;
+  username: string;
+  text: string;
+  createdAt: string;
+  // join/leave notices generated locally; never sent to the server
+  system?: boolean;
+}
+
+const MAX_CHAT_MESSAGES = 200;
+
 interface WebSocketContextType {
   connected: boolean;
   users: Map<string, RemoteUser>;
@@ -25,6 +37,9 @@ interface WebSocketContextType {
   serverPosition: ServerPosition;
   sendMessage: (type: string, payload: any) => void;
   moveUser: (x: number, y: number) => void;
+  chat: ChatMessage[];
+  chatError: string;
+  sendChat: (text: string) => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextType>({
@@ -34,6 +49,9 @@ const WebSocketContext = createContext<WebSocketContextType>({
   serverPosition: { x: 0, y: 0, seq: 0 },
   sendMessage: () => { },
   moveUser: () => { },
+  chat: [],
+  chatError: '',
+  sendChat: () => { },
 });
 
 export const WebSocketProvider = ({ children, spaceId }: {
@@ -45,7 +63,10 @@ export const WebSocketProvider = ({ children, spaceId }: {
   const [selfId, setSelfId] = useState('');
   const [serverPosition, setServerPosition] = useState<ServerPosition>({ x: 0, y: 0, seq: 0 });
   const [users, setUsers] = useState<Map<string, RemoteUser>>(new Map());
+  const [chat, setChat] = useState<ChatMessage[]>([]);
+  const [chatError, setChatError] = useState('');
   const seq = useRef(0);
+  const namesRef = useRef<Map<string, string>>(new Map());
   const { token } = useAuth();
 
   const correct = useCallback((x: number, y: number) => {
@@ -53,17 +74,42 @@ export const WebSocketProvider = ({ children, spaceId }: {
     setServerPosition({ x, y, seq: seq.current });
   }, []);
 
+  const pushChat = useCallback((...msgs: ChatMessage[]) => {
+    setChat(prev => [...prev, ...msgs].slice(-MAX_CHAT_MESSAGES));
+  }, []);
+
+  const notice = useCallback((text: string) => {
+    pushChat({ id: `sys-${Date.now()}-${Math.random()}`, userId: null, username: '', text, createdAt: new Date().toISOString(), system: true });
+  }, [pushChat]);
+
   const handleMessage = useCallback((message: any) => {
     const { type, payload } = message;
+    if (payload?.userId && payload?.username) namesRef.current.set(payload.userId, payload.username);
     switch (type) {
       case 'space-joined': {
         setSelfId(payload.userId);
         correct(payload.spawn.x, payload.spawn.y);
         setUsers(new Map((payload.users as RemoteUser[]).map((u) => [u.userId, u])));
+        (payload.users as RemoteUser[]).forEach((u) => u.username && namesRef.current.set(u.userId, u.username));
+        setChat((payload.chat ?? []).slice(-MAX_CHAT_MESSAGES));
         setConnected(true);
         break;
       }
+      case 'chat':
+        setChatError('');
+        pushChat(payload);
+        break;
+      case 'chat-rejected':
+        setChatError(payload?.reason === 'rate-limited'
+          ? 'You are sending messages too fast. Wait a moment.'
+          : 'That message could not be sent.');
+        break;
       case 'user-joined':
+        if (payload.username) notice(`${payload.username} joined`);
+        setUsers(prev => new Map(prev).set(payload.userId, {
+          userId: payload.userId, username: payload.username, x: payload.x, y: payload.y,
+        }));
+        break;
       case 'move':
         setUsers(prev => {
           const next = new Map(prev);
@@ -80,15 +126,18 @@ export const WebSocketProvider = ({ children, spaceId }: {
       case 'movement-rejected':
         correct(payload.x, payload.y);
         break;
-      case 'user-left':
+      case 'user-left': {
+        const name = namesRef.current.get(payload.userId);
+        if (name) notice(`${name} left`);
         setUsers(prev => {
           const next = new Map(prev);
           next.delete(payload.userId);
           return next;
         });
         break;
+      }
     }
-  }, [correct]);
+  }, [correct, pushChat, notice]);
 
   useEffect(() => {
     if (!token || !spaceId) return;
@@ -120,6 +169,13 @@ export const WebSocketProvider = ({ children, spaceId }: {
     }
   }, [socket, connected]);
 
+  const sendChat = useCallback((text: string) => {
+    const trimmed = text.trim();
+    if (socket && connected && trimmed) {
+      socket.sendMessage({ type: 'chat', payload: { text: trimmed } });
+    }
+  }, [socket, connected]);
+
   const value = useMemo(() => ({
     connected,
     users,
@@ -127,7 +183,10 @@ export const WebSocketProvider = ({ children, spaceId }: {
     serverPosition,
     sendMessage,
     moveUser,
-  }), [connected, users, selfId, serverPosition, sendMessage, moveUser]);
+    chat,
+    chatError,
+    sendChat,
+  }), [connected, users, selfId, serverPosition, sendMessage, moveUser, chat, chatError, sendChat]);
 
   return <WebSocketContext.Provider value={value}>
     {connected ? children : <div className="flex h-screen items-center justify-center text-gray-500">Connecting to space...</div>}

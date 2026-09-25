@@ -1,7 +1,7 @@
 # VirtuSpace data model
 
 Source of truth: [`packages/db/prisma/schema.prisma`](../../packages/db/prisma/schema.prisma).
-This document reflects the database after migration `20260924000000_add_spawn_points`
+This document reflects the database after migration `20260925000000_add_chat_messages`
 (PostgreSQL 16, Prisma 6). Constraint actions and indexes below were read from a
 migrated database, not inferred from the Prisma file.
 
@@ -62,6 +62,13 @@ erDiagram
         int x "tile column"
         int y "tile row"
     }
+    ChatMessage {
+        text id PK "cuid()"
+        text spaceId FK
+        text authorId FK "nullable"
+        text body "1-500 chars"
+        timestamp createdAt "indexed with spaceId"
+    }
 
     Avatar |o--o{ User : "worn by (ON DELETE SET NULL)"
     User ||--o{ Space : "creates (ON DELETE RESTRICT)"
@@ -70,6 +77,8 @@ erDiagram
     Map ||--o{ mapElements : "contains (ON DELETE CASCADE)"
     Element ||--o{ mapElements : "placed as (ON DELETE RESTRICT)"
     Map |o..o{ Space : "copied into at creation (no FK)"
+    Space ||--o{ ChatMessage : "hosts (ON DELETE CASCADE)"
+    User |o--o{ ChatMessage : "writes (ON DELETE SET NULL)"
 ```
 
 A **Map** is an admin-authored template. Creating a **Space** from a map copies the map's
@@ -87,6 +96,11 @@ this copy relationship, which has no foreign key.
 | Element | spaceElements | 1 to many | `spaceElements.elementId` | RESTRICT | CASCADE |
 | Map | mapElements | 1 to many | `mapElements.mapId` | CASCADE | CASCADE |
 | Element | mapElements | 1 to many | `mapElements.elementId` | RESTRICT | CASCADE |
+| Space | ChatMessage | 1 to many | `ChatMessage.spaceId` | CASCADE | CASCADE |
+| User | ChatMessage | 0..1 to many | `ChatMessage.authorId` (nullable) | SET NULL | CASCADE |
+
+Chat messages are written by the WebSocket server (validated, max 500 characters, rate-limited
+to a burst of 5 then one every 2 seconds). The last 50 are sent to a player when they join.
 
 ## Enums
 
@@ -112,6 +126,7 @@ depth-sorted with players, `topObjects` is drawn above players and never blocks.
 | spaceElements | `spaceElements_elementId_idx` | elementId | |
 | mapElements | `mapElements_pkey` / `_id_key` | id | duplicate |
 | mapElements | `mapElements_mapId_idx` | mapId | |
+| ChatMessage | `ChatMessage_spaceId_createdAt_idx` | spaceId, createdAt | serves "latest N messages in a space" |
 | Element, Map, Avatar | `*_pkey` / `*_id_key` | id | duplicate |
 
 ## Findings for production
@@ -132,8 +147,7 @@ depth-sorted with players, `topObjects` is drawn above players and never blocks.
 
 This is the recommended next shape of the schema. New tables are marked **new**; columns
 that do not exist yet are marked **new** in their comment. It adds room membership and roles,
-chat history (the next planned feature), refresh-token sessions so JWTs can be revoked, and
-timestamps.
+refresh-token sessions so JWTs can be revoked, and timestamps. `ChatMessage` already exists.
 
 ```mermaid
 erDiagram
@@ -181,7 +195,7 @@ erDiagram
         timestamptz joinedAt
     }
     ChatMessage {
-        text id PK "new table"
+        text id PK
         text spaceId FK
         text authorId FK "nullable, SET NULL"
         text body

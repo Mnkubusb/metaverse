@@ -25,6 +25,7 @@ model User {
   avatarId String?
   role     Role
   spaces   Space[]
+  messages ChatMessage[]
   avatar   Avatar? @relation(fields: [avatarId], references: [id])
 }
 
@@ -40,8 +41,22 @@ model Space {
   creatorId String
   creator   User            @relation(fields: [creatorId], references: [id])
   elements  spaceElements[]
+  messages  ChatMessage[]
 
   @@index([creatorId])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  spaceId   String
+  // null once the author's account is deleted; the message stays in the history
+  authorId  String?
+  body      String
+  createdAt DateTime @default(now())
+  space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  author    User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([spaceId, createdAt])
 }
 
 model spaceElements {
