@@ -5,7 +5,7 @@ import client from "@repo/db/client";
 import jwt, { JwtPayload } from "jsonwebtoken"
 import { JWT_SECRET } from "./config";
 import type { SpaceGrid } from "./SpaceGrid";
-import { EMOTES, chatRateLimiter, cleanChatText, emoteRateLimiter, recentChat, saveChatMessage } from "./chat";
+import { EMOTES, RateLimiter, chatRateLimiter, cleanChatText, emoteRateLimiter, recentChat, saveChatMessage } from "./chat";
 
 const HEARTBEAT_INTERVAL = 30_000; // 30 seconds
 const HEARTBEAT_TIMEOUT = 10_000;  // 10 seconds to pong
@@ -26,6 +26,7 @@ export class User {
     public id: string;
     public userId?: string;
     public username?: string;
+    public avatar: string | null = null;
     public x: number;
     public y: number;
     private spaceId?: string;
@@ -33,6 +34,7 @@ export class User {
     private lastMoveAt = 0;
     private chatLimiter = chatRateLimiter();
     private emoteLimiter = emoteRateLimiter();
+    private avatarLimiter = new RateLimiter(3, 2000);
     private ws: WebSocket;
     private heartbeatInterval?: ReturnType<typeof setInterval>;
     private heartbeatTimeout?: ReturnType<typeof setTimeout>;
@@ -99,7 +101,10 @@ export class User {
                     const rooms = RoomManager.getInstance();
                     const [grid, dbUser, chat] = await Promise.all([
                         rooms.getGrid(spaceId),
-                        client.user.findUnique({ where: { id: userId }, select: { username: true } }),
+                        client.user.findUnique({
+                            where: { id: userId },
+                            select: { username: true, avatar: { select: { imageUrl: true } } },
+                        }),
                         recentChat(spaceId).catch(() => []),
                     ]);
                     if (!grid || !dbUser) {
@@ -108,6 +113,7 @@ export class User {
                     }
                     this.userId = userId;
                     this.username = dbUser.username;
+                    this.avatar = dbUser.avatar?.imageUrl ?? null;
                     this.spaceId = spaceId;
                     this.grid = grid;
                     const spawn = grid.spawnPoint();
@@ -118,16 +124,17 @@ export class User {
                         type: "space-joined",
                         payload: {
                             userId: this.userId,
+                            avatar: this.avatar,
                             spawn: { x: this.x, y: this.y },
                             chat,
                             users: rooms.rooms.get(spaceId)
                                 ?.filter((u) => u.id !== this.id)
-                                .map((u) => ({ userId: u.userId, username: u.username, x: u.x, y: u.y })) ?? []
+                                .map((u) => ({ userId: u.userId, username: u.username, avatar: u.avatar, x: u.x, y: u.y })) ?? []
                         }
                     });
                     rooms.broadcast({
                         type: "user-joined",
-                        payload: { x: this.x, y: this.y, userId: this.userId, username: this.username }
+                        payload: { x: this.x, y: this.y, userId: this.userId, username: this.username, avatar: this.avatar }
                     }, this, spaceId);
                     break;
                 }
@@ -151,6 +158,20 @@ export class User {
                         console.error("Failed to save chat message", err);
                         this.send({ type: "chat-rejected", payload: { reason: "error" } });
                     }
+                    break;
+                }
+                case "avatar-changed": {
+                    // The client saved a new avatar over HTTP; read it back from the database
+                    // rather than trusting a URL from the socket, then tell the room.
+                    if (!this.spaceId || !this.userId || !this.avatarLimiter.take()) return;
+                    const dbUser = await client.user.findUnique({
+                        where: { id: this.userId },
+                        select: { avatar: { select: { imageUrl: true } } },
+                    });
+                    this.avatar = dbUser?.avatar?.imageUrl ?? null;
+                    const message = { type: "avatar-changed", payload: { userId: this.userId, avatar: this.avatar } };
+                    this.send(message);
+                    RoomManager.getInstance().broadcast(message, this, this.spaceId);
                     break;
                 }
                 case "emote": {
