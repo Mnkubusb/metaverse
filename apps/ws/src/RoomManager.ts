@@ -49,6 +49,10 @@ export class RoomManager {
         this.rooms.set(spaceId, [...(this.rooms.get(spaceId) ?? []), user]);
     }
 
+    public findUser(roomId: string, userId: string): User | undefined {
+        return this.rooms.get(roomId)?.find((u) => u.userId === userId);
+    }
+
     public broadcast(message: outgoingMessage, user: User, roomId: string) {
         this.rooms.get(roomId)?.forEach((u) => {
             if (u.id !== user.id) {
