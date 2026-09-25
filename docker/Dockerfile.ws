@@ -19,6 +19,7 @@ RUN pnpm install --frozen-lockfile \
 
 ENV NODE_ENV=production
 EXPOSE 3001
+# Render and similar hosts set PORT; the server falls back to 3001
 USER node
 
 # DATABASE_URL and JWT_SECRET come from the environment at `docker run`

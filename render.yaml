@@ -1,0 +1,17 @@
+# Render Blueprint for the realtime (WebSocket) server. Vercel functions can't hold WebSocket
+# connections open, so this one service runs on Render. Dashboard: New > Blueprint > this repo.
+services:
+  - type: web
+    name: metaverse-ws
+    runtime: docker
+    plan: free
+    dockerfilePath: ./docker/Dockerfile.ws
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # Same Neon database and JWT secret as the API on Vercel
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false

@@ -1,0 +1,59 @@
+import express from 'express';
+import { router } from './routes/v1';
+import cors from 'cors';
+import rateLimit from 'express-rate-limit';
+import { errorHandler } from './middleware/errors';
+
+export const app = express();
+
+app.disable('x-powered-by');
+// Behind Vercel's (or any) proxy, the client IP is in X-Forwarded-For. Without this every user
+// would share the proxy's IP and one rate-limit bucket.
+if (process.env.VERCEL || process.env.TRUST_PROXY) {
+    app.set('trust proxy', 1);
+}
+app.use((_req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('Cache-Control', 'no-store');
+    next();
+});
+// Largest legitimate body is a map save (~1k placements, well under 1 MB)
+app.use(express.json({ limit: '2mb' }));
+
+// ALLOWED_ORIGIN may list several origins, comma-separated (e.g. production + a preview URL)
+const allowedOrigins = (process.env.ALLOWED_ORIGIN || 'http://localhost:3002')
+    .split(',').map((o) => o.trim()).filter(Boolean);
+
+app.use(cors({
+    origin: allowedOrigins,
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+}));
+
+// Global rate limit: 200 requests per minute per IP
+const globalLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 200,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many requests, please slow down." },
+});
+
+// Stricter limit for auth endpoints
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many login attempts, please try again later." },
+});
+
+app.use(globalLimiter);
+app.use("/api/v1/signup", authLimiter);
+app.use("/api/v1/signin", authLimiter);
+
+app.use("/api/v1", router);
+app.use(errorHandler);
