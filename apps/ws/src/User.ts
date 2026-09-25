@@ -5,7 +5,7 @@ import client from "@repo/db/client";
 import jwt, { JwtPayload } from "jsonwebtoken"
 import { JWT_SECRET } from "./config";
 import type { SpaceGrid } from "./SpaceGrid";
-import { ChatRateLimiter, cleanChatText, recentChat, saveChatMessage } from "./chat";
+import { EMOTES, chatRateLimiter, cleanChatText, emoteRateLimiter, recentChat, saveChatMessage } from "./chat";
 
 const HEARTBEAT_INTERVAL = 30_000; // 30 seconds
 const HEARTBEAT_TIMEOUT = 10_000;  // 10 seconds to pong
@@ -31,7 +31,8 @@ export class User {
     private spaceId?: string;
     private grid?: SpaceGrid;
     private lastMoveAt = 0;
-    private chatLimiter = new ChatRateLimiter();
+    private chatLimiter = chatRateLimiter();
+    private emoteLimiter = emoteRateLimiter();
     private ws: WebSocket;
     private heartbeatInterval?: ReturnType<typeof setInterval>;
     private heartbeatTimeout?: ReturnType<typeof setTimeout>;
@@ -150,6 +151,16 @@ export class User {
                         console.error("Failed to save chat message", err);
                         this.send({ type: "chat-rejected", payload: { reason: "error" } });
                     }
+                    break;
+                }
+                case "emote": {
+                    if (!this.spaceId || !this.userId) return;
+                    const emote = parsedData.payload?.emote;
+                    if (!EMOTES.includes(emote) || !this.emoteLimiter.take()) return;
+                    RoomManager.getInstance().broadcast({
+                        type: "emote",
+                        payload: { userId: this.userId, emote }
+                    }, this, this.spaceId);
                     break;
                 }
                 case "move": {

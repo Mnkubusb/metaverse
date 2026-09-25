@@ -6,6 +6,9 @@ import { useAuth } from '../../contexts/authContext';
 import { spaceElement } from './SpaceElement';
 import { buildWalkability } from '@/lib/collision';
 import ChatPanel from './ChatPanel';
+import { EMOTES, emojiFor } from '@/lib/emotes';
+import { findPlaces, nearestPlace } from '@/lib/places';
+import { Check, Link2, MapPin, Map as MapIcon } from 'lucide-react';
 
 interface Space {
   name: string;
@@ -31,6 +34,8 @@ interface Actor {
 const TILE = 32;
 const STEP_MS = 140;            // time to walk one tile
 const BUBBLE_MS = 6000;         // how long a chat message floats above its author
+const EMOTE_MS = 2800;          // how long an emote floats above an avatar
+const MINIMAP_W = 200;          // minimap width in CSS pixels
 const DEFAULT_AVATAR = "/Characters/WalkAnimations.png";
 const GROUND_TILES = ["/Tiles/BasicTiles8.png", "/Tiles/BasicTiles22.png"];
 
@@ -91,7 +96,12 @@ async function renderBackground(width: number, height: number, elements: spaceEl
 
 const SpaceGrid = ({ id }: { id: string }) => {
   const { user } = useAuth();
-  const { moveUser, serverPosition, users, selfId, chat } = useWebSocket();
+  const { moveUser, serverPosition, users, selfId, chat, lastEmote, sendEmote } = useWebSocket();
+  const [place, setPlace] = useState<string | null>(null);
+  const [showMinimap, setShowMinimap] = useState(true);
+  const [copied, setCopied] = useState(false);
+  const minimapRef = useRef<HTMLCanvasElement | null>(null);
+  const emotesRef = useRef<Map<string, { emoji: string; start: number }>>(new Map());
   const [space, setSpace] = useState<Space | null>(null);
   const [error, setError] = useState("");
   const [loadingArt, setLoadingArt] = useState(true);
@@ -118,6 +128,8 @@ const SpaceGrid = ({ id }: { id: string }) => {
     () => (space && dims ? buildWalkability(dims.w, dims.h, space.elements) : () => false),
     [space, dims],
   );
+
+  const places = useMemo(() => findPlaces(space?.elements ?? []), [space]);
 
   const sprites = useMemo(() => {
     const els = space?.elements ?? [];
@@ -231,13 +243,43 @@ const SpaceGrid = ({ id }: { id: string }) => {
     }
   }, [chat]);
 
+  // --- emotes ---------------------------------------------------------------
+  // the keyboard handler is registered once, so it calls the latest sendEmote through a ref
+  const sendEmoteRef = useRef(sendEmote);
+  useEffect(() => { sendEmoteRef.current = sendEmote; }, [sendEmote]);
+
+  useEffect(() => {
+    const emoji = lastEmote && emojiFor(lastEmote.emote);
+    if (emoji) emotesRef.current.set(lastEmote.userId, { emoji, start: performance.now() });
+  }, [lastEmote]);
+
+  const copyInvite = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.prompt('Copy this link to invite people:', window.location.href);
+    }
+  };
+
   // --- input ----------------------------------------------------------------
   useEffect(() => {
     const isTyping = (e: KeyboardEvent) =>
       e.target instanceof HTMLElement && (e.target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName));
     const down = (e: KeyboardEvent) => {
+      if (isTyping(e) || e.ctrlKey || e.metaKey || e.altKey) return;
+      const emote = EMOTES[Number(e.key) - 1];
+      if (emote && !e.repeat) {
+        sendEmoteRef.current(emote.id);
+        return;
+      }
+      if (e.key.toLowerCase() === 'm' && !e.repeat) {
+        setShowMinimap((v) => !v);
+        return;
+      }
       const dir = KEY_DIRS[e.key.toLowerCase()];
-      if (!dir || isTyping(e)) return;
+      if (!dir) return;
       e.preventDefault();
       heldRef.current = [dir, ...heldRef.current.filter((d) => d !== dir)];
     };
@@ -369,6 +411,52 @@ const SpaceGrid = ({ id }: { id: string }) => {
       }
     };
 
+    const drawEmotes = (ctx: CanvasRenderingContext2D, speakers: [string, Actor][], now: number) => {
+      for (const [id, a] of speakers) {
+        const emote = emotesRef.current.get(id);
+        if (!emote) continue;
+        const t = (now - emote.start) / EMOTE_MS;
+        if (t >= 1) { emotesRef.current.delete(id); continue; }
+        // pop in, drift upward, fade out over the last 30%
+        const pop = Math.min(1, (now - emote.start) / 150);
+        ctx.globalAlpha = t > 0.7 ? (1 - t) / 0.3 : 1;
+        ctx.font = `${Math.round(18 + 10 * pop)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        // just past the right end of the name tag
+        ctx.save();
+        ctx.font = "bold 11px ui-sans-serif, system-ui, sans-serif";
+        const tagHalf = ctx.measureText(a.name).width / 2 + 5;
+        ctx.restore();
+        ctx.fillText(emote.emoji, a.rx * TILE + TILE / 2 + tagHalf + 14, a.ry * TILE - 22 - t * 22);
+        ctx.globalAlpha = 1;
+      }
+    };
+
+    let lastPlaceCheck = 0;
+    let lastMinimap = 0;
+    const drawMinimap = (self: Actor) => {
+      const mini = minimapRef.current;
+      const bg = backgroundRef.current;
+      if (!mini || !bg) return;
+      const dpr = window.devicePixelRatio || 1;
+      const w = MINIMAP_W, h = Math.round(MINIMAP_W * dims.h / dims.w);
+      if (mini.width !== w * dpr) { mini.width = w * dpr; mini.height = h * dpr; }
+      const m = mini.getContext("2d")!;
+      m.setTransform(dpr, 0, 0, dpr, 0, 0);
+      m.imageSmoothingEnabled = true;
+      m.drawImage(bg, 0, 0, w, h);
+      const sx = w / dims.w, sy = h / dims.h;
+      for (const a of othersRef.current.values()) {
+        m.fillStyle = "#f8fafc";
+        m.beginPath(); m.arc((a.rx + 0.5) * sx, (a.ry + 0.5) * sy, 3, 0, Math.PI * 2); m.fill();
+        m.strokeStyle = "#0f172a"; m.lineWidth = 1; m.stroke();
+      }
+      m.fillStyle = "#22c55e";
+      m.beginPath(); m.arc((self.rx + 0.5) * sx, (self.ry + 0.5) * sy, 4, 0, Math.PI * 2); m.fill();
+      m.strokeStyle = "#ffffff"; m.lineWidth = 1.5; m.stroke();
+    };
+
     const tick = (now: number) => {
       const dt = Math.min(now - last, 100);
       last = now;
@@ -438,23 +526,83 @@ const SpaceGrid = ({ id }: { id: string }) => {
         if (ready(img)) ctx.drawImage(img, e.x * TILE, e.y * TILE, e.element.width * TILE, e.element.height * TILE);
       }
       actors.forEach((a) => drawName(ctx, a));
-      drawBubbles(ctx, [[selfId, self], ...othersRef.current.entries()], now);
+      const speakers: [string, Actor][] = [[selfId, self], ...othersRef.current.entries()];
+      drawBubbles(ctx, speakers, now);
+      drawEmotes(ctx, speakers, now);
       ctx.restore();
+
+      // HUD updates that don't need 60fps
+      if (now - lastPlaceCheck > 250) {
+        lastPlaceCheck = now;
+        setPlace(nearestPlace(places, self.x, self.y));
+      }
+      if (now - lastMinimap > 100) {
+        lastMinimap = now;
+        drawMinimap(self);
+      }
 
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [dims, loadingArt, isWalkable, sprites, moveUser, selfId]);
+  }, [dims, loadingArt, isWalkable, sprites, moveUser, selfId, places]);
 
   if (error) return <div className="text-center p-8 text-red-500">{error}</div>;
   if (!space) return <div className="text-center p-8">Loading space...</div>;
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-[#2f3b2a]">
-      <div className="absolute z-20 m-4 rounded-lg bg-black/60 px-4 py-3 text-white shadow-lg">
-        <h2 className="text-lg font-bold">{space.name}</h2>
-        <p className="text-sm opacity-80">{users.size + 1} online · move with WASD / arrow keys · Enter to chat</p>
+      <div className="absolute left-4 top-4 z-20 flex max-w-[calc(100%-2rem)] flex-wrap items-start gap-2">
+        <div className="rounded-lg bg-black/60 px-4 py-3 text-white shadow-lg">
+          <h2 className="text-lg font-bold">{space.name}</h2>
+          <p className="text-sm opacity-80">{users.size + 1} online · WASD to move · Enter to chat · 1–6 emotes · M map</p>
+        </div>
+        <button
+          type="button"
+          onClick={copyInvite}
+          className="flex h-10 items-center gap-2 rounded-lg bg-black/60 px-3 text-sm font-semibold text-white shadow-lg transition hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+        >
+          {copied ? <Check className="size-4 text-emerald-300" /> : <Link2 className="size-4" />}
+          {copied ? 'Link copied' : 'Invite'}
+        </button>
+      </div>
+      {place && (
+        <div aria-live="polite" className="pointer-events-none absolute right-4 top-4 z-20 flex items-center gap-1.5 rounded-full bg-black/60 px-4 py-1.5 text-sm font-medium text-white shadow-lg">
+          <MapPin className="size-4 text-emerald-300" /> Near {place}
+        </div>
+      )}
+      <div role="toolbar" aria-label="Emotes" className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 gap-1 rounded-xl bg-black/75 p-1.5 shadow-lg backdrop-blur-sm">
+        {EMOTES.map((e, i) => (
+          <button
+            key={e.id}
+            type="button"
+            onClick={() => sendEmote(e.id)}
+            title={`${e.label} (${i + 1})`}
+            aria-label={`${e.label}, key ${i + 1}`}
+            className="relative flex size-10 items-center justify-center rounded-lg text-xl transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          >
+            {e.emoji}
+            <span className="absolute bottom-0.5 right-1 text-[9px] font-semibold text-white/50">{i + 1}</span>
+          </button>
+        ))}
+      </div>
+      <div className="absolute bottom-4 right-4 z-30 flex flex-col items-end gap-2">
+        {showMinimap && (
+          <canvas
+            ref={minimapRef}
+            aria-label="Minimap"
+            className="rounded-lg border-2 border-black/40 shadow-xl"
+            style={{ width: MINIMAP_W, height: dims ? Math.round(MINIMAP_W * dims.h / dims.w) : 0 }}
+          />
+        )}
+        <button
+          type="button"
+          onClick={() => setShowMinimap((v) => !v)}
+          aria-pressed={showMinimap}
+          className="flex h-8 items-center gap-1.5 rounded-lg bg-black/60 px-3 text-xs font-semibold text-white shadow-lg hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+        >
+          <MapIcon className="size-3.5" /> {showMinimap ? 'Hide map' : 'Show map'} (M)
+        </button>
       </div>
       {loadingArt && (
         <div className="absolute inset-0 z-10 flex items-center justify-center text-white">Loading map...</div>
