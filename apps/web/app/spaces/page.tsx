@@ -2,41 +2,20 @@
 import MainLayout from '../../components/layout/MainLayout';
 import ProtectedRoute from '../../components/auth/protectedRoute';
 import SpacesList from '../../components/space/spaceLists';
-import SpaceCreator from '../../components/space/spaceCreator';
-
-
+import CreateSpaceDialog from '../../components/space/spaceCreator';
 
 export default function Spaces() {
-
-  //     try {
-  //       await spaceAPI.createSpace(
-  //         spaceData.name,
-  //         spaceData.dimensions,
-  //         spaceData.mapId
-  //       );
-  //       setShowCreateForm(false);
-  //       fetchSpaces();
-  //     } catch (error) {
-  //       console.error('Error creating space:', error);
-  //     }
-  //   };
-
-  //   const handleDeleteSpace = async (spaceId : string) => {
-  //     if (window.confirm('Are you sure you want to delete this space?')) {
-  //       try {
-  //         await spaceAPI.deleteSpace(spaceId);
-  //         setSpaces(spaces.filter(space => space.id !== spaceId));
-  //       } catch (error) {
-  //         console.error('Error deleting space:', error);
-  //       }
-  //     }
-  //   };
-
   return (
     <ProtectedRoute>
       <MainLayout>
-        <div className="p-6 flex justify-center items-center">
-          <SpaceCreator />
+        <div className="mx-auto grid w-full max-w-6xl gap-6 p-6">
+          <header className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">My spaces</h1>
+              <p className="text-sm text-gray-500">Rooms you&apos;ve created. Enter one to meet people there.</p>
+            </div>
+            <CreateSpaceDialog />
+          </header>
           <SpacesList />
         </div>
       </MainLayout>

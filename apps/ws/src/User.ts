@@ -4,9 +4,13 @@ import { outgoingMessage } from "./types";
 import client from "@repo/db/client";
 import jwt, { JwtPayload } from "jsonwebtoken"
 import { JWT_SECRET } from "./config";
+import type { SpaceGrid } from "./SpaceGrid";
+import { ChatRateLimiter, cleanChatText, recentChat, saveChatMessage } from "./chat";
 
 const HEARTBEAT_INTERVAL = 30_000; // 30 seconds
 const HEARTBEAT_TIMEOUT = 10_000;  // 10 seconds to pong
+// One tile per step; the client animates each step over ~140ms, so this only stops floods.
+const MIN_MOVE_INTERVAL = 60;
 
 function getRandomId(length: number) {
     let result = '';
@@ -21,9 +25,13 @@ function getRandomId(length: number) {
 export class User {
     public id: string;
     public userId?: string;
+    public username?: string;
     public x: number;
     public y: number;
     private spaceId?: string;
+    private grid?: SpaceGrid;
+    private lastMoveAt = 0;
+    private chatLimiter = new ChatRateLimiter();
     private ws: WebSocket;
     private heartbeatInterval?: ReturnType<typeof setInterval>;
     private heartbeatTimeout?: ReturnType<typeof setTimeout>;
@@ -73,48 +81,85 @@ export class User {
 
             switch (parsedData.type) {
                 case "join": {
-                    const spaceId = parsedData.payload.spaceId;
-                    const token = parsedData.payload.token;
-                    let userId: string;
+                    if (this.spaceId) return; // one space per connection
+                    const spaceId = parsedData.payload?.spaceId;
+                    const token = parsedData.payload?.token;
+                    let userId: string | undefined;
                     try {
-                        userId = (jwt.verify(token, JWT_SECRET) as JwtPayload).userId;
+                        userId = (jwt.verify(String(token), JWT_SECRET, { algorithms: ["HS256"] }) as JwtPayload).userId;
                     } catch {
                         this.ws.close();
                         return;
                     }
-                    if (!userId) {
+                    if (!userId || typeof spaceId !== "string") {
+                        this.ws.close();
+                        return;
+                    }
+                    const rooms = RoomManager.getInstance();
+                    const [grid, dbUser, chat] = await Promise.all([
+                        rooms.getGrid(spaceId),
+                        client.user.findUnique({ where: { id: userId }, select: { username: true } }),
+                        recentChat(spaceId).catch(() => []),
+                    ]);
+                    if (!grid || !dbUser) {
                         this.ws.close();
                         return;
                     }
                     this.userId = userId;
-                    const space = await client.space.findFirst({ where: { id: spaceId } });
-                    if (!space) {
-                        this.ws.close();
-                        return;
-                    }
+                    this.username = dbUser.username;
                     this.spaceId = spaceId;
-                    RoomManager.getInstance().addUser(spaceId, this);
-                    // Fix: each user maps to their own userId/x/y, not the joining user's data
+                    this.grid = grid;
+                    const spawn = grid.spawnPoint();
+                    this.x = spawn.x;
+                    this.y = spawn.y;
+                    rooms.addUser(spaceId, this);
                     this.send({
                         type: "space-joined",
                         payload: {
+                            userId: this.userId,
                             spawn: { x: this.x, y: this.y },
-                            users: RoomManager.getInstance().rooms.get(spaceId)
+                            chat,
+                            users: rooms.rooms.get(spaceId)
                                 ?.filter((u) => u.id !== this.id)
-                                .map((u) => ({ userId: u.userId, x: u.x, y: u.y })) ?? []
+                                .map((u) => ({ userId: u.userId, username: u.username, x: u.x, y: u.y })) ?? []
                         }
                     });
-                    RoomManager.getInstance().broadcast({
+                    rooms.broadcast({
                         type: "user-joined",
-                        payload: { x: this.x, y: this.y, userId: this.userId }
+                        payload: { x: this.x, y: this.y, userId: this.userId, username: this.username }
                     }, this, spaceId);
                     break;
                 }
+                case "chat": {
+                    if (!this.spaceId || !this.userId || !this.username) return;
+                    const text = cleanChatText(parsedData.payload?.text);
+                    if (!text) {
+                        this.send({ type: "chat-rejected", payload: { reason: "invalid" } });
+                        return;
+                    }
+                    if (!this.chatLimiter.take()) {
+                        this.send({ type: "chat-rejected", payload: { reason: "rate-limited" } });
+                        return;
+                    }
+                    try {
+                        const message = await saveChatMessage(this.spaceId, this.userId, this.username, text);
+                        // everyone in the room, sender included, so the sender sees the stored message
+                        this.send({ type: "chat", payload: message });
+                        RoomManager.getInstance().broadcast({ type: "chat", payload: message }, this, this.spaceId);
+                    } catch (err) {
+                        console.error("Failed to save chat message", err);
+                        this.send({ type: "chat-rejected", payload: { reason: "error" } });
+                    }
+                    break;
+                }
                 case "move": {
-                    const { x, y } = parsedData.payload;
-                    const xDistance = Math.abs(this.x - x);
-                    const yDistance = Math.abs(this.y - y);
-                    if ((xDistance === 1 && yDistance === 0) || (xDistance === 0 && yDistance === 1)) {
+                    if (!this.spaceId || !this.grid) return;
+                    const x = Number(parsedData.payload?.x);
+                    const y = Number(parsedData.payload?.y);
+                    const now = Date.now();
+                    const step = Math.abs(this.x - x) + Math.abs(this.y - y);
+                    if (step === 1 && now - this.lastMoveAt >= MIN_MOVE_INTERVAL && this.grid.isWalkable(x, y)) {
+                        this.lastMoveAt = now;
                         this.x = x;
                         this.y = y;
                         this.send({
@@ -124,7 +169,7 @@ export class User {
                         RoomManager.getInstance().broadcast({
                             type: "move",
                             payload: { x: this.x, y: this.y, userId: this.userId }
-                        }, this, this.spaceId!);
+                        }, this, this.spaceId);
                         return;
                     }
                     this.send({
@@ -139,6 +184,7 @@ export class User {
 
     destroy() {
         this.stopHeartbeat();
+        if (!this.spaceId) return;
         RoomManager.getInstance().broadcast({
             type: "user-left",
             payload: { userId: this.userId }

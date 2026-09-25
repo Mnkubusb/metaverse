@@ -1,6 +1,7 @@
-FROM node:23-alpine
+FROM node:22-alpine
 
-RUN npm i -g pnpm
+# Prisma's query engine needs OpenSSL on Alpine
+RUN apk add --no-cache openssl && npm i -g pnpm@9
 
 WORKDIR /usr/src/app
 
@@ -12,8 +13,13 @@ COPY ./turbo.json ./turbo.json
 
 COPY ./apps/ws ./apps/ws
 
-RUN pnpm install
+RUN pnpm install --frozen-lockfile \
+ && pnpm db:generate \
+ && pnpm --dir apps/ws run build
 
+ENV NODE_ENV=production
 EXPOSE 3001
+USER node
 
-CMD ["npm", "run", "start:ws"]
+# DATABASE_URL and JWT_SECRET come from the environment at `docker run`
+CMD ["node", "apps/ws/dist/index.js"]

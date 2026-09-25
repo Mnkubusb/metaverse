@@ -33,4 +33,5 @@ jobs:
             sudo docker pull ${{ secrets.DOCKER_USERNAME }}/ws:latest
             sudo docker stop ws || true
             sudo docker rm ws || true
-            sudo docker run -d --name ws -p 3001:3001 ${{ secrets.DOCKER_USERNAME }}/ws:latest
+            # Secrets live in ~/metaverse.env on the server (DATABASE_URL, JWT_SECRET, ALLOWED_ORIGIN)
+            sudo docker run -d --restart unless-stopped --name ws --env-file ~/metaverse.env -p 3001:3001 ${{ secrets.DOCKER_USERNAME }}/ws:latest

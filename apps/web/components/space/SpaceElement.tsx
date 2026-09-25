@@ -8,6 +8,7 @@ export type spaceElement = {
         width: number;
         height: number;
         static: boolean;
+        layer?: "floor" | "wall" | "objects" | "topObjects";
     }
     x: number;
     y: number;

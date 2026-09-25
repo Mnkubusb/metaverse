@@ -1,18 +1,23 @@
 import z from 'zod'
 
+// Asset URLs must be site-relative paths or http(s) links (no javascript:/data: URLs).
+const assetUrl = z.string().max(2048).regex(/^(\/(?!\/)|https?:\/\/)/, "Must be a /path or an http(s) URL");
+
+// Accounts are always created as regular users; admins are promoted with `pnpm db:make-admin`.
 export const SignupSchema = z.object({
-    username: z.string().min(1),
-    password: z.string().min(8).max(20),
-    type: z.enum(['user', 'admin']),
+    username: z.string().min(3).max(32).regex(/^[a-zA-Z0-9_.-]+$/, "Letters, numbers, dots, dashes and underscores only"),
+    // bcrypt only uses the first 72 bytes
+    password: z.string().min(8).max(72),
 })
 
+// Deliberately loose so validation errors don't reveal the signup rules for existing accounts
 export const SigninSchema = z.object({
-    username: z.string().min(1),
-    password: z.string().min(8).max(20),
+    username: z.string().min(1).max(64),
+    password: z.string().min(1).max(72),
 })
 
 export const UpdateMetaDataSchema = z.object({
-    avatarId: z.string()
+    avatarId: z.string().min(1).max(64)
 })
 
 export const CreateSpaceSchema = z.object({
@@ -30,8 +35,8 @@ export const CreateSpaceSchema = z.object({
 export const AddElementSchema = z.object({
     spaceId: z.string(),
     elementId: z.string(),
-    x: z.number(),
-    y: z.number(),
+    x: z.number().int(),
+    y: z.number().int(),
 })
 
 export const DeleteElementSchema = z.object({
@@ -39,32 +44,34 @@ export const DeleteElementSchema = z.object({
 })
 
 export const CreateElementSchema = z.object({
-    imageUrl: z.string(),
-    width: z.number(),
-    height: z.number(),
+    imageUrl: assetUrl,
+    width: z.number().int().min(1).max(50),
+    height: z.number().int().min(1).max(50),
     static: z.boolean(),
     layer: z.enum(["floor","wall","objects","topObjects"])
 })
 
 export const UpdateElementSchema = z.object({
-    imageUrl: z.string(),
+    imageUrl: assetUrl,
 })
 
 export const CreateAvatarSchema = z.object({
-    name: z.string(),
-    imageUrl: z.string(),
+    name: z.string().min(1).max(100),
+    imageUrl: assetUrl,
 })
 
 export const CreateMapSchema = z.object({
-    thumbnail: z.string(),
-    dimensions: z.string().regex(/^[0-9]{1,4}x[0-9]{1,4}$/),
-    name: z.string(),
+    thumbnail: assetUrl,
+    dimensions: z.string().regex(/^[0-9]{1,3}x[0-9]{1,3}$/),
+    name: z.string().min(1).max(100),
+    spawnX: z.number().int().min(0).optional(),
+    spawnY: z.number().int().min(0).optional(),
     defaultElement: z.array(z.object({
         id: z.string().optional(),
         elementId: z.string(),
-        x: z.number(),
-        y: z.number(),
-    }))
+        x: z.number().int().min(0),
+        y: z.number().int().min(0),
+    })).max(20000)
 })
 
 declare global {
