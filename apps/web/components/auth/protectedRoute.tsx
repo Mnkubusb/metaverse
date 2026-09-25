@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../contexts/authContext';
+import { loginUrlForCurrentPage } from '@/lib/next';
 
 export default function ProtectedRoute({ children, adminOnly = false } : { children: React.ReactNode, adminOnly?: boolean }) {
   const { isAuthenticated, isAdmin, loading } = useAuth();
@@ -10,7 +11,7 @@ export default function ProtectedRoute({ children, adminOnly = false } : { child
   useEffect(() => {
     if (!loading) {
       if (!isAuthenticated) {
-        router.push('/login');
+        router.push(loginUrlForCurrentPage());
       } else if (adminOnly && !isAdmin) {
         router.push('/dashboard');
       }

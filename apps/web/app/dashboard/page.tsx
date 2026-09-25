@@ -14,6 +14,7 @@ export default function Dashboard() {
   const [spaces, setSpaces] = useState<Space[] | []>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [joined, setJoined] = useState<(Space & { owner: string })[]>([]);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -26,8 +27,12 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const spacesResponse = await spaceAPI.getAllSpaces();
+        const [spacesResponse, joinedResponse] = await Promise.all([
+          spaceAPI.getAllSpaces(),
+          spaceAPI.getJoinedSpaces().catch(() => ({ data: { spaces: [] } })),
+        ]);
         setSpaces(spacesResponse.data.spaces || []);
+        setJoined(joinedResponse.data.spaces || []);
         setIsLoading(false);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -105,6 +110,32 @@ export default function Dashboard() {
                 </ul>
               ) : (
                 <p className="text-gray-500">No spaces available.</p>
+              )}
+
+              <div className="mt-8 mb-2 flex items-center justify-between">
+                <h2 className="text-md font-semibold font-geist-sans">Joined</h2>
+                <Link href="/explore" className="text-sm font-medium text-blue-600 hover:underline">Explore public spaces →</Link>
+              </div>
+              {joined.length > 0 ? (
+                <ul className="flex flex-wrap divide-x divide-gray-200">
+                  {joined.map((space) => (
+                    <li key={space.id} className="py-3 px-2">
+                      <Link href={`/space/${space.id}`} className="flex flex-col gap-2">
+                        <div className="h-36 w-60 rounded-md bg-gray-200">
+                          {space.thumbnail && (
+                            <img src={space.thumbnail} alt={space.name} className="h-full w-full rounded object-cover" />
+                          )}
+                        </div>
+                        <div className="ml-1">
+                          <p className="font-medium">{space.name}</p>
+                          <p className="text-xs text-gray-500">by {space.owner}</p>
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-gray-500">Spaces you enter from invite links or Explore show up here.</p>
               )}
             </div>
           </div>

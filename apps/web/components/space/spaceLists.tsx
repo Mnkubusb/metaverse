@@ -10,7 +10,10 @@ export interface Space{
     name: string;
     dimensions: string;
     thumbnail: string;
+    visibility?: 'Private' | 'Unlisted' | 'Public';
 }
+
+const VISIBILITY_LABEL = { Private: 'Private', Unlisted: 'Link only', Public: 'Public' } as const;
 
 export default function SpacesList() {
   const [spaces, setSpaces] = useState<Space[] | []>([]);
@@ -71,7 +74,14 @@ export default function SpacesList() {
                 <img src={space.thumbnail} alt="" className="aspect-[76/54] w-full object-cover [image-rendering:pixelated]" />
               )}
               <div className="p-4">
-                <h3 className="font-bold text-xl mb-2">{space.name}</h3>
+                <div className="mb-2 flex items-start justify-between gap-2">
+                  <h3 className="font-bold text-xl">{space.name}</h3>
+                  {space.visibility && (
+                    <span className="mt-1 shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                      {VISIBILITY_LABEL[space.visibility]}
+                    </span>
+                  )}
+                </div>
                 <p className="text-gray-600">Dimensions: {space.dimensions}</p>
                 <div className="flex justify-between mt-4">
                   <Link href={`/space/${space.id}`} className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600">

@@ -3,7 +3,8 @@
 import { useState, useEffect, useId } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, Loader2, Map as MapIcon, Plus, RotateCcw, Square } from 'lucide-react';
-import { spaceAPI, mapAPI } from '../../lib/api';
+import { spaceAPI, mapAPI, Visibility } from '../../lib/api';
+import { VisibilityPicker } from './SpaceSettings';
 import {
   Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
@@ -46,6 +47,7 @@ function CreateSpaceForm() {
   const [mapsState, setMapsState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [choice, setChoice] = useState('');
   const [preset, setPreset] = useState<PresetId>('medium');
+  const [visibility, setVisibility] = useState<Visibility>('Unlisted');
   const [custom, setCustom] = useState({ w: 30, h: 20 });
   const [submitting, setSubmitting] = useState(false);
   const [touched, setTouched] = useState(false);
@@ -87,7 +89,7 @@ function CreateSpaceForm() {
     setError('');
     try {
       const dimensions = selectedMap ? `${selectedMap.width}x${selectedMap.height}` : `${size.w}x${size.h}`;
-      const res = await spaceAPI.createSpace(trimmed, dimensions, selectedMap?.id ?? '');
+      const res = await spaceAPI.createSpace(trimmed, dimensions, selectedMap?.id ?? '', visibility);
       router.push(`/space/${res.data.spaceId}`);
     } catch (err) {
       setError(errorMessage(err));
@@ -208,6 +210,11 @@ function CreateSpaceForm() {
             {sizeError && <p className="text-xs text-red-600">{sizeError}</p>}
           </div>
         )}
+      </fieldset>
+
+      <fieldset className="grid gap-2">
+        <legend className="mb-2 text-sm font-semibold text-gray-800">Who can enter</legend>
+        <VisibilityPicker value={visibility} onChange={setVisibility} name={`${ids}-visibility`} />
       </fieldset>
 
       {error && (

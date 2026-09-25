@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useAuth } from '../../contexts/authContext';
 import { usePathname } from 'next/navigation';
-import { MdAdminPanelSettings, MdDashboard, MdSpaceDashboard } from 'react-icons/md';
+import { MdAdminPanelSettings, MdDashboard, MdExplore, MdSpaceDashboard } from 'react-icons/md';
 import { BiLogIn, BiLogOut } from 'react-icons/bi';
 import { FaRegistered } from 'react-icons/fa';
 
@@ -40,6 +40,14 @@ export default function Navbar() {
                   <MdSpaceDashboard size={16} />
                   Spaces
               </div>}
+              </Link>
+              <Link href="/explore" title="Explore public spaces" className="hover:bg-gray-100 rounded-md p-[6px] px-3 w-fit">
+                {isSpace || isMap ? <MdExplore size={16} /> : (
+                  <div className='flex gap-2 justify-center items-center'>
+                    <MdExplore size={16} />
+                    Explore
+                  </div>
+                )}
               </Link>
               {isAdmin && (
                 <>
