@@ -88,6 +88,13 @@ The local services will be available at:
 
 If you were previously using a Neon connection string, replace it in your local `.env` with the Docker URL from `.env.example`.
 
+### Checks
+
+Every pull request and push to `main` runs `.github/workflows/ci.yml`: typecheck, lint and build all
+three apps, migrate and seed a fresh Postgres, start the API and WebSocket servers, and run
+`scripts/smoke-test.mjs` (sign-up, permissions, space creation, movement, presence, chat, emotes).
+Run the smoke test locally against your own servers with `node scripts/smoke-test.mjs`.
+
 ### Admin accounts
 
 Sign-up always creates a regular user. To give an account admin access (map editor, elements, avatars):

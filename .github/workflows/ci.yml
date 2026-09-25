@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: metaverse
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d metaverse"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/metaverse?schema=public
+      JWT_SECRET: ci-only-secret-that-is-at-least-32-characters-long
+      ALLOWED_ORIGIN: http://localhost:3002
+      NEXT_PUBLIC_API_URL: http://localhost:3000/api/v1
+      NEXT_PUBLIC_WS_URL: ws://localhost:3001
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # also generates the Prisma client (packages/db postinstall)
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: |
+          pnpm --dir apps/http run check-types
+          pnpm --dir apps/ws run check-types
+          pnpm --dir apps/web run check-types
+
+      # errors only for now; the existing warnings are tracked separately
+      - name: Lint web
+        run: pnpm --dir apps/web exec next lint
+
+      - name: Build
+        run: |
+          pnpm --dir apps/http run build
+          pnpm --dir apps/ws run build
+          pnpm --dir apps/web run build
+
+      - name: Migrate and seed database
+        run: |
+          pnpm --dir packages/db exec prisma migrate deploy
+          pnpm --dir packages/db exec node scripts/seed.js
+
+      - name: Start API and WebSocket servers
+        run: |
+          node apps/http/dist/index.js > http.log 2>&1 &
+          node apps/ws/dist/index.js > ws.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf localhost:3000/api/v1/maps > /dev/null && curl -sf localhost:3001/health > /dev/null && exit 0
+            sleep 1
+          done
+          echo "servers did not start"; cat http.log ws.log; exit 1
+
+      - name: Smoke test
+        run: node scripts/smoke-test.mjs
+
+      - name: Server logs
+        if: failure()
+        run: cat http.log ws.log || true
