@@ -101,14 +101,24 @@ export class User {
                         return;
                     }
                     const rooms = RoomManager.getInstance();
-                    const [grid, dbUser, chat] = await Promise.all([
+                    const [grid, dbUser, chat, access] = await Promise.all([
                         rooms.getGrid(spaceId),
                         client.user.findUnique({
                             where: { id: userId },
                             select: { username: true, avatar: { select: { imageUrl: true } } },
                         }),
                         recentChat(spaceId).catch(() => []),
+                        client.space.findUnique({
+                            where: { id: spaceId },
+                            select: { visibility: true, members: { where: { userId }, select: { role: true } } },
+                        }),
                     ]);
+                    // Same rule as apps/http/src/access.ts: private spaces are members-only
+                    if (access && access.visibility === "Private" && access.members.length === 0) {
+                        this.send({ type: "join-rejected", payload: { reason: "private" } });
+                        this.ws.close();
+                        return;
+                    }
                     if (!grid || !dbUser) {
                         this.ws.close();
                         return;
