@@ -97,4 +97,61 @@ await step("emotes are relayed", async () => {
 
 pa.ws.close();
 pb.ws.close();
+
+// --- space permissions -------------------------------------------------------
+const c = await account("smokeC");
+let privateId, inviteCode;
+await step("owner creates a private space", async () => {
+    const res = await call("POST", "/space", { name: "Private", dimensions: "20x15", visibility: "Private" }, a.token);
+    assert.equal(res.status, 200);
+    privateId = res.body.spaceId;
+    const space = await call("GET", `/space/${privateId}`, null, a.token);
+    assert.equal(space.body.role, "Owner");
+    assert.equal(space.body.visibility, "Private");
+    inviteCode = space.body.inviteCode;
+    assert.ok(inviteCode);
+});
+await step("outsiders can't see or join a private space", async () => {
+    assert.equal((await call("GET", `/space/${privateId}`, null, b.token)).status, 403);
+    assert.equal((await call("POST", `/space/${privateId}/join`, {}, b.token)).status, 403);
+    assert.equal((await call("POST", `/space/${privateId}/join`, { inviteCode: "wrong" }, b.token)).status, 403);
+    const outsider = await connect(b.token, privateId);
+    assert.equal((await outsider.next("join-rejected")).payload.reason, "private");
+});
+await step("the invite link lets a player in", async () => {
+    const join = await call("POST", `/space/${privateId}/join`, { inviteCode }, b.token);
+    assert.equal(join.status, 200);
+    assert.equal(join.body.role, "Member");
+    const space = await call("GET", `/space/${privateId}`, null, b.token);
+    assert.equal(space.status, 200);
+    assert.equal(space.body.inviteCode, null, "members don't get the invite code");
+    const member = await connect(b.token, privateId);
+    await member.next("space-joined");
+    member.ws.close();
+});
+await step("only the owner can change settings", async () => {
+    assert.equal((await call("PATCH", `/space/${privateId}`, { visibility: "Public" }, b.token)).status, 403);
+    assert.equal((await call("POST", `/space/${privateId}/invite/reset`, {}, b.token)).status, 403);
+});
+await step("resetting the invite link revokes the old one", async () => {
+    const reset = await call("POST", `/space/${privateId}/invite/reset`, {}, a.token);
+    assert.equal(reset.status, 200);
+    assert.notEqual(reset.body.inviteCode, inviteCode);
+    assert.equal((await call("POST", `/space/${privateId}/join`, { inviteCode }, c.token)).status, 403);
+    assert.equal((await call("GET", `/space/${privateId}`, null, b.token)).status, 200, "existing members keep access");
+});
+await step("members list and removal", async () => {
+    const members = await call("GET", `/space/${privateId}/members`, null, b.token);
+    assert.deepEqual(members.body.members.map((m) => m.role).sort(), ["Member", "Owner"]);
+    assert.equal((await call("DELETE", `/space/${privateId}/members/${members.body.members.find((m) => m.role === "Member").userId}`, null, a.token)).status, 200);
+    assert.equal((await call("GET", `/space/${privateId}`, null, b.token)).status, 403);
+});
+await step("public spaces show up on Explore, joined spaces on the dashboard", async () => {
+    assert.equal((await call("PATCH", `/space/${privateId}`, { visibility: "Public", name: "Open Lab" }, a.token)).status, 200);
+    const explore = await call("GET", "/space/explore", null, c.token);
+    assert.ok(explore.body.spaces.some((s) => s.id === privateId && s.name === "Open Lab"));
+    assert.equal((await call("POST", `/space/${privateId}/join`, {}, c.token)).status, 200);
+    const joined = await call("GET", "/space/joined", null, c.token);
+    assert.ok(joined.body.spaces.some((s) => s.id === privateId));
+});
 console.log(`\n${steps.length} checks passed`);

@@ -12,6 +12,9 @@ const Signup = () => {
   const [error, setError] = useState('');
   const { signup, user, loading } = useAuth();
   const router = useRouter();
+  // carries ?next= between login and signup; read after mount to keep server and client HTML identical
+  const [search, setSearch] = useState('');
+  useEffect(() => setSearch(window.location.search), []);
 
   useEffect(() => {
     // Redirect if already logged in
@@ -48,7 +51,9 @@ const Signup = () => {
 
     if (result.success) {
       toast.success('Signup successful');
-      router.push('/login?registered=true');
+      // keep ?next= (e.g. an invite link) so login can return there
+      const next = new URLSearchParams(window.location.search).get('next');
+      router.push(`/login?registered=true${next ? `&next=${encodeURIComponent(next)}` : ''}`);
     } else {
       setError(result.error || 'Failed to sign up');
     }
@@ -140,7 +145,7 @@ const Signup = () => {
         <div className="mt-4 text-center">
           <p>
             Already have an account?{' '}
-            <Link href="/login" className="text-blue-500 hover:underline">
+            <Link href={`/login${search}`} className="text-blue-500 hover:underline">
               Sign In
             </Link>
           </p>

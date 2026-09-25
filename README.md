@@ -25,8 +25,9 @@ Welcome to **VirtuSpace**, a real-time 2D metaverse where users can explore, int
   Turn on your mic or camera and talk to anyone within 4 tiles; audio fades with distance and the call
   ends when you walk away. Media is peer-to-peer (WebRTC); the WebSocket server only relays the handshake.
 
-- 🔐 **Authentication & Room Permissions**  
-  Role-based access for rooms: Admins, Members, Guests.
+- 🔐 **Authentication & Space Permissions**  
+  Each space is Private (members only, joined with the owner's invite link), Unlisted (anyone with the
+  link) or Public (listed on the Explore page). Owners manage visibility, invite links and members.
 
 - 📦 **Plugin Architecture**  
   Extend the platform with custom widgets, games, or tools inside rooms.

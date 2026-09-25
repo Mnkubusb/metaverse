@@ -1,6 +1,7 @@
 "use client"
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { spaceAPI } from '../../lib/api';
+import { inviteLink, spaceAPI, Visibility } from '../../lib/api';
+import SpaceSettings from './SpaceSettings';
 import { useWebSocket } from '../../contexts/WebSocketsContexts';
 import { useAuth } from '../../contexts/authContext';
 import { spaceElement } from './SpaceElement';
@@ -9,7 +10,7 @@ import ChatPanel from './ChatPanel';
 import AvatarPicker, { AvatarSprite } from '../avatar/AvatarPicker';
 import { EMOTES, emojiFor } from '@/lib/emotes';
 import { findPlaces, nearestPlace } from '@/lib/places';
-import { Check, Link2, MapPin, Map as MapIcon } from 'lucide-react';
+import { Check, Globe, Link2, Lock, MapPin, Map as MapIcon, Settings } from 'lucide-react';
 import { useProximityMedia } from '@/lib/useProximityMedia';
 import MediaDock, { MediaControls } from './MediaDock';
 
@@ -17,6 +18,9 @@ interface Space {
   name: string;
   dimensions: string;
   elements: spaceElement[];
+  visibility: Visibility;
+  role: 'Owner' | 'Member' | null;
+  inviteCode: string | null;
 }
 
 type Direction = "down" | "right" | "left" | "up";
@@ -106,6 +110,8 @@ const SpaceGrid = ({ id }: { id: string }) => {
   const minimapRef = useRef<HTMLCanvasElement | null>(null);
   const emotesRef = useRef<Map<string, { emoji: string; start: number }>>(new Map());
   const [space, setSpace] = useState<Space | null>(null);
+  // editable settings live apart from the map data so saving them doesn't redraw the map
+  const [meta, setMeta] = useState<Pick<Space, 'name' | 'visibility' | 'role' | 'inviteCode'> | null>(null);
   const [error, setError] = useState("");
   const [loadingArt, setLoadingArt] = useState(true);
 
@@ -152,7 +158,10 @@ const SpaceGrid = ({ id }: { id: string }) => {
   // --- data loading ---------------------------------------------------------
   useEffect(() => {
     spaceAPI.getSpace(id)
-      .then((res) => setSpace(res.data))
+      .then((res) => {
+        setSpace(res.data);
+        setMeta({ name: res.data.name, visibility: res.data.visibility, role: res.data.role, inviteCode: res.data.inviteCode });
+      })
       .catch((err) => {
         console.error(err);
         setError('Failed to load space');
@@ -245,13 +254,19 @@ const SpaceGrid = ({ id }: { id: string }) => {
     if (emoji) emotesRef.current.set(lastEmote.userId, { emoji, start: performance.now() });
   }, [lastEmote]);
 
+  // Private spaces can only be shared by the owner (the link carries the invite code)
+  const shareLink = meta && (meta.visibility !== 'Private' || meta.inviteCode)
+    ? inviteLink(id, meta.visibility === 'Private' ? meta.inviteCode : null)
+    : null;
+
   const copyInvite = async () => {
+    if (!shareLink) return;
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(shareLink!);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      window.prompt('Copy this link to invite people:', window.location.href);
+      window.prompt('Copy this link to invite people:', shareLink!);
     }
   };
 
@@ -548,17 +563,36 @@ const SpaceGrid = ({ id }: { id: string }) => {
     <div className="relative w-full h-screen overflow-hidden bg-[#2f3b2a]">
       <div className="absolute left-4 top-4 z-20 flex max-w-[calc(100%-2rem)] flex-wrap items-start gap-2">
         <div className="rounded-lg bg-black/60 px-4 py-3 text-white shadow-lg">
-          <h2 className="text-lg font-bold">{space.name}</h2>
+          <h2 className="flex items-center gap-1.5 text-lg font-bold">
+            {meta?.visibility === 'Private' && <Lock className="size-4 opacity-70" aria-label="Private space" />}
+            {meta?.visibility === 'Public' && <Globe className="size-4 opacity-70" aria-label="Public space" />}
+            {meta?.name ?? space.name}
+          </h2>
           <p className="text-sm opacity-80">{users.size + 1} online · WASD to move · Enter to chat · 1–6 emotes · M map</p>
         </div>
         <button
           type="button"
           onClick={copyInvite}
-          className="flex h-10 items-center gap-2 rounded-lg bg-black/60 px-3 text-sm font-semibold text-white shadow-lg transition hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          disabled={!shareLink}
+          title={shareLink ? 'Copy a link to this space' : 'Only the owner can invite people to a private space'}
+          className="flex h-10 items-center gap-2 rounded-lg bg-black/60 px-3 text-sm font-semibold text-white shadow-lg transition hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {copied ? <Check className="size-4 text-emerald-300" /> : <Link2 className="size-4" />}
           {copied ? 'Link copied' : 'Invite'}
         </button>
+        {meta?.role === 'Owner' && (
+          <SpaceSettings
+            spaceId={id}
+            value={{ name: meta.name, visibility: meta.visibility, inviteCode: meta.inviteCode }}
+            onChange={(v) => setMeta((prev) => prev && { ...prev, ...v })}
+            trigger={
+              <button type="button" aria-label="Space settings"
+                className="flex h-10 items-center gap-2 rounded-lg bg-black/60 px-3 text-sm font-semibold text-white shadow-lg transition hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60">
+                <Settings className="size-4" /> Settings
+              </button>
+            }
+          />
+        )}
         <AvatarPicker
           currentUrl={selfAvatarUrl}
           onSaved={() => announceAvatarChange()}

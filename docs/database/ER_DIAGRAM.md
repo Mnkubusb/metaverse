@@ -1,7 +1,7 @@
 # VirtuSpace data model
 
 Source of truth: [`packages/db/prisma/schema.prisma`](../../packages/db/prisma/schema.prisma).
-This document reflects the database after migration `20260925000000_add_chat_messages`
+This document reflects the database after migration `20260926000000_space_membership`
 (PostgreSQL 16, Prisma 6). Constraint actions and indexes below were read from a
 migrated database, not inferred from the Prisma file.
 
@@ -29,7 +29,16 @@ erDiagram
         text thumbnail "nullable"
         int spawnX "nullable"
         int spawnY "nullable"
+        Visibility visibility "Private | Unlisted | Public"
+        text inviteCode UK "secret part of the invite link"
+        timestamp createdAt
         text creatorId FK
+    }
+    SpaceMember {
+        text spaceId PK,FK
+        text userId PK,FK
+        SpaceRole role "Owner | Member"
+        timestamp joinedAt
     }
     spaceElements {
         text id PK "cuid()"
@@ -79,6 +88,8 @@ erDiagram
     Map |o..o{ Space : "copied into at creation (no FK)"
     Space ||--o{ ChatMessage : "hosts (ON DELETE CASCADE)"
     User |o--o{ ChatMessage : "writes (ON DELETE SET NULL)"
+    Space ||--o{ SpaceMember : "has members (ON DELETE CASCADE)"
+    User ||--o{ SpaceMember : "belongs to (ON DELETE CASCADE)"
 ```
 
 A **Map** is an admin-authored template. Creating a **Space** from a map copies the map's
@@ -98,6 +109,12 @@ this copy relationship, which has no foreign key.
 | Element | mapElements | 1 to many | `mapElements.elementId` | RESTRICT | CASCADE |
 | Space | ChatMessage | 1 to many | `ChatMessage.spaceId` | CASCADE | CASCADE |
 | User | ChatMessage | 0..1 to many | `ChatMessage.authorId` (nullable) | SET NULL | CASCADE |
+| Space | SpaceMember | 1 to many | `SpaceMember.spaceId` | CASCADE | CASCADE |
+| User | SpaceMember | 1 to many | `SpaceMember.userId` | CASCADE | CASCADE |
+
+**Access rule:** a player may enter a space when they have a `SpaceMember` row, or when the space is
+not `Private`. Entering an Unlisted/Public space, or a Private one with the correct `inviteCode`, creates
+a `Member` row. The creator is the `Owner`. Enforced in both `apps/http/src/access.ts` and the WS join.
 
 Chat messages are written by the WebSocket server (validated, max 500 characters, rate-limited
 to a burst of 5 then one every 2 seconds). The last 50 are sent to a player when they join.
@@ -108,6 +125,8 @@ to a burst of 5 then one every 2 seconds). The last 50 are sent to a player when
 |---|---|---|
 | `Role` | `Admin`, `User` | `User.role` |
 | `Layer` | `floor`, `wall`, `objects`, `topObjects` | `Element.layer` |
+| `Visibility` | `Private`, `Unlisted`, `Public` | `Space.visibility` (default `Unlisted`) |
+| `SpaceRole` | `Owner`, `Member` | `SpaceMember.role` |
 
 `Layer` drives both drawing order and collision (see the README's "Editing the campus map"):
 `floor` never blocks, `wall` blocks its whole footprint, `objects` blocks its bottom row and is
@@ -127,6 +146,10 @@ depth-sorted with players, `topObjects` is drawn above players and never blocks.
 | mapElements | `mapElements_pkey` / `_id_key` | id | duplicate |
 | mapElements | `mapElements_mapId_idx` | mapId | |
 | ChatMessage | `ChatMessage_spaceId_createdAt_idx` | spaceId, createdAt | serves "latest N messages in a space" |
+| Space | `Space_inviteCode_key` | inviteCode | unique |
+| Space | `Space_visibility_createdAt_idx` | visibility, createdAt | serves the Explore page |
+| SpaceMember | `SpaceMember_pkey` | spaceId, userId | composite primary key |
+| SpaceMember | `SpaceMember_userId_idx` | userId | serves "spaces I've joined" |
 | Element, Map, Avatar | `*_pkey` / `*_id_key` | id | duplicate |
 
 ## Findings for production
@@ -137,8 +160,7 @@ depth-sorted with players, `topObjects` is drawn above players and never blocks.
 | High | A `User` who owns spaces cannot be deleted (RESTRICT). There is no account-deletion path. | Decide ownership on deletion: cascade the user's spaces, or transfer them, then change the FK action. |
 | Medium | Every table declares `@id @unique`, which creates a second unique index on the primary key. Each write maintains two identical B-trees. | Drop `@unique` from the `id` fields; the migration drops the `*_id_key` indexes. |
 | Medium | `mapElements.elementId` has no index (unlike `spaceElements.elementId`), so checking whether an element is used scans the table. | Add `@@index([elementId])` to `mapElements`. |
-| Medium | No `createdAt` / `updatedAt` on any table, so there is no audit trail and no way to sort spaces by recency. | Add `createdAt @default(now())` and `updatedAt @updatedAt` everywhere. |
-| Medium | A space has only a creator. The README promises Admin / Member / Guest room roles, but there is nowhere to store them. | Add a `SpaceMember` join table with a per-space role (see target model). |
+| Medium | Most tables have no `createdAt` / `updatedAt` (only `Space`, `SpaceMember` and `ChatMessage` do), so there is no audit trail. | Add `createdAt @default(now())` and `updatedAt @updatedAt` everywhere. |
 | Low | Space does not remember which map it came from. | Add a nullable `Space.mapId` FK with ON DELETE SET NULL. |
 | Low | Table names mix casing (`User`, `spaceElements`, `mapElements`). | Rename the models to PascalCase and keep the table names with `@@map`, so no data moves. |
 | Low | Element placements have no uniqueness rule, so the same element can be stacked on the same tile. | Add `@@unique([spaceId, elementId, x, y])` (and the same for maps) after de-duplicating. |
@@ -146,8 +168,8 @@ depth-sorted with players, `topObjects` is drawn above players and never blocks.
 ## Target model (proposed)
 
 This is the recommended next shape of the schema. New tables are marked **new**; columns
-that do not exist yet are marked **new** in their comment. It adds room membership and roles,
-refresh-token sessions so JWTs can be revoked, and timestamps. `ChatMessage` already exists.
+that do not exist yet are marked **new** in their comment. It adds refresh-token sessions so JWTs can
+be revoked, and timestamps. `ChatMessage`, `SpaceMember` and space visibility already exist.
 
 ```mermaid
 erDiagram
@@ -189,7 +211,7 @@ erDiagram
         timestamptz updatedAt "new"
     }
     SpaceMember {
-        text spaceId PK,FK "new table"
+        text spaceId PK,FK
         text userId PK,FK
         SpaceRole role "Owner | Admin | Member | Guest"
         timestamptz joinedAt

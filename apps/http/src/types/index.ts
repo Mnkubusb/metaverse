@@ -30,6 +30,16 @@ export const CreateSpaceSchema = z.object({
         { message: "Dimensions must be between 1x1 and 200x200" }
     ),
     mapId: z.string().optional(),
+    visibility: z.enum(["Private", "Unlisted", "Public"]).optional(),
+})
+
+export const UpdateSpaceSchema = z.object({
+    name: z.string().trim().min(1).max(100).optional(),
+    visibility: z.enum(["Private", "Unlisted", "Public"]).optional(),
+})
+
+export const JoinSpaceSchema = z.object({
+    inviteCode: z.string().max(64).optional(),
 })
 
 export const AddElementSchema = z.object({

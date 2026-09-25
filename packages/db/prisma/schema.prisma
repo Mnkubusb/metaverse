@@ -19,31 +19,63 @@ enum Layer {
 }
 
 model User {
-  id       String  @id @unique @default(cuid())
-  username String  @unique
-  password String
-  avatarId String?
-  role     Role
-  spaces   Space[]
-  messages ChatMessage[]
-  avatar   Avatar? @relation(fields: [avatarId], references: [id])
+  id          String        @id @unique @default(cuid())
+  username    String        @unique
+  password    String
+  avatarId    String?
+  role        Role
+  spaces      Space[]
+  messages    ChatMessage[]
+  memberships SpaceMember[]
+  avatar      Avatar?       @relation(fields: [avatarId], references: [id])
 }
 
 model Space {
-  id        String          @id @unique @default(cuid())
-  name      String
-  width     Int
-  height    Int
-  thumbnail String?
+  id         String          @id @unique @default(cuid())
+  name       String
+  width      Int
+  height     Int
+  thumbnail  String?
   // Tile where players appear when they join; null = pick the nearest free tile to the centre
-  spawnX    Int?
-  spawnY    Int?
-  creatorId String
-  creator   User            @relation(fields: [creatorId], references: [id])
-  elements  spaceElements[]
-  messages  ChatMessage[]
+  spawnX     Int?
+  spawnY     Int?
+  // Private: members only (join with the invite link). Unlisted: anyone with the link.
+  // Public: also listed on the Explore page.
+  visibility Visibility      @default(Unlisted)
+  // Secret part of the invite link; resetting it revokes old links
+  inviteCode String          @unique @default(cuid())
+  createdAt  DateTime        @default(now())
+  creatorId  String
+  creator    User            @relation(fields: [creatorId], references: [id])
+  elements   spaceElements[]
+  messages   ChatMessage[]
+  members    SpaceMember[]
 
   @@index([creatorId])
+  @@index([visibility, createdAt])
+}
+
+model SpaceMember {
+  spaceId  String
+  userId   String
+  role     SpaceRole @default(Member)
+  joinedAt DateTime  @default(now())
+  space    Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([spaceId, userId])
+  @@index([userId])
+}
+
+enum Visibility {
+  Private
+  Unlisted
+  Public
+}
+
+enum SpaceRole {
+  Owner
+  Member
 }
 
 model ChatMessage {
