@@ -30,6 +30,13 @@ export interface ChatMessage {
 
 const MAX_CHAT_MESSAGES = 200;
 
+export interface EmoteEvent {
+  userId: string;
+  emote: string;
+  // increases per event so the same emote twice in a row still triggers
+  seq: number;
+}
+
 interface WebSocketContextType {
   connected: boolean;
   users: Map<string, RemoteUser>;
@@ -40,6 +47,8 @@ interface WebSocketContextType {
   chat: ChatMessage[];
   chatError: string;
   sendChat: (text: string) => void;
+  lastEmote: EmoteEvent | null;
+  sendEmote: (emote: string) => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextType>({
@@ -52,6 +61,8 @@ const WebSocketContext = createContext<WebSocketContextType>({
   chat: [],
   chatError: '',
   sendChat: () => { },
+  lastEmote: null,
+  sendEmote: () => { },
 });
 
 export const WebSocketProvider = ({ children, spaceId }: {
@@ -65,7 +76,9 @@ export const WebSocketProvider = ({ children, spaceId }: {
   const [users, setUsers] = useState<Map<string, RemoteUser>>(new Map());
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [chatError, setChatError] = useState('');
+  const [lastEmote, setLastEmote] = useState<EmoteEvent | null>(null);
   const seq = useRef(0);
+  const emoteSeq = useRef(0);
   const namesRef = useRef<Map<string, string>>(new Map());
   const { token } = useAuth();
 
@@ -98,6 +111,10 @@ export const WebSocketProvider = ({ children, spaceId }: {
       case 'chat':
         setChatError('');
         pushChat(payload);
+        break;
+      case 'emote':
+        emoteSeq.current += 1;
+        setLastEmote({ userId: payload.userId, emote: payload.emote, seq: emoteSeq.current });
         break;
       case 'chat-rejected':
         setChatError(payload?.reason === 'rate-limited'
@@ -176,6 +193,15 @@ export const WebSocketProvider = ({ children, spaceId }: {
     }
   }, [socket, connected]);
 
+  // shown locally right away; the server relays it to everyone else
+  const sendEmote = useCallback((emote: string) => {
+    if (socket && connected && selfId) {
+      socket.sendMessage({ type: 'emote', payload: { emote } });
+      emoteSeq.current += 1;
+      setLastEmote({ userId: selfId, emote, seq: emoteSeq.current });
+    }
+  }, [socket, connected, selfId]);
+
   const value = useMemo(() => ({
     connected,
     users,
@@ -186,7 +212,9 @@ export const WebSocketProvider = ({ children, spaceId }: {
     chat,
     chatError,
     sendChat,
-  }), [connected, users, selfId, serverPosition, sendMessage, moveUser, chat, chatError, sendChat]);
+    lastEmote,
+    sendEmote,
+  }), [connected, users, selfId, serverPosition, sendMessage, moveUser, chat, chatError, sendChat, lastEmote, sendEmote]);
 
   return <WebSocketContext.Provider value={value}>
     {connected ? children : <div className="flex h-screen items-center justify-center text-gray-500">Connecting to space...</div>}

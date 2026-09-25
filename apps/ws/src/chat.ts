@@ -2,9 +2,6 @@ import client from "@repo/db/client";
 
 export const MAX_CHAT_LENGTH = 500;
 export const CHAT_HISTORY = 50;
-// Token bucket: a burst of 5 messages, refilled at one every 2 seconds.
-const BURST = 5;
-const REFILL_MS = 2000;
 
 export interface ChatPayload {
     id: string;
@@ -22,19 +19,31 @@ export function cleanChatText(raw: unknown): string | null {
     return text;
 }
 
-export class ChatRateLimiter {
-    private tokens = BURST;
+// Token bucket: allows a burst of `burst` actions, refilled at one every `refillMs`.
+export class RateLimiter {
+    private tokens: number;
     private last = Date.now();
+
+    constructor(private readonly burst: number, private readonly refillMs: number) {
+        this.tokens = burst;
+    }
 
     take(): boolean {
         const now = Date.now();
-        this.tokens = Math.min(BURST, this.tokens + (now - this.last) / REFILL_MS);
+        this.tokens = Math.min(this.burst, this.tokens + (now - this.last) / this.refillMs);
         this.last = now;
         if (this.tokens < 1) return false;
         this.tokens -= 1;
         return true;
     }
 }
+
+// Chat: a burst of 5 messages, then one every 2 seconds.
+export const chatRateLimiter = () => new RateLimiter(5, 2000);
+
+// Emotes are shown for a few seconds, so a burst of 3 then one per second is plenty.
+export const EMOTES = ["wave", "laugh", "heart", "thumbs-up", "party", "think"] as const;
+export const emoteRateLimiter = () => new RateLimiter(3, 1000);
 
 export async function saveChatMessage(spaceId: string, authorId: string, username: string, text: string): Promise<ChatPayload> {
     const msg = await client.chatMessage.create({ data: { spaceId, authorId, body: text } });
