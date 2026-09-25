@@ -1,7 +1,8 @@
 name: Continuous Deployment Web Socket
+# Legacy EC2 deploy. The API now deploys on Vercel and the WebSocket server on Render
+# (see README "Deploying"), so this only runs when started by hand from the Actions tab.
 on:
-  push:
-    branches: [ main ]
+  workflow_dispatch:
 jobs: 
   build:
     runs-on: ubuntu-latest

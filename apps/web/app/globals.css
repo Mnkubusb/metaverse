@@ -124,3 +124,23 @@
   }
 }
 
+
+/* Avatar sheets are 5x5 grids of 80px frames; the first row is the walk-toward-camera cycle. */
+.avatar-sprite {
+  width: 80px;
+  height: 80px;
+  background-size: 400px 400px;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  image-rendering: pixelated;
+}
+.avatar-sprite[data-walking="true"] {
+  animation: avatar-walk 0.8s steps(5) infinite;
+}
+@keyframes avatar-walk {
+  from { background-position-x: 0; }
+  to { background-position-x: -400px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .avatar-sprite[data-walking="true"] { animation: none; }
+}

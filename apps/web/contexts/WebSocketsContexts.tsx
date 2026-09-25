@@ -6,6 +6,8 @@ import { useAuth } from './authContext';
 export interface RemoteUser {
   userId: string;
   username?: string;
+  // sprite sheet URL, null = default character
+  avatar?: string | null;
   x: number;
   y: number;
 }
@@ -49,6 +51,9 @@ interface WebSocketContextType {
   sendChat: (text: string) => void;
   lastEmote: EmoteEvent | null;
   sendEmote: (emote: string) => void;
+  selfAvatar: string | null;
+  // call after saving a new avatar over HTTP so everyone in the space sees it
+  announceAvatarChange: () => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextType>({
@@ -63,6 +68,8 @@ const WebSocketContext = createContext<WebSocketContextType>({
   sendChat: () => { },
   lastEmote: null,
   sendEmote: () => { },
+  selfAvatar: null,
+  announceAvatarChange: () => { },
 });
 
 export const WebSocketProvider = ({ children, spaceId }: {
@@ -77,6 +84,8 @@ export const WebSocketProvider = ({ children, spaceId }: {
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [chatError, setChatError] = useState('');
   const [lastEmote, setLastEmote] = useState<EmoteEvent | null>(null);
+  const [selfAvatar, setSelfAvatar] = useState<string | null>(null);
+  const selfIdRef = useRef('');
   const seq = useRef(0);
   const emoteSeq = useRef(0);
   const namesRef = useRef<Map<string, string>>(new Map());
@@ -101,6 +110,8 @@ export const WebSocketProvider = ({ children, spaceId }: {
     switch (type) {
       case 'space-joined': {
         setSelfId(payload.userId);
+        selfIdRef.current = payload.userId;
+        setSelfAvatar(payload.avatar ?? null);
         correct(payload.spawn.x, payload.spawn.y);
         setUsers(new Map((payload.users as RemoteUser[]).map((u) => [u.userId, u])));
         (payload.users as RemoteUser[]).forEach((u) => u.username && namesRef.current.set(u.userId, u.username));
@@ -124,8 +135,18 @@ export const WebSocketProvider = ({ children, spaceId }: {
       case 'user-joined':
         if (payload.username) notice(`${payload.username} joined`);
         setUsers(prev => new Map(prev).set(payload.userId, {
-          userId: payload.userId, username: payload.username, x: payload.x, y: payload.y,
+          userId: payload.userId, username: payload.username, avatar: payload.avatar, x: payload.x, y: payload.y,
         }));
+        break;
+      case 'avatar-changed':
+        if (payload.userId === selfIdRef.current) {
+          setSelfAvatar(payload.avatar ?? null);
+        } else {
+          setUsers(prev => {
+            const existing = prev.get(payload.userId);
+            return existing ? new Map(prev).set(payload.userId, { ...existing, avatar: payload.avatar }) : prev;
+          });
+        }
         break;
       case 'move':
         setUsers(prev => {
@@ -134,6 +155,7 @@ export const WebSocketProvider = ({ children, spaceId }: {
           next.set(payload.userId, {
             userId: payload.userId,
             username: payload.username ?? existing?.username,
+            avatar: existing?.avatar,
             x: payload.x,
             y: payload.y,
           });
@@ -202,6 +224,10 @@ export const WebSocketProvider = ({ children, spaceId }: {
     }
   }, [socket, connected, selfId]);
 
+  const announceAvatarChange = useCallback(() => {
+    if (socket && connected) socket.sendMessage({ type: 'avatar-changed', payload: {} });
+  }, [socket, connected]);
+
   const value = useMemo(() => ({
     connected,
     users,
@@ -214,7 +240,10 @@ export const WebSocketProvider = ({ children, spaceId }: {
     sendChat,
     lastEmote,
     sendEmote,
-  }), [connected, users, selfId, serverPosition, sendMessage, moveUser, chat, chatError, sendChat, lastEmote, sendEmote]);
+    selfAvatar,
+    announceAvatarChange,
+  }), [connected, users, selfId, serverPosition, sendMessage, moveUser, chat, chatError, sendChat, lastEmote, sendEmote,
+    selfAvatar, announceAvatarChange]);
 
   return <WebSocketContext.Provider value={value}>
     {connected ? children : <div className="flex h-screen items-center justify-center text-gray-500">Connecting to space...</div>}

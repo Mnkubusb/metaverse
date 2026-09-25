@@ -1,11 +1,12 @@
 "use client"
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { avatarAPI, spaceAPI, userAPI } from '../../lib/api';
+import { spaceAPI } from '../../lib/api';
 import { useWebSocket } from '../../contexts/WebSocketsContexts';
 import { useAuth } from '../../contexts/authContext';
 import { spaceElement } from './SpaceElement';
 import { buildWalkability } from '@/lib/collision';
 import ChatPanel from './ChatPanel';
+import AvatarPicker, { AvatarSprite } from '../avatar/AvatarPicker';
 import { EMOTES, emojiFor } from '@/lib/emotes';
 import { findPlaces, nearestPlace } from '@/lib/places';
 import { Check, Link2, MapPin, Map as MapIcon } from 'lucide-react';
@@ -96,7 +97,7 @@ async function renderBackground(width: number, height: number, elements: spaceEl
 
 const SpaceGrid = ({ id }: { id: string }) => {
   const { user } = useAuth();
-  const { moveUser, serverPosition, users, selfId, chat, lastEmote, sendEmote } = useWebSocket();
+  const { moveUser, serverPosition, users, selfId, chat, lastEmote, sendEmote, selfAvatar: selfAvatarUrl, announceAvatarChange } = useWebSocket();
   const [place, setPlace] = useState<string | null>(null);
   const [showMinimap, setShowMinimap] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -105,8 +106,6 @@ const SpaceGrid = ({ id }: { id: string }) => {
   const [space, setSpace] = useState<Space | null>(null);
   const [error, setError] = useState("");
   const [loadingArt, setLoadingArt] = useState(true);
-  const [selfAvatar, setSelfAvatar] = useState(DEFAULT_AVATAR);
-  const [otherAvatars, setOtherAvatars] = useState<Map<string, string>>(new Map());
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const backgroundRef = useRef<HTMLCanvasElement | null>(null);
@@ -164,25 +163,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
     return () => { cancelled = true; };
   }, [space, dims]);
 
-  useEffect(() => {
-    if (!user) return;
-    avatarAPI.getUserAvatar(user.id)
-      .then((res) => { if (res.data.avatar?.imageUrl) setSelfAvatar(res.data.avatar.imageUrl); })
-      .catch(() => { /* fall back to the default sprite */ });
-  }, [user]);
-
-  useEffect(() => {
-    const uncached = [...users.keys()].filter((uid) => uid && !otherAvatars.has(uid));
-    if (uncached.length === 0) return;
-    userAPI.getBulkMetadata(uncached).then((res) => {
-      const avatarData: { userId: string; avatarId?: string }[] = res.data.avatars;
-      setOtherAvatars((prev) => {
-        const next = new Map(prev);
-        avatarData.forEach(({ userId, avatarId }) => next.set(userId, avatarId || DEFAULT_AVATAR));
-        return next;
-      });
-    }).catch(() => { });
-  }, [users, otherAvatars]);
+  const selfAvatar = selfAvatarUrl ?? DEFAULT_AVATAR;
 
   // --- actors ---------------------------------------------------------------
   useEffect(() => {
@@ -212,7 +193,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
     for (const [uid, u] of users) {
       if (uid === selfId) continue;
       const a = actors.get(uid);
-      const avatar = otherAvatars.get(uid) ?? DEFAULT_AVATAR;
+      const avatar = u.avatar || DEFAULT_AVATAR;
       const name = u.username ?? "Player";
       if (!a) {
         actors.set(uid, { x: u.x, y: u.y, rx: u.x, ry: u.y, dir: "down", movingUntil: 0, name, avatar });
@@ -230,7 +211,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
       a.name = name;
     }
     for (const uid of [...actors.keys()]) if (!users.has(uid)) actors.delete(uid);
-  }, [users, otherAvatars, selfId]);
+  }, [users, selfId]);
 
   // --- chat bubbles -----------------------------------------------------------
   useEffect(() => {
@@ -565,6 +546,22 @@ const SpaceGrid = ({ id }: { id: string }) => {
           {copied ? <Check className="size-4 text-emerald-300" /> : <Link2 className="size-4" />}
           {copied ? 'Link copied' : 'Invite'}
         </button>
+        <AvatarPicker
+          currentUrl={selfAvatarUrl}
+          onSaved={() => announceAvatarChange()}
+          trigger={
+            <button
+              type="button"
+              className="flex h-10 items-center gap-1.5 overflow-hidden rounded-lg bg-black/60 pl-1 pr-3 text-sm font-semibold text-white shadow-lg transition hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+            >
+              {/* head-and-shoulders crop of the current avatar */}
+              <span className="relative size-8 overflow-hidden rounded-md bg-emerald-100/90">
+                <AvatarSprite url={selfAvatar} className="absolute -left-6 -top-3" />
+              </span>
+              Avatar
+            </button>
+          }
+        />
       </div>
       {place && (
         <div aria-live="polite" className="pointer-events-none absolute right-4 top-4 z-20 flex items-center gap-1.5 rounded-full bg-black/60 px-4 py-1.5 text-sm font-medium text-white shadow-lg">
