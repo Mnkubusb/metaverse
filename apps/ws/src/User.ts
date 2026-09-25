@@ -35,6 +35,8 @@ export class User {
     private chatLimiter = chatRateLimiter();
     private emoteLimiter = emoteRateLimiter();
     private avatarLimiter = new RateLimiter(3, 2000);
+    // WebRTC setup sends a burst of ICE candidates per peer, so this allows a large burst.
+    private rtcLimiter = new RateLimiter(80, 50);
     private ws: WebSocket;
     private heartbeatInterval?: ReturnType<typeof setInterval>;
     private heartbeatTimeout?: ReturnType<typeof setTimeout>;
@@ -158,6 +160,17 @@ export class User {
                         console.error("Failed to save chat message", err);
                         this.send({ type: "chat-rejected", payload: { reason: "error" } });
                     }
+                    break;
+                }
+                case "rtc": {
+                    // Relays WebRTC signalling (offer/answer/ICE/bye) to one player in the same space.
+                    // The payload is opaque to the server; media flows peer-to-peer.
+                    if (!this.spaceId || !this.userId || !this.rtcLimiter.take()) return;
+                    const to = parsedData.payload?.to;
+                    const signal = parsedData.payload?.data;
+                    if (typeof to !== "string" || to === this.userId || typeof signal !== "object" || signal === null) return;
+                    const target = RoomManager.getInstance().findUser(this.spaceId, to);
+                    target?.send({ type: "rtc", payload: { from: this.userId, data: signal } });
                     break;
                 }
                 case "avatar-changed": {

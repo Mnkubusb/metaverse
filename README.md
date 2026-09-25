@@ -18,8 +18,12 @@ Welcome to **VirtuSpace**, a real-time 2D metaverse where users can explore, int
 - 🧠 **AI-Powered Assistance** *(Coming Soon)*  
   Virtual assistant NPCs and productivity bots using LLMs.
 
-- 💬 **Real-Time Chat & Proximity Voice** *(Coming Soon)*  
-  Chat publicly or initiate private voice conversations based on avatar proximity.
+- 💬 **Real-Time Chat**  
+  Space-wide chat with history, speech bubbles above avatars, and emotes (keys 1–6).
+
+- 🎙️ **Proximity Voice & Video**  
+  Turn on your mic or camera and talk to anyone within 4 tiles; audio fades with distance and the call
+  ends when you walk away. Media is peer-to-peer (WebRTC); the WebSocket server only relays the handshake.
 
 - 🔐 **Authentication & Room Permissions**  
   Role-based access for rooms: Admins, Members, Guests.
@@ -34,7 +38,7 @@ Welcome to **VirtuSpace**, a real-time 2D metaverse where users can explore, int
 - **Frontend**: Next.js, TailwindCSS, Canvas API
 - **Backend**: Node.js, WebSocket
 - **Database**: PostgreSQL with Prisma ORM  
-- **Realtime**: Liveblocks + Custom WebSocket layers  
+- **Realtime**: WebSocket server (presence, movement, chat) + peer-to-peer WebRTC (voice/video)  
 - **Assets**: Custom 32×32 pixel sprites (top-down RPG style)
 
 ---
@@ -87,6 +91,13 @@ The local services will be available at:
 - Postgres: `postgresql://postgres:postgres@localhost:5433/metaverse`
 
 If you were previously using a Neon connection string, replace it in your local `.env` with the Docker URL from `.env.example`.
+
+### Checks
+
+Every pull request and push to `main` runs `.github/workflows/ci.yml`: typecheck, lint and build all
+three apps, migrate and seed a fresh Postgres, start the API and WebSocket servers, and run
+`scripts/smoke-test.mjs` (sign-up, permissions, space creation, movement, presence, chat, emotes).
+Run the smoke test locally against your own servers with `node scripts/smoke-test.mjs`.
 
 ### Admin accounts
 

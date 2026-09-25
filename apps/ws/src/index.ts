@@ -11,8 +11,9 @@ const server = http.createServer((req, res) => {
     res.writeHead(426, { 'Content-Type': 'text/plain' }).end('Upgrade Required');
 });
 
-// Clients only send small JSON messages (join / move / chat); anything bigger is dropped with the connection.
-const wss = new WebSocketServer({ server, maxPayload: 4 * 1024 });
+// Clients send small JSON messages (join / move / chat) plus WebRTC session descriptions, which can
+// reach a few KB with audio + video; anything over 16 KB is dropped with the connection.
+const wss = new WebSocketServer({ server, maxPayload: 16 * 1024 });
 
 wss.on('connection', function connection(ws) {
 

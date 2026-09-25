@@ -54,7 +54,12 @@ interface WebSocketContextType {
   selfAvatar: string | null;
   // call after saving a new avatar over HTTP so everyone in the space sees it
   announceAvatarChange: () => void;
+  // WebRTC signalling relayed through the server to one player in the space
+  sendRtc: (to: string, data: unknown) => void;
+  subscribeRtc: (handler: RtcHandler) => () => void;
 }
+
+export type RtcHandler = (from: string, data: any) => void;
 
 const WebSocketContext = createContext<WebSocketContextType>({
   connected: false,
@@ -70,6 +75,8 @@ const WebSocketContext = createContext<WebSocketContextType>({
   sendEmote: () => { },
   selfAvatar: null,
   announceAvatarChange: () => { },
+  sendRtc: () => { },
+  subscribeRtc: () => () => { },
 });
 
 export const WebSocketProvider = ({ children, spaceId }: {
@@ -86,6 +93,7 @@ export const WebSocketProvider = ({ children, spaceId }: {
   const [lastEmote, setLastEmote] = useState<EmoteEvent | null>(null);
   const [selfAvatar, setSelfAvatar] = useState<string | null>(null);
   const selfIdRef = useRef('');
+  const rtcHandlers = useRef<Set<RtcHandler>>(new Set());
   const seq = useRef(0);
   const emoteSeq = useRef(0);
   const namesRef = useRef<Map<string, string>>(new Map());
@@ -137,6 +145,9 @@ export const WebSocketProvider = ({ children, spaceId }: {
         setUsers(prev => new Map(prev).set(payload.userId, {
           userId: payload.userId, username: payload.username, avatar: payload.avatar, x: payload.x, y: payload.y,
         }));
+        break;
+      case 'rtc':
+        rtcHandlers.current.forEach((h) => h(payload.from, payload.data));
         break;
       case 'avatar-changed':
         if (payload.userId === selfIdRef.current) {
@@ -228,6 +239,15 @@ export const WebSocketProvider = ({ children, spaceId }: {
     if (socket && connected) socket.sendMessage({ type: 'avatar-changed', payload: {} });
   }, [socket, connected]);
 
+  const sendRtc = useCallback((to: string, data: unknown) => {
+    if (socket && connected) socket.sendMessage({ type: 'rtc', payload: { to, data } });
+  }, [socket, connected]);
+
+  const subscribeRtc = useCallback((handler: RtcHandler) => {
+    rtcHandlers.current.add(handler);
+    return () => { rtcHandlers.current.delete(handler); };
+  }, []);
+
   const value = useMemo(() => ({
     connected,
     users,
@@ -242,7 +262,9 @@ export const WebSocketProvider = ({ children, spaceId }: {
     sendEmote,
     selfAvatar,
     announceAvatarChange,
-  }), [connected, users, selfId, serverPosition, sendMessage, moveUser, chat, chatError, sendChat, lastEmote, sendEmote,
+    sendRtc,
+    subscribeRtc,
+  }), [sendRtc, subscribeRtc, connected, users, selfId, serverPosition, sendMessage, moveUser, chat, chatError, sendChat, lastEmote, sendEmote,
     selfAvatar, announceAvatarChange]);
 
   return <WebSocketContext.Provider value={value}>

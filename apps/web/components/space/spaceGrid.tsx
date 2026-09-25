@@ -1,5 +1,5 @@
 "use client"
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { spaceAPI } from '../../lib/api';
 import { useWebSocket } from '../../contexts/WebSocketsContexts';
 import { useAuth } from '../../contexts/authContext';
@@ -10,6 +10,8 @@ import AvatarPicker, { AvatarSprite } from '../avatar/AvatarPicker';
 import { EMOTES, emojiFor } from '@/lib/emotes';
 import { findPlaces, nearestPlace } from '@/lib/places';
 import { Check, Link2, MapPin, Map as MapIcon } from 'lucide-react';
+import { useProximityMedia } from '@/lib/useProximityMedia';
+import MediaDock, { MediaControls } from './MediaDock';
 
 interface Space {
   name: string;
@@ -112,6 +114,8 @@ const SpaceGrid = ({ id }: { id: string }) => {
   const selfRef = useRef<Actor | null>(null);
   const othersRef = useRef<Map<string, Actor>>(new Map());
   const heldRef = useRef<Direction[]>([]);
+  // taps queued so a key pressed and released within one frame still moves a tile
+  const tapsRef = useRef<Direction[]>([]);
   const lastStepRef = useRef(0);
   const bubblesRef = useRef<Map<string, { text: string; until: number }>>(new Map());
   // history loaded on join shouldn't pop up as bubbles
@@ -129,6 +133,13 @@ const SpaceGrid = ({ id }: { id: string }) => {
   );
 
   const places = useMemo(() => findPlaces(space?.elements ?? []), [space]);
+
+  // --- proximity voice / video ---------------------------------------------
+  const getSelfPosition = useCallback(
+    () => (selfRef.current ? { x: selfRef.current.x, y: selfRef.current.y } : null), []);
+  const media = useProximityMedia(getSelfPosition);
+  const names = useMemo(
+    () => new Map([...users.values()].map((u) => [u.userId, u.username ?? 'Player'])), [users]);
 
   const sprites = useMemo(() => {
     const els = space?.elements ?? [];
@@ -263,12 +274,13 @@ const SpaceGrid = ({ id }: { id: string }) => {
       if (!dir) return;
       e.preventDefault();
       heldRef.current = [dir, ...heldRef.current.filter((d) => d !== dir)];
+      if (!e.repeat && tapsRef.current.length < 3) tapsRef.current.push(dir);
     };
     const up = (e: KeyboardEvent) => {
       const dir = KEY_DIRS[e.key.toLowerCase()];
       if (dir) heldRef.current = heldRef.current.filter((d) => d !== dir);
     };
-    const clear = () => { heldRef.current = []; };
+    const clear = () => { heldRef.current = []; tapsRef.current = []; };
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
     window.addEventListener('blur', clear);
@@ -445,10 +457,11 @@ const SpaceGrid = ({ id }: { id: string }) => {
       const self = selfRef.current;
       if (!canvas || !self) { raf = requestAnimationFrame(tick); return; }
 
-      // step the local player one tile at a time while a direction key is held
-      const dir = heldRef.current[0];
+      // step the local player one tile at a time while a direction key is held (or was just tapped)
       const arrived = Math.abs(self.rx - self.x) < 0.05 && Math.abs(self.ry - self.y) < 0.05;
-      if (dir && arrived && now - lastStepRef.current >= STEP_MS) {
+      const canStep = arrived && now - lastStepRef.current >= STEP_MS;
+      const dir = canStep ? (tapsRef.current.shift() ?? heldRef.current[0]) : undefined;
+      if (dir) {
         self.dir = dir;
         const [dx, dy] = DIR_DELTA[dir];
         const nx = self.x + dx, ny = self.y + dy;
@@ -568,7 +581,8 @@ const SpaceGrid = ({ id }: { id: string }) => {
           <MapPin className="size-4 text-emerald-300" /> Near {place}
         </div>
       )}
-      <div role="toolbar" aria-label="Emotes" className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 gap-1 rounded-xl bg-black/75 p-1.5 shadow-lg backdrop-blur-sm">
+      <div role="toolbar" aria-label="Voice, video and emotes" className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 gap-1 rounded-xl bg-black/75 p-1.5 shadow-lg backdrop-blur-sm">
+        <MediaControls micOn={media.micOn} camOn={media.camOn} onMic={media.toggleMic} onCam={media.toggleCam} />
         {EMOTES.map((e, i) => (
           <button
             key={e.id}
@@ -605,6 +619,15 @@ const SpaceGrid = ({ id }: { id: string }) => {
         <div className="absolute inset-0 z-10 flex items-center justify-center text-white">Loading map...</div>
       )}
       <ChatPanel />
+      <MediaDock
+        remote={media.remote}
+        names={names}
+        localStream={media.localStream}
+        camOn={media.camOn}
+        micOn={media.micOn}
+        nearbyCount={media.nearbyCount}
+        error={media.mediaError}
+      />
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" style={{ imageRendering: "pixelated" }} />
     </div>
   );
