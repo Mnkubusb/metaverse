@@ -12,6 +12,7 @@
     "db:generate": "pnpm --dir ./packages/db exec prisma generate",
     "db:migrate": "sh -ac 'set -a && . ./.env && set +a && pnpm --dir ./packages/db exec prisma migrate deploy'",
     "db:seed": "sh -ac 'set -a && . ./.env && set +a && pnpm --dir ./packages/db exec node scripts/seed.js'",
+    "db:make-admin": "sh -ac 'set -a && . ./.env && set +a && pnpm --dir ./packages/db exec node scripts/make-admin.js \"$0\"'",
     "start:http": "pnpm db:generate && pnpm --dir ./apps/http run dev",
     "start:ws": "pnpm db:generate && pnpm --dir ./apps/ws run dev",
     "start:web": "pnpm --dir ./apps/web run start"

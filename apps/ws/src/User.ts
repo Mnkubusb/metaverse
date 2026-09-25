@@ -84,7 +84,7 @@ export class User {
                     const token = parsedData.payload?.token;
                     let userId: string | undefined;
                     try {
-                        userId = (jwt.verify(token, JWT_SECRET) as JwtPayload).userId;
+                        userId = (jwt.verify(String(token), JWT_SECRET, { algorithms: ["HS256"] }) as JwtPayload).userId;
                     } catch {
                         this.ws.close();
                         return;

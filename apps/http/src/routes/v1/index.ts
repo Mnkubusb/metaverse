@@ -6,9 +6,16 @@ import { SigninSchema, SignupSchema } from "../../types";
 import client from "@repo/db/client";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import { JWT_SECRET } from "../../config";
+import { userMiddleware } from "../../middleware/user";
+import { adminMiddleware } from "../../middleware/admin";
 
 export const router = Router();
+
+// bcrypt hash of a random string: compared against when the username doesn't exist,
+// so a failed sign-in takes the same time whether or not the account exists.
+const DUMMY_HASH = bcrypt.hashSync(crypto.randomUUID(), 10);
 
 router.post("/signup", async (req, res) => {
     const parsedData = SignupSchema.safeParse(req.body);
@@ -20,88 +27,45 @@ router.post("/signup", async (req, res) => {
         return
     }
 
-    const hashedPassword = await bcrypt.hash(parsedData.data.password, 10);
-    try {
-        // Check if the user already exists
-        const existingUser = await client.user.findUnique({
-            where: {
-                username: parsedData.data.username,
-            }
-        });
-        if (existingUser) {
-            res.status(400).json({
-                message: "User already exists",
-            });
-            return
-        }
-
-        const user = await client.user.create({
-            data: {
-                username: parsedData.data.username,
-                password: hashedPassword,
-                role: parsedData.data.type === "admin" ? "Admin" : "User",
-            }
-        })
-        res.status(200).json({
-            userId: user.id,
-        })
-    } catch (error) {
-        res.status(500).json({
-            error,
-            message: "Internal server error",
-        });
+    const { username, password } = parsedData.data;
+    const existingUser = await client.user.findUnique({ where: { username } });
+    if (existingUser) {
+        res.status(409).json({ message: "That username is taken" });
+        return
     }
 
+    const user = await client.user.create({
+        data: {
+            username,
+            password: await bcrypt.hash(password, 10),
+            role: "User",
+        }
+    })
+    res.status(200).json({ userId: user.id })
 })
 
 router.post("/signin", async (req, res) => {
-    
     const parsedData = SigninSchema.safeParse(req.body);
     if (!parsedData.success) {
-        res.status(400).json({
-            message: "Invalid data",
-            errors: parsedData.error.errors,
-        });
+        res.status(401).json({ message: "Invalid username or password" });
         return
-    };
-
-    try {
-        const user = await client.user.findUnique({
-            where: {
-                username: parsedData.data.username,
-            }
-        })
-
-        if (!user) {
-            res.status(400).json({
-                message: "User not found",
-            });
-            return
-        }
-
-        const isPasswordValid = await bcrypt.compare(parsedData.data.password, user.password);
-
-        if (!isPasswordValid) {
-            res.status(403).json({
-                message: "Invalid password",
-            });
-            return  
-        }
-        const token = jwt.sign({
-            userId: user.id,
-            role: user.role,
-        }, JWT_SECRET, { expiresIn: "7d" });
-
-        res.status(200).json({
-            token
-        })
-
-    } catch (error) {
-        console.log(error);
-        res.status(400).json({
-            message: "Internal server error",
-        });
     }
+
+    const user = await client.user.findUnique({
+        where: { username: parsedData.data.username },
+    })
+    const isPasswordValid = await bcrypt.compare(parsedData.data.password, user?.password ?? DUMMY_HASH);
+    if (!user || !isPasswordValid) {
+        res.status(401).json({ message: "Invalid username or password" });
+        return
+    }
+
+    const token = jwt.sign({
+        userId: user.id,
+        role: user.role,
+    }, JWT_SECRET, { expiresIn: "7d", algorithm: "HS256" });
+
+    res.status(200).json({ token })
 })
 
 
@@ -144,7 +108,7 @@ router.get("/avatars", async (req, res) => {
     })
 })
 
-router.get("/avatar", async( req, res) => {
+router.get("/avatar", userMiddleware, async( req, res) => {
     if(!req.query.id){
         res.status(400).json({
             message: "Avatar id is required"
@@ -191,7 +155,7 @@ router.get("/maps", async (req, res) => {
     })
 })
 
-router.get("/users", async (req, res) => {
+router.get("/users", adminMiddleware, async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.min(100, parseInt(req.query.limit as string) || 50);
     const users = await client.user.findMany({

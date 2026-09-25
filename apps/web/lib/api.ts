@@ -22,8 +22,23 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
+// An expired or invalid session: clear it and send the user to log in again.
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        const url: string = error.config?.url ?? '';
+        if (error.response?.status === 401 && !url.startsWith('/signin') && !url.startsWith('/signup')
+            && typeof window !== 'undefined') {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            if (window.location.pathname !== '/login') window.location.assign('/login');
+        }
+        return Promise.reject(error);
+    }
+);
+
 export const authAPI = {
-    signup: (username: string, password: string, type: string) => api.post('/signup', { username, password, type }),
+    signup: (username: string, password: string) => api.post('/signup', { username, password }),
     signin: (username: string, password: string) => api.post('/signin', { username, password }),
 };
 

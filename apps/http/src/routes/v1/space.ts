@@ -166,7 +166,7 @@ spaceRouter.post("/element", userMiddleware, async(req, res) => {
 
     const space = await client.space.findUnique({
         where:{
-            id: req.body.spaceId,
+            id: parsedData.data.spaceId,
             creatorId: req.userId
         },select : {
             width: true,
@@ -181,7 +181,7 @@ spaceRouter.post("/element", userMiddleware, async(req, res) => {
         return
     }
 
-    if(parsedData.data.x > space.width || parsedData.data.y > space.height || parsedData.data.x < 0 || parsedData.data.y < 0){
+    if(parsedData.data.x >= space.width || parsedData.data.y >= space.height || parsedData.data.x < 0 || parsedData.data.y < 0){
         res.status(400).json({
             message: "Element out of bounds"
         })
@@ -191,7 +191,7 @@ spaceRouter.post("/element", userMiddleware, async(req, res) => {
 
    await client.spaceElements.create({
         data:{
-            spaceId: req.body.spaceId,
+            spaceId: parsedData.data.spaceId,
             elementId: parsedData.data.elementId,
             x: parsedData.data.x,
             y: parsedData.data.y,
