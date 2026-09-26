@@ -38,6 +38,11 @@ export const UpdateSpaceSchema = z.object({
     visibility: z.enum(["Private", "Unlisted", "Public"]).optional(),
 })
 
+export const NoticeSchema = z.object({
+    body: z.string().trim().min(1).max(280),
+    color: z.enum(["yellow", "blue", "pink", "green", "white"]).default("yellow"),
+})
+
 export const JoinSpaceSchema = z.object({
     inviteCode: z.string().max(64).optional(),
 })

@@ -95,6 +95,29 @@ await step("emotes are relayed", async () => {
     assert.equal((await pb.next("emote")).payload.emote, "wave");
 });
 
+await step("sitting needs an adjacent seat", async () => {
+    pa.send("sit", { seat: { x: 10, y: 10 } }); // far away: ignored
+    await assert.rejects(pb.next("pose", 600));
+});
+await step("notice boards: pin, read, and only author/owner can remove", async () => {
+    const space = await call("GET", `/space/${spaceId}`, null, a.token);
+    const board = space.body.elements.find((e) => e.element.id === "campus-notice-board");
+    assert.ok(board, "campus map has notice boards");
+    const url = `/space/${spaceId}/boards/${board.id}/notices`;
+    assert.equal((await call("POST", url, { body: "   " }, b.token)).status, 400);
+    const pinned = await call("POST", url, { body: "Study group at 5", color: "blue" }, b.token);
+    assert.equal(pinned.status, 200);
+    const list = await call("GET", url, null, a.token);
+    const note = list.body.notices.find((n) => n.id === pinned.body.id);
+    assert.equal(note.body, "Study group at 5");
+    assert.equal(note.canDelete, true, "the space owner can remove any note");
+    const notABoard = space.body.elements.find((e) => e.element.id === "campus-bench");
+    assert.equal((await call("GET", `/space/${spaceId}/boards/${notABoard.id}/notices`, null, a.token)).status, 404);
+    const c2 = await account("smokeD");
+    assert.equal((await call("DELETE", `/space/${spaceId}/notices/${note.id}`, null, c2.token)).status, 403);
+    assert.equal((await call("DELETE", `/space/${spaceId}/notices/${note.id}`, null, b.token)).status, 200);
+});
+
 pa.ws.close();
 pb.ws.close();
 

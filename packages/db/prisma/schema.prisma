@@ -28,28 +28,30 @@ model User {
   messages    ChatMessage[]
   memberships SpaceMember[]
   avatar      Avatar?       @relation(fields: [avatarId], references: [id])
+  noticePosts NoticePost[]
 }
 
 model Space {
-  id         String          @id @unique @default(cuid())
-  name       String
-  width      Int
-  height     Int
-  thumbnail  String?
+  id          String          @id @unique @default(cuid())
+  name        String
+  width       Int
+  height      Int
+  thumbnail   String?
   // Tile where players appear when they join; null = pick the nearest free tile to the centre
-  spawnX     Int?
-  spawnY     Int?
+  spawnX      Int?
+  spawnY      Int?
   // Private: members only (join with the invite link). Unlisted: anyone with the link.
   // Public: also listed on the Explore page.
-  visibility Visibility      @default(Unlisted)
+  visibility  Visibility      @default(Unlisted)
   // Secret part of the invite link; resetting it revokes old links
-  inviteCode String          @unique @default(cuid())
-  createdAt  DateTime        @default(now())
-  creatorId  String
-  creator    User            @relation(fields: [creatorId], references: [id])
-  elements   spaceElements[]
-  messages   ChatMessage[]
-  members    SpaceMember[]
+  inviteCode  String          @unique @default(cuid())
+  createdAt   DateTime        @default(now())
+  creatorId   String
+  creator     User            @relation(fields: [creatorId], references: [id])
+  elements    spaceElements[]
+  messages    ChatMessage[]
+  members     SpaceMember[]
+  noticePosts NoticePost[]
 
   @@index([creatorId])
   @@index([visibility, createdAt])
@@ -92,13 +94,14 @@ model ChatMessage {
 }
 
 model spaceElements {
-  id        String  @id @unique @default(cuid())
+  id        String       @id @unique @default(cuid())
   elementId String
   spaceId   String
   x         Int
   y         Int
-  space     Space   @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  element   Element @relation(fields: [elementId], references: [id])
+  space     Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  element   Element      @relation(fields: [elementId], references: [id])
+  notices   NoticePost[]
 
   @@index([spaceId])
   @@index([elementId])
@@ -148,4 +151,21 @@ model Avatar {
 enum Role {
   Admin
   User
+}
+
+// A note pinned to a notice board (a placed board element) in a space
+model NoticePost {
+  id        String        @id @default(cuid())
+  spaceId   String
+  boardId   String
+  // null once the author's account is deleted; the note stays on the board
+  authorId  String?
+  body      String
+  color     String        @default("yellow")
+  createdAt DateTime      @default(now())
+  space     Space         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  board     spaceElements @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  author    User?         @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([boardId, createdAt])
 }

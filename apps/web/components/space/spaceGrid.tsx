@@ -10,6 +10,8 @@ import ChatPanel from './ChatPanel';
 import AvatarPicker, { AvatarSprite } from '../avatar/AvatarPicker';
 import { EMOTES, emojiFor } from '@/lib/emotes';
 import { findPlaces, nearestPlace } from '@/lib/places';
+import { findInteraction, Interaction } from '@/lib/interactions';
+import NoticeBoard from './NoticeBoard';
 import { Check, Globe, Link2, Lock, MapPin, Map as MapIcon, Settings } from 'lucide-react';
 import { useProximityMedia } from '@/lib/useProximityMedia';
 import MediaDock, { MediaControls } from './MediaDock';
@@ -36,7 +38,12 @@ interface Actor {
   name: string;
   avatar: string;
   self?: boolean;
+  // bench tile the player sits on; drawn there instead of at x/y
+  seat?: { x: number; y: number } | null;
 }
+
+// Where to draw an actor: on its seat when sitting (raised to the bench's seat), else its walking position.
+const drawPos = (a: Actor) => (a.seat ? { x: a.seat.x, y: a.seat.y - 0.3 } : { x: a.rx, y: a.ry });
 
 const TILE = 32;
 const STEP_MS = 140;            // time to walk one tile
@@ -103,7 +110,16 @@ async function renderBackground(width: number, height: number, elements: spaceEl
 
 const SpaceGrid = ({ id }: { id: string }) => {
   const { user } = useAuth();
-  const { moveUser, serverPosition, users, selfId, chat, lastEmote, sendEmote, selfAvatar: selfAvatarUrl, announceAvatarChange } = useWebSocket();
+  const { moveUser, serverPosition, users, selfId, chat, lastEmote, sendEmote, selfAvatar: selfAvatarUrl, announceAvatarChange,
+    selfSeat, sit } = useWebSocket();
+  const [interaction, setInteraction] = useState<Interaction | null>(null);
+  const [openBoard, setOpenBoard] = useState<{ id: string; title: string } | null>(null);
+  const interactionRef = useRef<Interaction | null>(null);
+  const selfSeatRef = useRef(selfSeat);
+  selfSeatRef.current = selfSeat;
+  const sitRef = useRef(sit);
+  sitRef.current = sit;
+  const elementsRef = useRef<spaceElement[]>([]);
   const [place, setPlace] = useState<string | null>(null);
   const [showMinimap, setShowMinimap] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -216,7 +232,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
       const avatar = u.avatar || DEFAULT_AVATAR;
       const name = u.username ?? "Player";
       if (!a) {
-        actors.set(uid, { x: u.x, y: u.y, rx: u.x, ry: u.y, dir: "down", movingUntil: 0, name, avatar });
+        actors.set(uid, { x: u.x, y: u.y, rx: u.x, ry: u.y, dir: "down", movingUntil: 0, name, avatar, seat: u.seat ?? null });
         continue;
       }
       if (a.x !== u.x || a.y !== u.y) {
@@ -228,6 +244,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
         a.y = u.y;
       }
       a.avatar = avatar;
+      a.seat = u.seat ?? null;
       a.name = name;
     }
     for (const uid of [...actors.keys()]) if (!users.has(uid)) actors.delete(uid);
@@ -243,6 +260,24 @@ const SpaceGrid = ({ id }: { id: string }) => {
       bubblesRef.current.set(m.userId, { text: m.text, until: now + BUBBLE_MS });
     }
   }, [chat]);
+
+  useEffect(() => { elementsRef.current = space?.elements ?? []; }, [space]);
+
+  // the local player's seat comes from the server ("pose"); moving clears it
+  useEffect(() => {
+    if (selfRef.current) selfRef.current.seat = selfSeat;
+  }, [selfSeat]);
+
+  // Press E (or click the prompt) to use whatever is next to you, or to stand up
+  const interact = useCallback(() => {
+    if (selfSeatRef.current) {
+      sitRef.current(null);
+      return;
+    }
+    const hit = interactionRef.current;
+    if (hit?.kind === 'board') setOpenBoard({ id: hit.boardId, title: hit.label === 'notice board' ? 'Notice board' : 'Signboard notes' });
+    if (hit?.kind === 'seat') sitRef.current(hit.seat);
+  }, []);
 
   // --- emotes ---------------------------------------------------------------
   // the keyboard handler is registered once, so it calls the latest sendEmote through a ref
@@ -281,6 +316,12 @@ const SpaceGrid = ({ id }: { id: string }) => {
         sendEmoteRef.current(emote.id);
         return;
       }
+      if (e.key.toLowerCase() === 'e' && !e.repeat) {
+        // swallow the key so the "e" doesn't land in the notice board's text box as it opens
+        e.preventDefault();
+        interact();
+        return;
+      }
       if (e.key.toLowerCase() === 'm' && !e.repeat) {
         setShowMinimap((v) => !v);
         return;
@@ -304,7 +345,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
       window.removeEventListener('keyup', up);
       window.removeEventListener('blur', clear);
     };
-  }, []);
+  }, [interact]);
 
   // --- game loop ------------------------------------------------------------
   useEffect(() => {
@@ -315,12 +356,22 @@ const SpaceGrid = ({ id }: { id: string }) => {
     const drawActor = (ctx: CanvasRenderingContext2D, a: Actor, now: number) => {
       const img = imageCache.get(a.avatar) ?? imageCache.get(DEFAULT_AVATAR);
       if (!imageCache.has(a.avatar)) loadImage(a.avatar);
-      const px = a.rx * TILE, py = a.ry * TILE;
-      ctx.fillStyle = "rgba(0,0,0,0.22)";
-      ctx.beginPath();
-      ctx.ellipse(px + TILE / 2, py + TILE - 3, 10, 4, 0, 0, Math.PI * 2);
-      ctx.fill();
+      const { x: ax, y: ay } = drawPos(a);
+      const px = ax * TILE, py = ay * TILE;
+      if (!a.seat) {
+        ctx.fillStyle = "rgba(0,0,0,0.22)";
+        ctx.beginPath();
+        ctx.ellipse(px + TILE / 2, py + TILE - 3, 10, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
       if (!ready(img)) return;
+      if (a.seat) {
+        // seated: facing the camera, lower legs hidden behind the bench (crop the frame at the knees)
+        const scale = AVATAR_SIZE / FRAME, cropH = 52;
+        ctx.drawImage(img, 0, 0, FRAME, cropH,
+          px + TILE / 2 - AVATAR_SIZE / 2, py + TILE - 2 - 64 * scale, AVATAR_SIZE, cropH * scale);
+        return;
+      }
       const moving = now < a.movingUntil;
       const frame = DIR_BASE[a.dir] + (moving ? Math.floor(now / 100) % 6 : 0);
       const sx = (frame % SHEET_COLS) * FRAME, sy = Math.floor(frame / SHEET_COLS) * FRAME;
@@ -331,7 +382,8 @@ const SpaceGrid = ({ id }: { id: string }) => {
     };
 
     const drawName = (ctx: CanvasRenderingContext2D, a: Actor) => {
-      const px = a.rx * TILE + TILE / 2, py = a.ry * TILE - 22;
+      const { x: ax, y: ay } = drawPos(a);
+      const px = ax * TILE + TILE / 2, py = ay * TILE - 22;
       ctx.font = "bold 11px ui-sans-serif, system-ui, sans-serif";
       const w = ctx.measureText(a.name).width + 10;
       ctx.fillStyle = a.self ? "rgba(30,98,72,0.9)" : "rgba(20,20,28,0.75)";
@@ -385,8 +437,8 @@ const SpaceGrid = ({ id }: { id: string }) => {
         const lines = wrap(ctx, bubble.text, 180, 3);
         const w = Math.max(...lines.map((l) => ctx.measureText(l).width)) + 16;
         const h = lines.length * 15 + 10;
-        const cx = a.rx * TILE + TILE / 2;
-        const tip = a.ry * TILE - 36;
+        const cx = drawPos(a).x * TILE + TILE / 2;
+        const tip = drawPos(a).y * TILE - 36;
         const rect = { x: cx - w / 2, y: tip - h, w, h };
         for (let moved = true; moved;) {
           moved = false;
@@ -436,7 +488,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
         ctx.font = "bold 11px ui-sans-serif, system-ui, sans-serif";
         const tagHalf = ctx.measureText(a.name).width / 2 + 5;
         ctx.restore();
-        ctx.fillText(emote.emoji, a.rx * TILE + TILE / 2 + tagHalf + 14, a.ry * TILE - 22 - t * 22);
+        ctx.fillText(emote.emoji, drawPos(a).x * TILE + TILE / 2 + tagHalf + 14, drawPos(a).y * TILE - 22 - t * 22);
         ctx.globalAlpha = 1;
       }
     };
@@ -525,7 +577,8 @@ const SpaceGrid = ({ id }: { id: string }) => {
             if (ready(img)) ctx.drawImage(img, e.x * TILE, e.y * TILE, e.element.width * TILE, e.element.height * TILE);
           },
         })),
-        ...actors.map((a) => ({ bottom: a.ry + 1 + 0.01, draw: () => drawActor(ctx, a, now) })),
+        // seated players sort just in front of their bench
+        ...actors.map((a) => ({ bottom: (a.seat ? a.seat.y : a.ry) + 1 + 0.02, draw: () => drawActor(ctx, a, now) })),
       ];
       drawables.sort((a, b) => a.bottom - b.bottom);
       drawables.forEach((d) => d.draw());
@@ -544,6 +597,11 @@ const SpaceGrid = ({ id }: { id: string }) => {
       if (now - lastPlaceCheck > 250) {
         lastPlaceCheck = now;
         setPlace(nearestPlace(places, self.x, self.y));
+        const hit = self.seat ? null : findInteraction(elementsRef.current, self.x, self.y);
+        if (JSON.stringify(hit) !== JSON.stringify(interactionRef.current)) {
+          interactionRef.current = hit;
+          setInteraction(hit);
+        }
       }
       if (now - lastMinimap > 100) {
         lastMinimap = now;
@@ -568,7 +626,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
             {meta?.visibility === 'Public' && <Globe className="size-4 opacity-70" aria-label="Public space" />}
             {meta?.name ?? space.name}
           </h2>
-          <p className="text-sm opacity-80">{users.size + 1} online · WASD to move · Enter to chat · 1–6 emotes · M map</p>
+          <p className="text-sm opacity-80">{users.size + 1} online · WASD to move · Enter to chat · 1–6 emotes · E interact · M map</p>
         </div>
         <button
           type="button"
@@ -652,6 +710,17 @@ const SpaceGrid = ({ id }: { id: string }) => {
       {loadingArt && (
         <div className="absolute inset-0 z-10 flex items-center justify-center text-white">Loading map...</div>
       )}
+      {(selfSeat || interaction) && (
+        <button
+          type="button"
+          onClick={interact}
+          className="absolute bottom-[7.5rem] left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/70 py-1.5 pl-1.5 pr-4 text-sm font-medium text-white shadow-lg backdrop-blur-sm hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+        >
+          <kbd className="flex size-6 items-center justify-center rounded-md bg-white font-mono text-xs font-bold text-gray-900">E</kbd>
+          {selfSeat ? 'Stand up' : interaction?.kind === 'board' ? `Read the ${interaction.label}` : 'Sit on the bench'}
+        </button>
+      )}
+      <NoticeBoard spaceId={id} boardId={openBoard?.id ?? null} title={openBoard?.title ?? ''} onClose={() => setOpenBoard(null)} />
       <ChatPanel />
       <MediaDock
         remote={media.remote}

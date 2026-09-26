@@ -25,6 +25,10 @@ Welcome to **VirtuSpace**, a real-time 2D metaverse where users can explore, int
   Turn on your mic or camera and talk to anyone within 4 tiles; audio fades with distance and the call
   ends when you walk away. Media is peer-to-peer (WebRTC); the WebSocket server only relays the handshake.
 
+- 📌 **Interactive Spots**  
+  Walk up to a notice board and press **E** to read and pin notes (they update live for everyone), or
+  sit on a bench. Four corkboards are placed around the campus; the signboards work as boards too.
+
 - 🔐 **Authentication & Space Permissions**  
   Each space is Private (members only, joined with the owner's invite link), Unlisted (anyone with the
   link) or Public (listed on the Explore page). Owners manage visibility, invite links and members.

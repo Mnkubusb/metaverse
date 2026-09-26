@@ -394,6 +394,14 @@
    "layer": "objects"
   },
   {
+   "id": "campus-notice-board",
+   "imageUrl": "/campus/notice-board.png",
+   "width": 2,
+   "height": 2,
+   "static": true,
+   "layer": "objects"
+  },
+  {
    "id": "campus-gate-arch",
    "imageUrl": "/campus/gate-arch.png",
    "width": 10,
@@ -4922,6 +4930,26 @@
    "elementId": "campus-sign-hostels",
    "x": 36,
    "y": 13
+  },
+  {
+   "elementId": "campus-notice-board",
+   "x": 33,
+   "y": 27
+  },
+  {
+   "elementId": "campus-notice-board",
+   "x": 24,
+   "y": 22
+  },
+  {
+   "elementId": "campus-notice-board",
+   "x": 18,
+   "y": 9
+  },
+  {
+   "elementId": "campus-notice-board",
+   "x": 64,
+   "y": 48
   },
   {
    "elementId": "campus-boys-hostel-1",

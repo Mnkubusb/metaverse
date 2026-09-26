@@ -1,7 +1,7 @@
 # VirtuSpace data model
 
 Source of truth: [`packages/db/prisma/schema.prisma`](../../packages/db/prisma/schema.prisma).
-This document reflects the database after migration `20260926000000_space_membership`
+This document reflects the database after migration `20260927000000_notice_boards`
 (PostgreSQL 16, Prisma 6). Constraint actions and indexes below were read from a
 migrated database, not inferred from the Prisma file.
 
@@ -39,6 +39,15 @@ erDiagram
         text userId PK,FK
         SpaceRole role "Owner | Member"
         timestamp joinedAt
+    }
+    NoticePost {
+        text id PK "cuid()"
+        text spaceId FK
+        text boardId FK "the placed board (spaceElements.id)"
+        text authorId FK "nullable"
+        text body "1-280 chars"
+        text color "yellow | blue | pink | green | white"
+        timestamp createdAt
     }
     spaceElements {
         text id PK "cuid()"
@@ -90,6 +99,9 @@ erDiagram
     User |o--o{ ChatMessage : "writes (ON DELETE SET NULL)"
     Space ||--o{ SpaceMember : "has members (ON DELETE CASCADE)"
     User ||--o{ SpaceMember : "belongs to (ON DELETE CASCADE)"
+    spaceElements ||--o{ NoticePost : "board holds (ON DELETE CASCADE)"
+    Space ||--o{ NoticePost : "has notes (ON DELETE CASCADE)"
+    User |o--o{ NoticePost : "pins (ON DELETE SET NULL)"
 ```
 
 A **Map** is an admin-authored template. Creating a **Space** from a map copies the map's
@@ -111,6 +123,9 @@ this copy relationship, which has no foreign key.
 | User | ChatMessage | 0..1 to many | `ChatMessage.authorId` (nullable) | SET NULL | CASCADE |
 | Space | SpaceMember | 1 to many | `SpaceMember.spaceId` | CASCADE | CASCADE |
 | User | SpaceMember | 1 to many | `SpaceMember.userId` | CASCADE | CASCADE |
+| spaceElements | NoticePost | 1 to many | `NoticePost.boardId` | CASCADE | CASCADE |
+| Space | NoticePost | 1 to many | `NoticePost.spaceId` | CASCADE | CASCADE |
+| User | NoticePost | 0..1 to many | `NoticePost.authorId` (nullable) | SET NULL | CASCADE |
 
 **Access rule:** a player may enter a space when they have a `SpaceMember` row, or when the space is
 not `Private`. Entering an Unlisted/Public space, or a Private one with the correct `inviteCode`, creates
@@ -150,6 +165,7 @@ depth-sorted with players, `topObjects` is drawn above players and never blocks.
 | Space | `Space_visibility_createdAt_idx` | visibility, createdAt | serves the Explore page |
 | SpaceMember | `SpaceMember_pkey` | spaceId, userId | composite primary key |
 | SpaceMember | `SpaceMember_userId_idx` | userId | serves "spaces I've joined" |
+| NoticePost | `NoticePost_boardId_createdAt_idx` | boardId, createdAt | serves "notes on this board, newest first" |
 | Element, Map, Avatar | `*_pkey` / `*_id_key` | id | duplicate |
 
 ## Findings for production
