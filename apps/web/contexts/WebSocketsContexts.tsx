@@ -3,11 +3,15 @@ import { createContext, useContext, useState, useEffect, useCallback, useMemo, u
 import WebSocketService from '../lib/webSocket';
 import { useAuth } from './authContext';
 
+export type Seat = { x: number; y: number };
+
 export interface RemoteUser {
   userId: string;
   username?: string;
   // sprite sheet URL, null = default character
   avatar?: string | null;
+  // bench tile the player is sitting on
+  seat?: Seat | null;
   x: number;
   y: number;
 }
@@ -57,6 +61,11 @@ interface WebSocketContextType {
   // WebRTC signalling relayed through the server to one player in the space
   sendRtc: (to: string, data: unknown) => void;
   subscribeRtc: (handler: RtcHandler) => () => void;
+  selfSeat: Seat | null;
+  sit: (seat: Seat | null) => void;
+  // bumps when someone else changes a notice board, so an open board can refresh
+  boardUpdate: { boardId: string; seq: number } | null;
+  announceBoardUpdate: (boardId: string) => void;
 }
 
 export type RtcHandler = (from: string, data: any) => void;
@@ -77,6 +86,10 @@ const WebSocketContext = createContext<WebSocketContextType>({
   announceAvatarChange: () => { },
   sendRtc: () => { },
   subscribeRtc: () => () => { },
+  selfSeat: null,
+  sit: () => { },
+  boardUpdate: null,
+  announceBoardUpdate: () => { },
 });
 
 export const WebSocketProvider = ({ children, spaceId }: {
@@ -92,6 +105,9 @@ export const WebSocketProvider = ({ children, spaceId }: {
   const [chatError, setChatError] = useState('');
   const [lastEmote, setLastEmote] = useState<EmoteEvent | null>(null);
   const [selfAvatar, setSelfAvatar] = useState<string | null>(null);
+  const [selfSeat, setSelfSeat] = useState<Seat | null>(null);
+  const [boardUpdate, setBoardUpdate] = useState<{ boardId: string; seq: number } | null>(null);
+  const boardSeq = useRef(0);
   const selfIdRef = useRef('');
   const rtcHandlers = useRef<Set<RtcHandler>>(new Set());
   const seq = useRef(0);
@@ -149,6 +165,20 @@ export const WebSocketProvider = ({ children, spaceId }: {
       case 'rtc':
         rtcHandlers.current.forEach((h) => h(payload.from, payload.data));
         break;
+      case 'pose':
+        if (payload.userId === selfIdRef.current) {
+          setSelfSeat(payload.seat ?? null);
+        } else {
+          setUsers(prev => {
+            const existing = prev.get(payload.userId);
+            return existing ? new Map(prev).set(payload.userId, { ...existing, seat: payload.seat ?? null }) : prev;
+          });
+        }
+        break;
+      case 'board-updated':
+        boardSeq.current += 1;
+        setBoardUpdate({ boardId: payload.boardId, seq: boardSeq.current });
+        break;
       case 'avatar-changed':
         if (payload.userId === selfIdRef.current) {
           setSelfAvatar(payload.avatar ?? null);
@@ -167,6 +197,7 @@ export const WebSocketProvider = ({ children, spaceId }: {
             userId: payload.userId,
             username: payload.username ?? existing?.username,
             avatar: existing?.avatar,
+            seat: null, // moving stands a player up
             x: payload.x,
             y: payload.y,
           });
@@ -216,7 +247,16 @@ export const WebSocketProvider = ({ children, spaceId }: {
   const moveUser = useCallback((x: number, y: number) => {
     if (socket && connected) {
       socket.move(x, y);
+      setSelfSeat(null); // the server stands you up when you move
     }
+  }, [socket, connected]);
+
+  const sit = useCallback((seat: Seat | null) => {
+    if (socket && connected) socket.sendMessage({ type: 'sit', payload: { seat } });
+  }, [socket, connected]);
+
+  const announceBoardUpdate = useCallback((boardId: string) => {
+    if (socket && connected) socket.sendMessage({ type: 'board-updated', payload: { boardId } });
   }, [socket, connected]);
 
   const sendChat = useCallback((text: string) => {
@@ -264,7 +304,11 @@ export const WebSocketProvider = ({ children, spaceId }: {
     announceAvatarChange,
     sendRtc,
     subscribeRtc,
-  }), [sendRtc, subscribeRtc, connected, users, selfId, serverPosition, sendMessage, moveUser, chat, chatError, sendChat, lastEmote, sendEmote,
+    selfSeat,
+    sit,
+    boardUpdate,
+    announceBoardUpdate,
+  }), [sendRtc, subscribeRtc, selfSeat, sit, boardUpdate, announceBoardUpdate, connected, users, selfId, serverPosition, sendMessage, moveUser, chat, chatError, sendChat, lastEmote, sendEmote,
     selfAvatar, announceAvatarChange]);
 
   return <WebSocketContext.Provider value={value}>

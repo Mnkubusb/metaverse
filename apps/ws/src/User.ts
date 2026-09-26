@@ -27,6 +27,8 @@ export class User {
     public userId?: string;
     public username?: string;
     public avatar: string | null = null;
+    // tile of the bench (or other seat) the player is sitting on
+    public seat: { x: number; y: number } | null = null;
     public x: number;
     public y: number;
     private spaceId?: string;
@@ -37,6 +39,7 @@ export class User {
     private avatarLimiter = new RateLimiter(3, 2000);
     // WebRTC setup sends a burst of ICE candidates per peer, so this allows a large burst.
     private rtcLimiter = new RateLimiter(80, 50);
+    private interactLimiter = new RateLimiter(10, 500);
     private ws: WebSocket;
     private heartbeatInterval?: ReturnType<typeof setInterval>;
     private heartbeatTimeout?: ReturnType<typeof setTimeout>;
@@ -141,7 +144,7 @@ export class User {
                             chat,
                             users: rooms.rooms.get(spaceId)
                                 ?.filter((u) => u.id !== this.id)
-                                .map((u) => ({ userId: u.userId, username: u.username, avatar: u.avatar, x: u.x, y: u.y })) ?? []
+                                .map((u) => ({ userId: u.userId, username: u.username, avatar: u.avatar, x: u.x, y: u.y, seat: u.seat })) ?? []
                         }
                     });
                     rooms.broadcast({
@@ -170,6 +173,31 @@ export class User {
                         console.error("Failed to save chat message", err);
                         this.send({ type: "chat-rejected", payload: { reason: "error" } });
                     }
+                    break;
+                }
+                case "sit": {
+                    // Sit on an adjacent solid tile (a bench); { seat: null } stands up.
+                    if (!this.spaceId || !this.grid || !this.interactLimiter.take()) return;
+                    const seat = parsedData.payload?.seat;
+                    let next: { x: number; y: number } | null = null;
+                    if (seat) {
+                        const x = Number(seat.x), y = Number(seat.y);
+                        const adjacent = Math.max(Math.abs(x - this.x), Math.abs(y - this.y)) <= 1;
+                        if (!Number.isInteger(x) || !Number.isInteger(y) || !adjacent || this.grid.isWalkable(x, y)) return;
+                        next = { x, y };
+                    }
+                    this.seat = next;
+                    const message = { type: "pose", payload: { userId: this.userId, seat: this.seat } };
+                    this.send(message);
+                    RoomManager.getInstance().broadcast(message, this, this.spaceId);
+                    break;
+                }
+                case "board-updated": {
+                    // A notice board changed over HTTP; tell everyone else in the room to refresh it
+                    if (!this.spaceId || !this.interactLimiter.take()) return;
+                    const boardId = parsedData.payload?.boardId;
+                    if (typeof boardId !== "string" || boardId.length > 64) return;
+                    RoomManager.getInstance().broadcast({ type: "board-updated", payload: { boardId } }, this, this.spaceId);
                     break;
                 }
                 case "rtc": {
@@ -217,6 +245,7 @@ export class User {
                         this.lastMoveAt = now;
                         this.x = x;
                         this.y = y;
+                        this.seat = null; // walking away stands you up (clients clear it on "move")
                         this.send({
                             type: "movement-accepted",
                             payload: { x: this.x, y: this.y, userId: this.userId }

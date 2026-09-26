@@ -71,6 +71,13 @@ export const spaceAPI = {
     deleteElement: (id: string) => api.delete('/space/element', { data: { id } }),
 };
 
+export const noticeAPI = {
+    list: (spaceId: string, boardId: string) => api.get(`/space/${spaceId}/boards/${boardId}/notices`),
+    post: (spaceId: string, boardId: string, body: string, color: string) =>
+        api.post(`/space/${spaceId}/boards/${boardId}/notices`, { body, color }),
+    remove: (spaceId: string, noticeId: string) => api.delete(`/space/${spaceId}/notices/${noticeId}`),
+};
+
 // Link someone can open to enter the space; private spaces need the owner's invite code in it.
 export function inviteLink(spaceId: string, inviteCode?: string | null) {
     const url = new URL(`/space/${spaceId}`, window.location.origin);

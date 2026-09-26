@@ -2,9 +2,11 @@ import { Router } from "express";
 import crypto from "crypto";
 import { AddElementSchema, CreateSpaceSchema, DeleteElementSchema, JoinSpaceSchema, UpdateSpaceSchema } from "../../types";
 import { getAccess } from "../../access";
+import { noticeRouter } from "./notices";
 import client from "@repo/db/client";
 import { userMiddleware } from "../../middleware/user";
 export const spaceRouter = Router();
+spaceRouter.use("/:spaceId", noticeRouter);
 
 
 spaceRouter.post("/" ,userMiddleware, async (req, res) => {

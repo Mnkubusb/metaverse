@@ -457,6 +457,25 @@ def signboard(lines, w=3, h=2):
     return im
 
 
+def notice_board():
+    im, d = new(2, 2)
+    W, H = 2 * T, 2 * T
+    d.ellipse((10, H - 7, W - 10, H - 1), fill=(0, 0, 0, 60))
+    for x in (12, W - 15):
+        d.rectangle((x, 40, x + 3, H - 3), fill=(92, 60, 40), outline=OUTLINE)
+    d.rectangle((2, 4, W - 3, 44), fill=(120, 78, 48), outline=OUTLINE)
+    d.rectangle((6, 8, W - 7, 40), fill=(206, 160, 104))
+    speckle(d, (6, 8, W - 7, 40), (206, 160, 104), 0.15, 14)
+    notes = [((10, 11), (253, 230, 120)), ((25, 13), (150, 210, 250)), ((41, 10), (250, 170, 190)),
+             ((14, 25), (180, 235, 160)), ((34, 26), (255, 255, 255))]
+    for (x, y), c in notes:
+        d.rectangle((x, y, x + 11, y + 11), fill=c, outline=(150, 130, 100))
+        d.line((x + 2, y + 4, x + 9, y + 4), fill=(120, 120, 130))
+        d.line((x + 2, y + 7, x + 7, y + 7), fill=(120, 120, 130))
+        d.point((x + 5, y + 1), fill=(210, 40, 40))
+    return im
+
+
 def load_png(rel, w, h):
     src = Image.open(PUBLIC / rel).convert("RGBA")
     return src.resize((w * T, h * T), Image.NEAREST)
@@ -548,6 +567,7 @@ def build_catalogue():
     element("gate-pillar", pillar(), "objects", True)
     element("sign-welcome", signboard(["WELCOME TO", "GEC BILASPUR", "KONI, BILASPUR"], 3, 2), "objects", True)
     element("sign-hostels", signboard(["HOSTELS", "BOYS <-  -> GIRLS"], 3, 2), "objects", True)
+    element("notice-board", notice_board(), "objects", True)
 
     element("gate-arch", gate_arch(), "topObjects", False)
 
@@ -676,6 +696,9 @@ def build_layout():
         put("bench", 62, y)
         put("bench", 68, y)
     put("sign-hostels", 36, 13)
+    # notice boards (press E in the game to read and pin notes)
+    for (x, y) in [(33, 27), (24, 22), (18, 9), (64, 48)]:
+        put("notice-board", x, y)
 
     # --- north: hostels + sports ground ----------------------------------------
     put("boys-hostel-1", 3, 2)
