@@ -93,6 +93,8 @@ adminRouter.get("/map/:mapId", adminMiddleware, async (req, res) => {
         name: map.name,
         thumbnail: map.thumbnail,
         dimensions: `${map.width}x${map.height}`,
+        spawnX: map.spawnX,
+        spawnY: map.spawnY,
         elements: map.mapElements.map(e => ({
             id: e.id,
             element: {
@@ -149,6 +151,8 @@ adminRouter.post("/map",adminMiddleware, async (req, res) => {
             width: parseInt(parsedData.data.dimensions.split("x")[0]),
             height: parseInt(parsedData.data.dimensions.split("x")[1]),
             thumbnail: parsedData.data.thumbnail,
+            spawnX: parsedData.data.spawnX,
+            spawnY: parsedData.data.spawnY,
             mapElements: {
                 create: parsedData.data.defaultElement.map(e => ({
                     elementId: e.elementId,
@@ -171,7 +175,7 @@ adminRouter.put("/map/:mapId", adminMiddleware, async (req, res) => {
         return
     }
 
-    const { name, dimensions, thumbnail, defaultElement } = parsedData.data;
+    const { name, dimensions, thumbnail, defaultElement, spawnX, spawnY } = parsedData.data;
     const [width, height] = dimensions.split("x").map(Number);
     const mapId = req.params.mapId;
 
@@ -179,7 +183,7 @@ adminRouter.put("/map/:mapId", adminMiddleware, async (req, res) => {
         // 1. Update map meta (no transaction needed)
         const map = await client.map.update({
             where: { id: mapId },
-            data: { name, width, height, thumbnail }
+            data: { name, width, height, thumbnail, spawnX, spawnY }
         });
 
         // 2. Get existing element IDs for the map

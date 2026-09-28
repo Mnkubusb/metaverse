@@ -15,39 +15,31 @@ userRouter.post("/metadata", userMiddleware, async (req, res) => {
         return
     }
 
-   try {
-     await client.user.update({
-         where: {
-             id: req.userId,
-         },
-         data: {
-             avatarId: parsedData.data.avatarId,
-         }
-     })
- 
-     res.status(200).json({
-         message: "Metadata updated successfully",
-     })
+    const avatar = await client.avatar.findUnique({ where: { id: parsedData.data.avatarId } });
+    if (!avatar) {
+        res.status(400).json({ message: "Avatar not found" });
+        return
+    }
 
-   } catch(error) {
-        console.log(error)
-        res.status(400).json({
-            message: "Internal server error",
-        })
-   }
+    await client.user.update({
+        where: { id: req.userId },
+        data: { avatarId: avatar.id },
+    })
 
+    res.status(200).json({ message: "Metadata updated successfully" })
 });
 
 
-userRouter.get("/metadata/bulk", async (req, res) => {
-    
-    const userIdString = (req.query.ids ?? "[]") as string;
-    let userIds: string[] = [];
+userRouter.get("/metadata/bulk", userMiddleware, async (req, res) => {
+    let userIds: string[];
     try {
-        userIds = JSON.parse(userIdString);
-        if (!Array.isArray(userIds)) userIds = [];
+        const parsed: unknown = JSON.parse(String(req.query.ids ?? "[]"));
+        if (!Array.isArray(parsed) || parsed.length > 100 || !parsed.every((id) => typeof id === "string")) {
+            throw new Error();
+        }
+        userIds = parsed;
     } catch {
-        res.status(400).json({ message: "ids must be a JSON array" });
+        res.status(400).json({ message: "ids must be a JSON array of up to 100 user ids" });
         return;
     }
 

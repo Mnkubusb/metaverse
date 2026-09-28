@@ -1,394 +1,737 @@
 "use client"
-import React, { useState, useEffect, useRef, useCallback, } from 'react';
-import { avatarAPI, spaceAPI, userAPI } from '../../lib/api';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { inviteLink, spaceAPI, Visibility } from '../../lib/api';
+import SpaceSettings from './SpaceSettings';
 import { useWebSocket } from '../../contexts/WebSocketsContexts';
 import { useAuth } from '../../contexts/authContext';
-import { elementLayer, spaceElement } from './SpaceElement';
-import { Sprite } from '@/class/Sprite';
-import { Vector2 } from '@/types/Vector2';
-
+import { spaceElement } from './SpaceElement';
+import { buildWalkability } from '@/lib/collision';
+import ChatPanel from './ChatPanel';
+import AvatarPicker, { AvatarSprite } from '../avatar/AvatarPicker';
+import { EMOTES, emojiFor } from '@/lib/emotes';
+import { findPlaces, nearestPlace } from '@/lib/places';
+import { findInteraction, Interaction } from '@/lib/interactions';
+import NoticeBoard from './NoticeBoard';
+import { Check, Globe, Link2, Lock, MapPin, Map as MapIcon, Settings } from 'lucide-react';
+import { useProximityMedia } from '@/lib/useProximityMedia';
+import MediaDock, { MediaControls } from './MediaDock';
 
 interface Space {
+  name: string;
   dimensions: string;
   elements: spaceElement[];
+  visibility: Visibility;
+  role: 'Owner' | 'Member' | null;
+  inviteCode: string | null;
 }
 
-interface Avatar {
-  imageUrl: string;
+type Direction = "down" | "right" | "left" | "up";
+
+interface Actor {
+  // position in tiles; `x`/`y` are the target tile, `rx`/`ry` the rendered (interpolated) position
+  x: number;
+  y: number;
+  rx: number;
+  ry: number;
+  dir: Direction;
+  movingUntil: number;
+  name: string;
+  avatar: string;
+  self?: boolean;
+  // bench tile the player sits on; drawn there instead of at x/y
+  seat?: { x: number; y: number } | null;
 }
-const SpaceGrid = (
-  { id }: { id: string }
-) => {
-  const spaceId = id;
+
+// Where to draw an actor: on its seat when sitting (raised to the bench's seat), else its walking position.
+const drawPos = (a: Actor) => (a.seat ? { x: a.seat.x, y: a.seat.y - 0.3 } : { x: a.rx, y: a.ry });
+
+const TILE = 32;
+const STEP_MS = 140;            // time to walk one tile
+const BUBBLE_MS = 6000;         // how long a chat message floats above its author
+const EMOTE_MS = 2800;          // how long an emote floats above an avatar
+const MINIMAP_W = 200;          // minimap width in CSS pixels
+const DEFAULT_AVATAR = "/Characters/WalkAnimations.png";
+const GROUND_TILES = ["/Tiles/BasicTiles8.png", "/Tiles/BasicTiles22.png"];
+
+// Avatar sheets: 5x5 grid of 80px frames, 6 frames per direction.
+const FRAME = 80;
+const SHEET_COLS = 5;
+const DIR_BASE: Record<Direction, number> = { down: 0, right: 6, left: 12, up: 18 };
+const AVATAR_SIZE = 64;
+
+const KEY_DIRS: Record<string, Direction> = {
+  w: "up", arrowup: "up",
+  s: "down", arrowdown: "down",
+  a: "left", arrowleft: "left",
+  d: "right", arrowright: "right",
+};
+const DIR_DELTA: Record<Direction, [number, number]> = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+
+const imageCache = new Map<string, HTMLImageElement>();
+function loadImage(src: string): Promise<HTMLImageElement> {
+  const cached = imageCache.get(src);
+  if (cached?.complete) return Promise.resolve(cached);
+  return new Promise((resolve) => {
+    const img = cached ?? new Image();
+    imageCache.set(src, img);
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(img); // draw nothing for broken images instead of blocking the space
+    if (!cached) img.src = src;
+  });
+}
+const ready = (img: HTMLImageElement | undefined): img is HTMLImageElement =>
+  !!img && img.complete && img.naturalWidth > 0;
+
+// Floor and wall layers never change while you're in a space, so they're drawn once
+// onto an offscreen canvas and blitted every frame.
+async function renderBackground(width: number, height: number, elements: spaceElement[]) {
+  const canvas = document.createElement("canvas");
+  canvas.width = width * TILE;
+  canvas.height = height * TILE;
+  const ctx = canvas.getContext("2d")!;
+  ctx.imageSmoothingEnabled = false;
+
+  const [grass, tuft] = await Promise.all(GROUND_TILES.map(loadImage));
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      // deterministic scatter of grass tufts
+      const tile = ((x * 7919 + y * 104729) % 100) < 12 ? tuft : grass;
+      if (ready(tile)) ctx.drawImage(tile, x * TILE, y * TILE, TILE, TILE);
+    }
+  }
+  for (const layer of ["floor", "wall"]) {
+    for (const e of elements.filter((el) => (el.element.layer ?? "floor") === layer)) {
+      const img = await loadImage(e.element.imageUrl);
+      if (ready(img)) ctx.drawImage(img, e.x * TILE, e.y * TILE, e.element.width * TILE, e.element.height * TILE);
+    }
+  }
+  return canvas;
+}
+
+const SpaceGrid = ({ id }: { id: string }) => {
   const { user } = useAuth();
-  const { sendMessage, connected , currentUser , users } = useWebSocket();
+  const { moveUser, serverPosition, users, selfId, chat, lastEmote, sendEmote, selfAvatar: selfAvatarUrl, announceAvatarChange,
+    selfSeat, sit } = useWebSocket();
+  const [interaction, setInteraction] = useState<Interaction | null>(null);
+  const [openBoard, setOpenBoard] = useState<{ id: string; title: string } | null>(null);
+  const interactionRef = useRef<Interaction | null>(null);
+  const selfSeatRef = useRef(selfSeat);
+  selfSeatRef.current = selfSeat;
+  const sitRef = useRef(sit);
+  sitRef.current = sit;
+  const elementsRef = useRef<spaceElement[]>([]);
+  const [place, setPlace] = useState<string | null>(null);
+  const [showMinimap, setShowMinimap] = useState(true);
+  const [copied, setCopied] = useState(false);
+  const minimapRef = useRef<HTMLCanvasElement | null>(null);
+  const emotesRef = useRef<Map<string, { emoji: string; start: number }>>(new Map());
   const [space, setSpace] = useState<Space | null>(null);
-  const [elements, setElements] = useState<spaceElement[] | []>([]);
-  const [loading, setLoading] = useState(true);
+  // editable settings live apart from the map data so saving them doesn't redraw the map
+  const [meta, setMeta] = useState<Pick<Space, 'name' | 'visibility' | 'role' | 'inviteCode'> | null>(null);
   const [error, setError] = useState("");
-  const gridRef = useRef(null);
-  // const [currentUser, setCurrentUser] = useState<any>({});
-  // const [users, setUsers] = useState(new Map());
-  const [userAvatar, setUserAvatar] = useState<Avatar | null>(null);
-  // Cache of userId -> avatarUrl for other players
-  const [otherAvatars, setOtherAvatars] = useState<Map<string, string>>(new Map());
-  const [frame, setFrame] = useState(0);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const animationRef = useRef<number | null>(null)
-  const [direction, setDirection] = useState<"down" | "up" | "left" | "right" | null>(null);
-  const [isMoving, setIsMoving] = useState(false);
+  const [loadingArt, setLoadingArt] = useState(true);
 
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const backgroundRef = useRef<HTMLCanvasElement | null>(null);
+  const selfRef = useRef<Actor | null>(null);
+  const othersRef = useRef<Map<string, Actor>>(new Map());
+  const heldRef = useRef<Direction[]>([]);
+  // taps queued so a key pressed and released within one frame still moves a tile
+  const tapsRef = useRef<Direction[]>([]);
+  const lastStepRef = useRef(0);
+  const bubblesRef = useRef<Map<string, { text: string; until: number }>>(new Map());
+  // history loaded on join shouldn't pop up as bubbles
+  const chatSeenRef = useRef(chat.length);
 
+  const dims = useMemo(() => {
+    if (!space) return null;
+    const [w, h] = space.dimensions.split('x').map(Number);
+    return { w: w!, h: h! };
+  }, [space]);
 
+  const isWalkable = useMemo(
+    () => (space && dims ? buildWalkability(dims.w, dims.h, space.elements) : () => false),
+    [space, dims],
+  );
 
-  useEffect(() => {
-    const fetchSpaceDetails = async () => {
-      try {
-        setLoading(true);
-        const spaceData = await spaceAPI.getSpace(spaceId as string);
-        setSpace(spaceData.data);
-        setElements(spaceData.data.elements || []);
-        setError("");
-      } catch (err) {
-        setError('Failed to load space');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
+  const places = useMemo(() => findPlaces(space?.elements ?? []), [space]);
+
+  // --- proximity voice / video ---------------------------------------------
+  const getSelfPosition = useCallback(
+    () => (selfRef.current ? { x: selfRef.current.x, y: selfRef.current.y } : null), []);
+  const media = useProximityMedia(getSelfPosition);
+  const names = useMemo(
+    () => new Map([...users.values()].map((u) => [u.userId, u.username ?? 'Player'])), [users]);
+
+  const sprites = useMemo(() => {
+    const els = space?.elements ?? [];
+    return {
+      objects: els.filter((e) => e.element.layer === "objects"),
+      top: els.filter((e) => e.element.layer === "topObjects"),
     };
-    fetchSpaceDetails();
-  }, [spaceId]);
+  }, [space]);
 
+  // --- data loading ---------------------------------------------------------
   useEffect(() => {
-    if (!user) return;
-    const fetchUserAvatar = async () => {
-      try {
-        const response = await avatarAPI.getUserAvatar(user.id);
-        setUserAvatar(response.data.avatar);
-      } catch (err) {
-        // avatar fetch failure is non-fatal, fall back to default sprite
-      }
-    }
-    fetchUserAvatar();
-  }, [user]);
-
-  // Fetch avatars for all other users whenever the users map changes
-  useEffect(() => {
-    if (users.size === 0) return;
-    const userIds = Array.from(users.keys()).filter((id): id is string => !!id);
-    if (userIds.length === 0) return;
-    const uncached = userIds.filter(id => !otherAvatars.has(id));
-    if (uncached.length === 0) return;
-    userAPI.getBulkMetadata(uncached).then(res => {
-      const avatarData: { userId: string; avatarId: string }[] = res.data.avatars;
-      setOtherAvatars(prev => {
-        const next = new Map(prev);
-        avatarData.forEach(({ userId, avatarId }) => {
-          if (avatarId) next.set(userId, avatarId);
-        });
-        return next;
-      });
-    }).catch(() => {});
-  }, [users]);
-
-  // useEffect(() => {
-
-  //   if (!messages) return;
-
-  //   const lastMessage = messages[messages.length - 1]
-  //   const { type, payload } = lastMessage;
-
-  //   switch (type) {
-  //     case 'space-joined': {
-  //       setCurrentUser({
-  //         x: payload.spawn.x,
-  //         y: payload.spawn.y,
-  //         userId: payload.userId
-  //       });
-  //       const userMap = new Map();
-  //       payload.users.forEach((user: any) => {
-  //         userMap.set(user.userId, user);
-  //       });
-  //       setUsers(userMap);
-  //       break;
-  //     }
-
-  //     case 'user-joined':
-  //       setUsers(prev => {
-  //         const newUsers = new Map(prev);
-  //         newUsers.set(payload.userId, {
-  //           x: payload.x,
-  //           y: payload.y,
-  //           userId: payload.userId
-  //         });
-  //         return newUsers;
-  //       });
-  //       break;
-
-  //     case 'move':
-  //       setUsers(prev => {
-  //         const newUsers = new Map(prev);
-  //         newUsers.set(payload.userId, {
-  //           x: payload.x,
-  //           y: payload.y,
-  //           userId: payload.userId
-  //         });
-  //         return newUsers;
-  //       });
-  //       break;
-  //     case 'movement-accepted':
-  //       setCurrentUser((prev: any) => ({
-  //         ...prev,
-  //         x: payload.x,
-  //         y: payload.y
-  //       }));
-  //       break;
-  //     case 'movement-rejected':
-  //       setCurrentUser((prev: any) => ({
-  //         ...prev,
-  //         x: payload.x,
-  //         y: payload.y
-  //       }));
-  //       break;
-
-  //     case 'user-left':
-  //       setUsers(prev => {
-  //         const newUsers = new Map(prev);
-  //         newUsers.delete(payload.userId);
-  //         return newUsers;
-  //       });
-  //       break;
-  //   }
-
-  // }, [messages, user]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!space) return;
-      const [maxWidth, maxHeight] = (space.dimensions.split('x').map(Number));
-      let newX = currentUser.x;
-      let newY = currentUser.y;
-      switch (e.key) {
-        case 'w':
-          newY = Math.max(0, currentUser.y - 1);
-          setDirection("up");
-          break;
-        case 's':
-          newY = Math.min((maxHeight as number * 32) - 1, currentUser.y + 1);
-          setDirection("down");
-          break;
-        case 'a':
-          newX = Math.max(0, currentUser.x - 1);
-          setDirection("left");
-          break;
-        case 'd':
-          newX = Math.min((maxWidth as number * 32) - 1, currentUser.x + 1);
-          setDirection("right");
-          break;
-        default:
-          return;
-      }
-
-      if (newX !== currentUser.x || newY !== currentUser.y) {
-        setIsMoving(true);
-        sendMessage('move', { x: newX, y: newY, userId: user?.id });
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [space, currentUser, sendMessage, user, frame]);
-
-  useEffect(() => {
-    if (!isMoving || direction === null) return;
-
-    const baseFrameMap = {
-      down: 0,
-      right: 6,
-      left: 12,
-      up: 18
-    };
-    setFrame(prev => {
-      const base = baseFrameMap[direction];
-      const next = prev + 1;
-      return next < base || next >= base + 6 ? base : next;
-    });
-    const interval = setInterval(() => {
-      setFrame(prev => {
-        const base = baseFrameMap[direction];
-        const next = prev + 1;
-        return next < base || next >= base + 6 ? base : next;
-      });
-    }, 160);
-
-    return () => clearInterval(interval);
-  }, [direction, isMoving]);
-
-
-const drawGame = useCallback(() => {
-    const canvas = canvasRef.current
-    if (!canvas || !space) return;
-
-    canvas.width = canvas.parentElement?.clientWidth || window.innerWidth;
-    canvas.height = canvas.parentElement?.clientHeight || window.innerHeight;
-
-    const [width, height] = space.dimensions.split('x').map(Number);
-
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const canvasWidth = canvasRef.current?.width || window.innerWidth;
-    const canvasHeight = canvasRef.current?.height || window.innerHeight;
-    const tileSize = 32;
-
-    const playerPixelX = currentUser.x * 8
-    const playerPixelY = currentUser.y * 8
-
-    const camX = playerPixelX - canvasWidth / 2;
-    const camY = playerPixelY - canvasHeight / 2;
-
-    const worldPixelWidth = width as number * tileSize;
-    const worldPixelHeight = height as number * tileSize;
-    const localCamX = Math.max(0, Math.min(camX, worldPixelWidth - canvasWidth));
-    const localCamY = Math.max(0, Math.min(camY, worldPixelHeight - canvasHeight));
-
-    ctx.save();
-    ctx.translate(-localCamX, -localCamY);
-
-
-    ctx.strokeStyle = '#e0e0e0';
-    ctx.beginPath();
-    for (let x = 0; x <= Number(width); x++) {
-      ctx.moveTo(x * 32, 0);
-      ctx.lineTo(x * 32, height as number * 32);
-    }
-    for (let y = 0; y <= Number(height); y++) {
-      ctx.moveTo(0, y * 32);
-      ctx.lineTo(width as number * 32, y * 32);
-    }
-    ctx.stroke();
-
-    const player = new Sprite({
-      resource: userAvatar?.imageUrl as string || "/Characters/WalkAnimations.png",
-      frameSize: new Vector2(80, 80),
-      hFrames: 5,
-      vFrames: 5,
-      frame,
-      scale: 1,
-    })
-
-    // Elements draw by layer, not by `static`: floor and wall go under the
-    // avatar, topObjects (ceiling lamps and the like) go over it. Anything
-    // without a layer falls back to `objects` so older maps still render.
-    const drawLayer = (layer: elementLayer) => {
-      elements
-        .filter((element) => (element.element.layer ?? "objects") === layer)
-        .forEach((element) => {
-          const sprite = new Sprite({
-            resource: element.element.imageUrl,
-            frameSize: new Vector2(element.element.width * 32, element.element.height * 32),
-          })
-          sprite.drawImage(ctx, element.x * 32, element.y * 32);
-        })
-    }
-
-    drawLayer("floor");
-    drawLayer("wall");
-    drawLayer("objects");
-
-    const targetX = currentUser.x * 8
-    const targetY = currentUser.y * 8
-
-    ctx.fillStyle = '#000';
-    ctx.fillText(user?.username as string, targetX + 15, targetY + 8);
-    player.drawImage(ctx, targetX, targetY);
-
-    Array.from(users.values()).map((otherUser) => {
-      const avatarUrl = otherAvatars.get(otherUser.userId) || "/Characters/WalkAnimations.png";
-      const player2 = new Sprite({
-        resource: avatarUrl,
-        frameSize: new Vector2(64, 64),
-        hFrames: 4,
-        vFrames: 4,
-        frame: 0,
-        scale: 1,
+    spaceAPI.getSpace(id)
+      .then((res) => {
+        setSpace(res.data);
+        setMeta({ name: res.data.name, visibility: res.data.visibility, role: res.data.role, inviteCode: res.data.inviteCode });
       })
-      ctx.fillText(otherUser.userId ?? "", otherUser.x * 8 + 15, otherUser.y * 8 + 8);
-      player2.drawImage(ctx, otherUser.x * 8, otherUser.y * 8);
-    })
-
-    drawLayer("topObjects");
-
-    ctx.restore();
-
-    animationRef.current = requestAnimationFrame(drawGame)
-  }, [space, currentUser, frame, elements, user, users, userAvatar, otherAvatars]);
+      .catch((err) => {
+        console.error(err);
+        setError('Failed to load space');
+      });
+  }, [id]);
 
   useEffect(() => {
-    if (!space) return;
-    animationRef.current = requestAnimationFrame(drawGame);
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
+    if (!space || !dims) return;
+    let cancelled = false;
+    setLoadingArt(true);
+    const urls = new Set(space.elements.map((e) => e.element.imageUrl));
+    Promise.all([...urls].map(loadImage))
+      .then(() => renderBackground(dims.w, dims.h, space.elements))
+      .then((bg) => {
+        if (cancelled) return;
+        backgroundRef.current = bg;
+        setLoadingArt(false);
+      });
+    return () => { cancelled = true; };
+  }, [space, dims]);
+
+  const selfAvatar = selfAvatarUrl ?? DEFAULT_AVATAR;
+
+  // --- actors ---------------------------------------------------------------
+  useEffect(() => {
+    // join or rejected move: snap the local player to the server's position
+    const self = selfRef.current;
+    if (!self) {
+      selfRef.current = {
+        x: serverPosition.x, y: serverPosition.y, rx: serverPosition.x, ry: serverPosition.y,
+        dir: "down", movingUntil: 0, name: user?.username ?? "You", avatar: selfAvatar, self: true,
+      };
+    } else {
+      self.x = self.rx = serverPosition.x;
+      self.y = self.ry = serverPosition.y;
+    }
+  }, [serverPosition, user, selfAvatar]);
+
+  useEffect(() => {
+    if (selfRef.current) {
+      selfRef.current.avatar = selfAvatar;
+      selfRef.current.name = user?.username ?? "You";
+    }
+  }, [selfAvatar, user]);
+
+  useEffect(() => {
+    const actors = othersRef.current;
+    const now = performance.now();
+    for (const [uid, u] of users) {
+      if (uid === selfId) continue;
+      const a = actors.get(uid);
+      const avatar = u.avatar || DEFAULT_AVATAR;
+      const name = u.username ?? "Player";
+      if (!a) {
+        actors.set(uid, { x: u.x, y: u.y, rx: u.x, ry: u.y, dir: "down", movingUntil: 0, name, avatar, seat: u.seat ?? null });
+        continue;
       }
-    };
-  }, [space, drawGame])
+      if (a.x !== u.x || a.y !== u.y) {
+        a.dir = u.x > a.x ? "right" : u.x < a.x ? "left" : u.y > a.y ? "down" : "up";
+        a.movingUntil = now + STEP_MS * 1.5;
+        // far jumps (e.g. a resync) teleport instead of sliding across the map
+        if (Math.abs(u.x - a.rx) + Math.abs(u.y - a.ry) > 3) { a.rx = u.x; a.ry = u.y; }
+        a.x = u.x;
+        a.y = u.y;
+      }
+      a.avatar = avatar;
+      a.seat = u.seat ?? null;
+      a.name = name;
+    }
+    for (const uid of [...actors.keys()]) if (!users.has(uid)) actors.delete(uid);
+  }, [users, selfId]);
 
-
+  // --- chat bubbles -----------------------------------------------------------
   useEffect(() => {
-    const handleKeyUp = () => {
-      setIsMoving(false);
-    };
+    const fresh = chat.slice(chatSeenRef.current);
+    chatSeenRef.current = chat.length;
+    const now = performance.now();
+    for (const m of fresh) {
+      if (m.system || !m.userId) continue;
+      bubblesRef.current.set(m.userId, { text: m.text, until: now + BUBBLE_MS });
+    }
+  }, [chat]);
 
-    window.addEventListener("keyup", handleKeyUp);
-    return () => window.removeEventListener("keyup", handleKeyUp);
+  useEffect(() => { elementsRef.current = space?.elements ?? []; }, [space]);
+
+  // the local player's seat comes from the server ("pose"); moving clears it
+  useEffect(() => {
+    if (selfRef.current) selfRef.current.seat = selfSeat;
+  }, [selfSeat]);
+
+  // Press E (or click the prompt) to use whatever is next to you, or to stand up
+  const interact = useCallback(() => {
+    if (selfSeatRef.current) {
+      sitRef.current(null);
+      return;
+    }
+    const hit = interactionRef.current;
+    if (hit?.kind === 'board') setOpenBoard({ id: hit.boardId, title: hit.label === 'notice board' ? 'Notice board' : 'Signboard notes' });
+    if (hit?.kind === 'seat') sitRef.current(hit.seat);
   }, []);
 
+  // --- emotes ---------------------------------------------------------------
+  // the keyboard handler is registered once, so it calls the latest sendEmote through a ref
+  const sendEmoteRef = useRef(sendEmote);
+  useEffect(() => { sendEmoteRef.current = sendEmote; }, [sendEmote]);
 
-  if (loading) return <div className="text-center p-8">Loading space...</div>;
+  useEffect(() => {
+    const emoji = lastEmote && emojiFor(lastEmote.emote);
+    if (emoji) emotesRef.current.set(lastEmote.userId, { emoji, start: performance.now() });
+  }, [lastEmote]);
+
+  // Private spaces can only be shared by the owner (the link carries the invite code)
+  const shareLink = meta && (meta.visibility !== 'Private' || meta.inviteCode)
+    ? inviteLink(id, meta.visibility === 'Private' ? meta.inviteCode : null)
+    : null;
+
+  const copyInvite = async () => {
+    if (!shareLink) return;
+    try {
+      await navigator.clipboard.writeText(shareLink!);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.prompt('Copy this link to invite people:', shareLink!);
+    }
+  };
+
+  // --- input ----------------------------------------------------------------
+  useEffect(() => {
+    const isTyping = (e: KeyboardEvent) =>
+      e.target instanceof HTMLElement && (e.target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName));
+    const down = (e: KeyboardEvent) => {
+      if (isTyping(e) || e.ctrlKey || e.metaKey || e.altKey) return;
+      const emote = EMOTES[Number(e.key) - 1];
+      if (emote && !e.repeat) {
+        sendEmoteRef.current(emote.id);
+        return;
+      }
+      if (e.key.toLowerCase() === 'e' && !e.repeat) {
+        // swallow the key so the "e" doesn't land in the notice board's text box as it opens
+        e.preventDefault();
+        interact();
+        return;
+      }
+      if (e.key.toLowerCase() === 'm' && !e.repeat) {
+        setShowMinimap((v) => !v);
+        return;
+      }
+      const dir = KEY_DIRS[e.key.toLowerCase()];
+      if (!dir) return;
+      e.preventDefault();
+      heldRef.current = [dir, ...heldRef.current.filter((d) => d !== dir)];
+      if (!e.repeat && tapsRef.current.length < 3) tapsRef.current.push(dir);
+    };
+    const up = (e: KeyboardEvent) => {
+      const dir = KEY_DIRS[e.key.toLowerCase()];
+      if (dir) heldRef.current = heldRef.current.filter((d) => d !== dir);
+    };
+    const clear = () => { heldRef.current = []; tapsRef.current = []; };
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', clear);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', clear);
+    };
+  }, [interact]);
+
+  // --- game loop ------------------------------------------------------------
+  useEffect(() => {
+    if (!dims || loadingArt) return;
+    let raf = 0;
+    let last = performance.now();
+
+    const drawActor = (ctx: CanvasRenderingContext2D, a: Actor, now: number) => {
+      const img = imageCache.get(a.avatar) ?? imageCache.get(DEFAULT_AVATAR);
+      if (!imageCache.has(a.avatar)) loadImage(a.avatar);
+      const { x: ax, y: ay } = drawPos(a);
+      const px = ax * TILE, py = ay * TILE;
+      if (!a.seat) {
+        ctx.fillStyle = "rgba(0,0,0,0.22)";
+        ctx.beginPath();
+        ctx.ellipse(px + TILE / 2, py + TILE - 3, 10, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      if (!ready(img)) return;
+      if (a.seat) {
+        // seated: facing the camera, lower legs hidden behind the bench (crop the frame at the knees)
+        const scale = AVATAR_SIZE / FRAME, cropH = 52;
+        ctx.drawImage(img, 0, 0, FRAME, cropH,
+          px + TILE / 2 - AVATAR_SIZE / 2, py + TILE - 2 - 64 * scale, AVATAR_SIZE, cropH * scale);
+        return;
+      }
+      const moving = now < a.movingUntil;
+      const frame = DIR_BASE[a.dir] + (moving ? Math.floor(now / 100) % 6 : 0);
+      const sx = (frame % SHEET_COLS) * FRAME, sy = Math.floor(frame / SHEET_COLS) * FRAME;
+      // the character's feet sit ~64px down an 80px frame; anchor them to the tile's bottom
+      const scale = AVATAR_SIZE / FRAME;
+      ctx.drawImage(img, sx, sy, FRAME, FRAME,
+        px + TILE / 2 - AVATAR_SIZE / 2, py + TILE - 2 - 64 * scale, AVATAR_SIZE, AVATAR_SIZE);
+    };
+
+    const drawName = (ctx: CanvasRenderingContext2D, a: Actor) => {
+      const { x: ax, y: ay } = drawPos(a);
+      const px = ax * TILE + TILE / 2, py = ay * TILE - 22;
+      ctx.font = "bold 11px ui-sans-serif, system-ui, sans-serif";
+      const w = ctx.measureText(a.name).width + 10;
+      ctx.fillStyle = a.self ? "rgba(30,98,72,0.9)" : "rgba(20,20,28,0.75)";
+      ctx.beginPath();
+      ctx.roundRect(px - w / 2, py - 9, w, 16, 8);
+      ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(a.name, px, py);
+    };
+
+    const wrap = (ctx: CanvasRenderingContext2D, text: string, maxWidth: number, maxLines: number) => {
+      const words = text.split(' ');
+      const lines: string[] = [];
+      let line = '';
+      for (const w of words) {
+        const next = line ? `${line} ${w}` : w;
+        if (ctx.measureText(next).width > maxWidth && line) {
+          lines.push(line);
+          line = w;
+        } else {
+          line = next;
+        }
+      }
+      if (line) lines.push(line);
+      if (lines.length > maxLines) {
+        lines.length = maxLines;
+        lines[maxLines - 1] = lines[maxLines - 1]!.replace(/.{0,2}$/, '…');
+      }
+      // hard-cut single words that are still too wide
+      return lines.map((l) => {
+        while (ctx.measureText(l).width > maxWidth && l.length > 1) l = l.slice(0, -2) + '…';
+        return l;
+      });
+    };
+
+    // Lays out every live bubble, nudging later ones upward so nearby players' bubbles don't overlap.
+    const drawBubbles = (ctx: CanvasRenderingContext2D, speakers: [string, Actor][], now: number) => {
+      ctx.font = "12px ui-sans-serif, system-ui, sans-serif";
+      const placed: { x: number; y: number; w: number; h: number }[] = [];
+      const items = speakers
+        .map(([id, a]) => ({ id, a, bubble: bubblesRef.current.get(id) }))
+        .filter((it): it is { id: string; a: Actor; bubble: { text: string; until: number } } => {
+          if (!it.bubble) return false;
+          if (now > it.bubble.until) { bubblesRef.current.delete(it.id); return false; }
+          return true;
+        })
+        .sort((p, q) => q.a.ry - p.a.ry); // nearest to the camera keeps its natural spot
+      for (const { a, bubble } of items) {
+        const lines = wrap(ctx, bubble.text, 180, 3);
+        const w = Math.max(...lines.map((l) => ctx.measureText(l).width)) + 16;
+        const h = lines.length * 15 + 10;
+        const cx = drawPos(a).x * TILE + TILE / 2;
+        const tip = drawPos(a).y * TILE - 36;
+        const rect = { x: cx - w / 2, y: tip - h, w, h };
+        for (let moved = true; moved;) {
+          moved = false;
+          for (const r of placed) {
+            if (rect.x < r.x + r.w && r.x < rect.x + rect.w && rect.y < r.y + r.h && r.y < rect.y + rect.h) {
+              rect.y = r.y - rect.h - 4;
+              moved = true;
+            }
+          }
+        }
+        placed.push(rect);
+        // fade out over the last half second
+        ctx.globalAlpha = Math.min(1, (bubble.until - now) / 500);
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = "rgba(20,20,28,0.25)";
+        ctx.beginPath();
+        ctx.roundRect(rect.x, rect.y, w, h, 8);
+        if (rect.y + h === tip) {
+          ctx.moveTo(cx - 5, tip);
+          ctx.lineTo(cx, tip + 6);
+          ctx.lineTo(cx + 5, tip);
+        }
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = "#1a1d24";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        lines.forEach((l, i) => ctx.fillText(l, cx, rect.y + 5 + i * 15));
+        ctx.globalAlpha = 1;
+      }
+    };
+
+    const drawEmotes = (ctx: CanvasRenderingContext2D, speakers: [string, Actor][], now: number) => {
+      for (const [id, a] of speakers) {
+        const emote = emotesRef.current.get(id);
+        if (!emote) continue;
+        const t = (now - emote.start) / EMOTE_MS;
+        if (t >= 1) { emotesRef.current.delete(id); continue; }
+        // pop in, drift upward, fade out over the last 30%
+        const pop = Math.min(1, (now - emote.start) / 150);
+        ctx.globalAlpha = t > 0.7 ? (1 - t) / 0.3 : 1;
+        ctx.font = `${Math.round(18 + 10 * pop)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        // just past the right end of the name tag
+        ctx.save();
+        ctx.font = "bold 11px ui-sans-serif, system-ui, sans-serif";
+        const tagHalf = ctx.measureText(a.name).width / 2 + 5;
+        ctx.restore();
+        ctx.fillText(emote.emoji, drawPos(a).x * TILE + TILE / 2 + tagHalf + 14, drawPos(a).y * TILE - 22 - t * 22);
+        ctx.globalAlpha = 1;
+      }
+    };
+
+    let lastPlaceCheck = 0;
+    let lastMinimap = 0;
+    const drawMinimap = (self: Actor) => {
+      const mini = minimapRef.current;
+      const bg = backgroundRef.current;
+      if (!mini || !bg) return;
+      const dpr = window.devicePixelRatio || 1;
+      const w = MINIMAP_W, h = Math.round(MINIMAP_W * dims.h / dims.w);
+      if (mini.width !== w * dpr) { mini.width = w * dpr; mini.height = h * dpr; }
+      const m = mini.getContext("2d")!;
+      m.setTransform(dpr, 0, 0, dpr, 0, 0);
+      m.imageSmoothingEnabled = true;
+      m.drawImage(bg, 0, 0, w, h);
+      const sx = w / dims.w, sy = h / dims.h;
+      for (const a of othersRef.current.values()) {
+        m.fillStyle = "#f8fafc";
+        m.beginPath(); m.arc((a.rx + 0.5) * sx, (a.ry + 0.5) * sy, 3, 0, Math.PI * 2); m.fill();
+        m.strokeStyle = "#0f172a"; m.lineWidth = 1; m.stroke();
+      }
+      m.fillStyle = "#22c55e";
+      m.beginPath(); m.arc((self.rx + 0.5) * sx, (self.ry + 0.5) * sy, 4, 0, Math.PI * 2); m.fill();
+      m.strokeStyle = "#ffffff"; m.lineWidth = 1.5; m.stroke();
+    };
+
+    const tick = (now: number) => {
+      const dt = Math.min(now - last, 100);
+      last = now;
+      const canvas = canvasRef.current;
+      const self = selfRef.current;
+      if (!canvas || !self) { raf = requestAnimationFrame(tick); return; }
+
+      // step the local player one tile at a time while a direction key is held (or was just tapped)
+      const arrived = Math.abs(self.rx - self.x) < 0.05 && Math.abs(self.ry - self.y) < 0.05;
+      const canStep = arrived && now - lastStepRef.current >= STEP_MS;
+      const dir = canStep ? (tapsRef.current.shift() ?? heldRef.current[0]) : undefined;
+      if (dir) {
+        self.dir = dir;
+        const [dx, dy] = DIR_DELTA[dir];
+        const nx = self.x + dx, ny = self.y + dy;
+        if (isWalkable(nx, ny)) {
+          self.x = nx;
+          self.y = ny;
+          self.movingUntil = now + STEP_MS * 1.2;
+          lastStepRef.current = now;
+          moveUser(nx, ny);
+        }
+      }
+
+      // ease rendered positions toward their tiles
+      const speed = dt / STEP_MS;
+      for (const a of [self, ...othersRef.current.values()]) {
+        const dx = a.x - a.rx, dy = a.y - a.ry;
+        a.rx += Math.sign(dx) * Math.min(Math.abs(dx), speed);
+        a.ry += Math.sign(dy) * Math.min(Math.abs(dy), speed);
+      }
+
+      // resize to the container
+      const parent = canvas.parentElement;
+      const cw = parent?.clientWidth ?? window.innerWidth, ch = parent?.clientHeight ?? window.innerHeight;
+      if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
+      const ctx = canvas.getContext("2d")!;
+      ctx.imageSmoothingEnabled = false;
+
+      // camera follows the player, clamped to the world (centred if the world is smaller)
+      const worldW = dims.w * TILE, worldH = dims.h * TILE;
+      const camX = worldW <= cw ? (worldW - cw) / 2 : Math.max(0, Math.min(self.rx * TILE + TILE / 2 - cw / 2, worldW - cw));
+      const camY = worldH <= ch ? (worldH - ch) / 2 : Math.max(0, Math.min(self.ry * TILE + TILE / 2 - ch / 2, worldH - ch));
+
+      ctx.fillStyle = "#2f3b2a";
+      ctx.fillRect(0, 0, cw, ch);
+      ctx.save();
+      ctx.translate(-Math.round(camX), -Math.round(camY));
+      if (backgroundRef.current) ctx.drawImage(backgroundRef.current, 0, 0);
+
+      // objects and players, sorted by their bottom edge so nearer things overlap farther ones
+      const actors = [self, ...othersRef.current.values()];
+      const drawables: { bottom: number; draw: () => void }[] = [
+        ...sprites.objects.map((e) => ({
+          bottom: e.y + e.element.height,
+          draw: () => {
+            const img = imageCache.get(e.element.imageUrl);
+            if (ready(img)) ctx.drawImage(img, e.x * TILE, e.y * TILE, e.element.width * TILE, e.element.height * TILE);
+          },
+        })),
+        // seated players sort just in front of their bench
+        ...actors.map((a) => ({ bottom: (a.seat ? a.seat.y : a.ry) + 1 + 0.02, draw: () => drawActor(ctx, a, now) })),
+      ];
+      drawables.sort((a, b) => a.bottom - b.bottom);
+      drawables.forEach((d) => d.draw());
+
+      for (const e of sprites.top) {
+        const img = imageCache.get(e.element.imageUrl);
+        if (ready(img)) ctx.drawImage(img, e.x * TILE, e.y * TILE, e.element.width * TILE, e.element.height * TILE);
+      }
+      actors.forEach((a) => drawName(ctx, a));
+      const speakers: [string, Actor][] = [[selfId, self], ...othersRef.current.entries()];
+      drawBubbles(ctx, speakers, now);
+      drawEmotes(ctx, speakers, now);
+      ctx.restore();
+
+      // HUD updates that don't need 60fps
+      if (now - lastPlaceCheck > 250) {
+        lastPlaceCheck = now;
+        setPlace(nearestPlace(places, self.x, self.y));
+        const hit = self.seat ? null : findInteraction(elementsRef.current, self.x, self.y);
+        if (JSON.stringify(hit) !== JSON.stringify(interactionRef.current)) {
+          interactionRef.current = hit;
+          setInteraction(hit);
+        }
+      }
+      if (now - lastMinimap > 100) {
+        lastMinimap = now;
+        drawMinimap(self);
+      }
+
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [dims, loadingArt, isWalkable, sprites, moveUser, selfId, places]);
+
   if (error) return <div className="text-center p-8 text-red-500">{error}</div>;
-  if (!space) return <div className="text-center p-8">Space not found</div>;
-
-  if (!connected) {
-    return (
-      <div className="text-center text-gray-500">
-        Connecting to space...
-      </div>
-    );
-  }
-
-
-  const width = parseInt(space?.dimensions.split('x')[0] as string)
-  const height = parseInt(space?.dimensions.split('x')[1] as string)
-
+  if (!space) return <div className="text-center p-8">Loading space...</div>;
 
   return (
-    <div className="mx-auto w-full h-full">
-      <div className='absolute z-20 p-4'>
-        <h2 className="text-2xl font-bold mb-4">The Space</h2>
-        <div className="mb-4">
-          <p>Dimensions: {space.dimensions}</p>
-          <p>Users Online: {users.size + (currentUser ? 1 : 0)}</p>
+    <div className="relative w-full h-screen overflow-hidden bg-[#2f3b2a]">
+      <div className="absolute left-4 top-4 z-20 flex max-w-[calc(100%-2rem)] flex-wrap items-start gap-2">
+        <div className="rounded-lg bg-black/60 px-4 py-3 text-white shadow-lg">
+          <h2 className="flex items-center gap-1.5 text-lg font-bold">
+            {meta?.visibility === 'Private' && <Lock className="size-4 opacity-70" aria-label="Private space" />}
+            {meta?.visibility === 'Public' && <Globe className="size-4 opacity-70" aria-label="Public space" />}
+            {meta?.name ?? space.name}
+          </h2>
+          <p className="text-sm opacity-80">{users.size + 1} online · WASD to move · Enter to chat · 1–6 emotes · E interact · M map</p>
         </div>
-      </div>
-      <div
-        ref={gridRef}
-        className="relative bg-gray-100 overflow-hidden w-full h-full"
-        style={{
-          width: '100%',
-          height: '100vh',
-          position: 'relative'
-        }}
-      >
-        <canvas
-          className='absolute top-0 left-0'
-          ref={canvasRef}
-          width={width * 32}
-          height={height * 32}
+        <button
+          type="button"
+          onClick={copyInvite}
+          disabled={!shareLink}
+          title={shareLink ? 'Copy a link to this space' : 'Only the owner can invite people to a private space'}
+          className="flex h-10 items-center gap-2 rounded-lg bg-black/60 px-3 text-sm font-semibold text-white shadow-lg transition hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:cursor-not-allowed disabled:opacity-50"
         >
-        </canvas>
+          {copied ? <Check className="size-4 text-emerald-300" /> : <Link2 className="size-4" />}
+          {copied ? 'Link copied' : 'Invite'}
+        </button>
+        {meta?.role === 'Owner' && (
+          <SpaceSettings
+            spaceId={id}
+            value={{ name: meta.name, visibility: meta.visibility, inviteCode: meta.inviteCode }}
+            onChange={(v) => setMeta((prev) => prev && { ...prev, ...v })}
+            trigger={
+              <button type="button" aria-label="Space settings"
+                className="flex h-10 items-center gap-2 rounded-lg bg-black/60 px-3 text-sm font-semibold text-white shadow-lg transition hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60">
+                <Settings className="size-4" /> Settings
+              </button>
+            }
+          />
+        )}
+        <AvatarPicker
+          currentUrl={selfAvatarUrl}
+          onSaved={() => announceAvatarChange()}
+          trigger={
+            <button
+              type="button"
+              className="flex h-10 items-center gap-1.5 overflow-hidden rounded-lg bg-black/60 pl-1 pr-3 text-sm font-semibold text-white shadow-lg transition hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+            >
+              {/* head-and-shoulders crop of the current avatar */}
+              <span className="relative size-8 overflow-hidden rounded-md bg-emerald-100/90">
+                <AvatarSprite url={selfAvatar} className="absolute -left-6 -top-3" />
+              </span>
+              Avatar
+            </button>
+          }
+        />
       </div>
+      {place && (
+        <div aria-live="polite" className="pointer-events-none absolute right-4 top-4 z-20 flex items-center gap-1.5 rounded-full bg-black/60 px-4 py-1.5 text-sm font-medium text-white shadow-lg">
+          <MapPin className="size-4 text-emerald-300" /> Near {place}
+        </div>
+      )}
+      <div role="toolbar" aria-label="Voice, video and emotes" className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 gap-1 rounded-xl bg-black/75 p-1.5 shadow-lg backdrop-blur-sm">
+        <MediaControls micOn={media.micOn} camOn={media.camOn} onMic={media.toggleMic} onCam={media.toggleCam} />
+        {EMOTES.map((e, i) => (
+          <button
+            key={e.id}
+            type="button"
+            onClick={() => sendEmote(e.id)}
+            title={`${e.label} (${i + 1})`}
+            aria-label={`${e.label}, key ${i + 1}`}
+            className="relative flex size-10 items-center justify-center rounded-lg text-xl transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          >
+            {e.emoji}
+            <span className="absolute bottom-0.5 right-1 text-[9px] font-semibold text-white/50">{i + 1}</span>
+          </button>
+        ))}
+      </div>
+      <div className="absolute bottom-4 right-4 z-30 flex flex-col items-end gap-2">
+        {showMinimap && (
+          <canvas
+            ref={minimapRef}
+            aria-label="Minimap"
+            className="rounded-lg border-2 border-black/40 shadow-xl"
+            style={{ width: MINIMAP_W, height: dims ? Math.round(MINIMAP_W * dims.h / dims.w) : 0 }}
+          />
+        )}
+        <button
+          type="button"
+          onClick={() => setShowMinimap((v) => !v)}
+          aria-pressed={showMinimap}
+          className="flex h-8 items-center gap-1.5 rounded-lg bg-black/60 px-3 text-xs font-semibold text-white shadow-lg hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+        >
+          <MapIcon className="size-3.5" /> {showMinimap ? 'Hide map' : 'Show map'} (M)
+        </button>
+      </div>
+      {loadingArt && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center text-white">Loading map...</div>
+      )}
+      {(selfSeat || interaction) && (
+        <button
+          type="button"
+          onClick={interact}
+          className="absolute bottom-[7.5rem] left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/70 py-1.5 pl-1.5 pr-4 text-sm font-medium text-white shadow-lg backdrop-blur-sm hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+        >
+          <kbd className="flex size-6 items-center justify-center rounded-md bg-white font-mono text-xs font-bold text-gray-900">E</kbd>
+          {selfSeat ? 'Stand up' : interaction?.kind === 'board' ? `Read the ${interaction.label}` : 'Sit on the bench'}
+        </button>
+      )}
+      <NoticeBoard spaceId={id} boardId={openBoard?.id ?? null} title={openBoard?.title ?? ''} onClose={() => setOpenBoard(null)} />
+      <ChatPanel />
+      <MediaDock
+        remote={media.remote}
+        names={names}
+        localStream={media.localStream}
+        camOn={media.camOn}
+        micOn={media.micOn}
+        nearbyCount={media.nearbyCount}
+        error={media.mediaError}
+      />
+      <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" style={{ imageRendering: "pixelated" }} />
     </div>
   );
 };

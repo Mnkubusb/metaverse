@@ -3,19 +3,36 @@
 import { useEffect, useState } from 'react';
 import MainLayout from '../../components/layout/MainLayout';
 import ProtectedRoute from '../../components/auth/protectedRoute';
-import { spaceAPI } from '../../lib/api';
+import { avatarAPI, spaceAPI } from '../../lib/api';
+import { useAuth } from '../../contexts/authContext';
+import AvatarPicker, { AvatarSprite } from '../../components/avatar/AvatarPicker';
 import Link from 'next/link';
 import { Space } from '../../components/space/spaceLists';
+import CreateSpaceDialog from '../../components/space/spaceCreator';
 
 export default function Dashboard() {
   const [spaces, setSpaces] = useState<Space[] | []>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [joined, setJoined] = useState<(Space & { owner: string })[]>([]);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user) return;
+    avatarAPI.getUserAvatar(user.id)
+      .then((res) => setAvatarUrl(res.data.avatar?.imageUrl ?? null))
+      .catch(() => { /* keep the default character */ });
+  }, [user]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const spacesResponse = await spaceAPI.getAllSpaces();
+        const [spacesResponse, joinedResponse] = await Promise.all([
+          spaceAPI.getAllSpaces(),
+          spaceAPI.getJoinedSpaces().catch(() => ({ data: { spaces: [] } })),
+        ]);
         setSpaces(spacesResponse.data.spaces || []);
+        setJoined(joinedResponse.data.spaces || []);
         setIsLoading(false);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -49,9 +66,25 @@ export default function Dashboard() {
                   <div className='w-[0.5px] h-3 bg-gray-500 border'/>
                   <h2 className="text-md font-semibold text-gray-400 font-geist-sans">My Spaces</h2>
                 </div>
-                <Link href="/spaces" className="bg-blue-500 p-2 text-white font-geist-sans font-medium px-4 rounded-md hover:bg-blue-700 flex justify-center items-center shadow">
-                  + Create Space
-                </Link>
+                <div className="flex items-center gap-2">
+                <AvatarPicker
+                  currentUrl={avatarUrl}
+                  onSaved={(a) => setAvatarUrl(a.imageUrl)}
+                  trigger={
+                    <button type="button" className="flex h-10 items-center gap-2 overflow-hidden rounded-md border border-gray-200 bg-white pl-1 pr-3 font-geist-sans font-medium text-gray-800 shadow-sm hover:bg-gray-50">
+                      <span className="relative size-8 overflow-hidden rounded bg-emerald-50">
+                        <AvatarSprite url={avatarUrl ?? '/Characters/WalkAnimations.png'} className="absolute -left-6 -top-3" />
+                      </span>
+                      My avatar
+                    </button>
+                  }
+                />
+                <CreateSpaceDialog trigger={
+                  <button type="button" className="bg-blue-500 p-2 text-white font-geist-sans font-medium px-4 rounded-md hover:bg-blue-700 flex justify-center items-center shadow">
+                    + Create Space
+                  </button>
+                } />
+                </div>
               </div>
 
               {recentSpaces.length > 0 ? (
@@ -77,6 +110,32 @@ export default function Dashboard() {
                 </ul>
               ) : (
                 <p className="text-gray-500">No spaces available.</p>
+              )}
+
+              <div className="mt-8 mb-2 flex items-center justify-between">
+                <h2 className="text-md font-semibold font-geist-sans">Joined</h2>
+                <Link href="/explore" className="text-sm font-medium text-blue-600 hover:underline">Explore public spaces →</Link>
+              </div>
+              {joined.length > 0 ? (
+                <ul className="flex flex-wrap divide-x divide-gray-200">
+                  {joined.map((space) => (
+                    <li key={space.id} className="py-3 px-2">
+                      <Link href={`/space/${space.id}`} className="flex flex-col gap-2">
+                        <div className="h-36 w-60 rounded-md bg-gray-200">
+                          {space.thumbnail && (
+                            <img src={space.thumbnail} alt={space.name} className="h-full w-full rounded object-cover" />
+                          )}
+                        </div>
+                        <div className="ml-1">
+                          <p className="font-medium">{space.name}</p>
+                          <p className="text-xs text-gray-500">by {space.owner}</p>
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-gray-500">Spaces you enter from invite links or Explore show up here.</p>
               )}
             </div>
           </div>

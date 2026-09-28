@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/authContext';
+import { safeNext } from '@/lib/next';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -10,10 +11,16 @@ const Login = () => {
   const [error, setError] = useState('');
   const { login, user, loading } = useAuth();
   const router = useRouter();
+  // carries ?next= between login and signup; read after mount to keep server and client HTML identical
+  const [search, setSearch] = useState('');
+  useEffect(() => setSearch(window.location.search), []);
+
+  // e.g. an invite link opened while logged out: come back to it after signing in
+  const next = () => safeNext(new URLSearchParams(window.location.search).get('next'));
 
   useEffect(() => {
     if (!loading && user) {
-      router.push('/dashboard');
+      router.push(next());
     }
   }, [user, loading, router]);
 
@@ -29,7 +36,7 @@ const Login = () => {
     const result = await login(username, password);
     
     if (result.success) {
-      router.push('/dashboard');
+      router.push(next());
     } else {
       setError(result.error || 'Failed to sign in');
     }
@@ -97,7 +104,7 @@ const Login = () => {
         <div className="mt-4 text-center">
           <p>
             Don&apos;t have an account?{' '}
-            <Link href="/signup" className="text-blue-500 hover:underline">
+            <Link href={`/signup${search}`} className="text-blue-500 hover:underline">
               Sign Up
             </Link>
           </p>

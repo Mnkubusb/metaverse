@@ -18,7 +18,7 @@ const AuthContext = createContext<{
   loading: boolean;
   login: (username: string, password: string) => Promise<{ success: boolean; userData?: User; error?: string }>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  signup: (username: string, password: string, type: "user" | "admin") => Promise<{ success: boolean; data?: any; error?: string }>;
+  signup: (username: string, password: string) => Promise<{ success: boolean; data?: any; error?: string }>;
   logout: () => void;
 }>({
   user: null,
@@ -34,11 +34,11 @@ const AuthContext = createContext<{
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState("");
-  const [loading, setLoading] = useState(false);
+  // true until the stored session has been read, so protected pages don't redirect on first render
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    setLoading(false);
     // Check for stored auth on load
     const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
@@ -46,6 +46,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
     }
+    setLoading(false);
   }, []);
 
   const login = async (username: string, password: string) => {
@@ -62,18 +63,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       return { success: true, userData };
     } catch (error) {
-      console.error('Login error:', error);
-      return { success: false, error: 'Login failed' };
+      const status = (error as { response?: { status?: number } }).response?.status;
+      return {
+        success: false,
+        error: status === 401 ? 'Invalid username or password'
+          : status === 429 ? 'Too many attempts. Wait a few minutes and try again.'
+          : 'Login failed. Check your connection and try again.',
+      };
     }
   };
 
-  const signup = async (username: string, password: string, type: "user" | "admin") => {
+  const signup = async (username: string, password: string) => {
     try {
-      const response = await authAPI.signup(username, password, type);
+      const response = await authAPI.signup(username, password);
       return { success: true, data: response.data };
     } catch (error) {
-      console.error('Signup error:', error);
-      return { success: false, error: 'Signup failed' };
+      const status = (error as { response?: { status?: number } }).response?.status;
+      return {
+        success: false,
+        error: status === 409 ? 'That username is taken. Try another one.'
+          : status === 400 ? 'Check your username and password against the rules below.'
+          : status === 429 ? 'Too many attempts. Wait a few minutes and try again.'
+          : 'Sign up failed. Check your connection and try again.',
+      };
     }
   };
 

@@ -4,9 +4,13 @@ import { outgoingMessage } from "./types";
 import client from "@repo/db/client";
 import jwt, { JwtPayload } from "jsonwebtoken"
 import { JWT_SECRET } from "./config";
+import type { SpaceGrid } from "./SpaceGrid";
+import { EMOTES, RateLimiter, chatRateLimiter, cleanChatText, emoteRateLimiter, recentChat, saveChatMessage } from "./chat";
 
 const HEARTBEAT_INTERVAL = 30_000; // 30 seconds
 const HEARTBEAT_TIMEOUT = 10_000;  // 10 seconds to pong
+// One tile per step; the client animates each step over ~140ms, so this only stops floods.
+const MIN_MOVE_INTERVAL = 60;
 
 function getRandomId(length: number) {
     let result = '';
@@ -21,9 +25,21 @@ function getRandomId(length: number) {
 export class User {
     public id: string;
     public userId?: string;
+    public username?: string;
+    public avatar: string | null = null;
+    // tile of the bench (or other seat) the player is sitting on
+    public seat: { x: number; y: number } | null = null;
     public x: number;
     public y: number;
     private spaceId?: string;
+    private grid?: SpaceGrid;
+    private lastMoveAt = 0;
+    private chatLimiter = chatRateLimiter();
+    private emoteLimiter = emoteRateLimiter();
+    private avatarLimiter = new RateLimiter(3, 2000);
+    // WebRTC setup sends a burst of ICE candidates per peer, so this allows a large burst.
+    private rtcLimiter = new RateLimiter(80, 50);
+    private interactLimiter = new RateLimiter(10, 500);
     private ws: WebSocket;
     private heartbeatInterval?: ReturnType<typeof setInterval>;
     private heartbeatTimeout?: ReturnType<typeof setTimeout>;
@@ -73,50 +89,163 @@ export class User {
 
             switch (parsedData.type) {
                 case "join": {
-                    const spaceId = parsedData.payload.spaceId;
-                    const token = parsedData.payload.token;
-                    let userId: string;
+                    if (this.spaceId) return; // one space per connection
+                    const spaceId = parsedData.payload?.spaceId;
+                    const token = parsedData.payload?.token;
+                    let userId: string | undefined;
                     try {
-                        userId = (jwt.verify(token, JWT_SECRET) as JwtPayload).userId;
+                        userId = (jwt.verify(String(token), JWT_SECRET, { algorithms: ["HS256"] }) as JwtPayload).userId;
                     } catch {
                         this.ws.close();
                         return;
                     }
-                    if (!userId) {
+                    if (!userId || typeof spaceId !== "string") {
+                        this.ws.close();
+                        return;
+                    }
+                    const rooms = RoomManager.getInstance();
+                    const [grid, dbUser, chat, access] = await Promise.all([
+                        rooms.getGrid(spaceId),
+                        client.user.findUnique({
+                            where: { id: userId },
+                            select: { username: true, avatar: { select: { imageUrl: true } } },
+                        }),
+                        recentChat(spaceId).catch(() => []),
+                        client.space.findUnique({
+                            where: { id: spaceId },
+                            select: { visibility: true, members: { where: { userId }, select: { role: true } } },
+                        }),
+                    ]);
+                    // Same rule as apps/http/src/access.ts: private spaces are members-only
+                    if (access && access.visibility === "Private" && access.members.length === 0) {
+                        this.send({ type: "join-rejected", payload: { reason: "private" } });
+                        this.ws.close();
+                        return;
+                    }
+                    if (!grid || !dbUser) {
                         this.ws.close();
                         return;
                     }
                     this.userId = userId;
-                    const space = await client.space.findFirst({ where: { id: spaceId } });
-                    if (!space) {
-                        this.ws.close();
-                        return;
-                    }
+                    this.username = dbUser.username;
+                    this.avatar = dbUser.avatar?.imageUrl ?? null;
                     this.spaceId = spaceId;
-                    RoomManager.getInstance().addUser(spaceId, this);
-                    // Fix: each user maps to their own userId/x/y, not the joining user's data
+                    this.grid = grid;
+                    const spawn = grid.spawnPoint();
+                    this.x = spawn.x;
+                    this.y = spawn.y;
+                    rooms.addUser(spaceId, this);
                     this.send({
                         type: "space-joined",
                         payload: {
+                            userId: this.userId,
+                            avatar: this.avatar,
                             spawn: { x: this.x, y: this.y },
-                            users: RoomManager.getInstance().rooms.get(spaceId)
+                            chat,
+                            users: rooms.rooms.get(spaceId)
                                 ?.filter((u) => u.id !== this.id)
-                                .map((u) => ({ userId: u.userId, x: u.x, y: u.y })) ?? []
+                                .map((u) => ({ userId: u.userId, username: u.username, avatar: u.avatar, x: u.x, y: u.y, seat: u.seat })) ?? []
                         }
                     });
-                    RoomManager.getInstance().broadcast({
+                    rooms.broadcast({
                         type: "user-joined",
-                        payload: { x: this.x, y: this.y, userId: this.userId }
+                        payload: { x: this.x, y: this.y, userId: this.userId, username: this.username, avatar: this.avatar }
                     }, this, spaceId);
                     break;
                 }
+                case "chat": {
+                    if (!this.spaceId || !this.userId || !this.username) return;
+                    const text = cleanChatText(parsedData.payload?.text);
+                    if (!text) {
+                        this.send({ type: "chat-rejected", payload: { reason: "invalid" } });
+                        return;
+                    }
+                    if (!this.chatLimiter.take()) {
+                        this.send({ type: "chat-rejected", payload: { reason: "rate-limited" } });
+                        return;
+                    }
+                    try {
+                        const message = await saveChatMessage(this.spaceId, this.userId, this.username, text);
+                        // everyone in the room, sender included, so the sender sees the stored message
+                        this.send({ type: "chat", payload: message });
+                        RoomManager.getInstance().broadcast({ type: "chat", payload: message }, this, this.spaceId);
+                    } catch (err) {
+                        console.error("Failed to save chat message", err);
+                        this.send({ type: "chat-rejected", payload: { reason: "error" } });
+                    }
+                    break;
+                }
+                case "sit": {
+                    // Sit on an adjacent solid tile (a bench); { seat: null } stands up.
+                    if (!this.spaceId || !this.grid || !this.interactLimiter.take()) return;
+                    const seat = parsedData.payload?.seat;
+                    let next: { x: number; y: number } | null = null;
+                    if (seat) {
+                        const x = Number(seat.x), y = Number(seat.y);
+                        const adjacent = Math.max(Math.abs(x - this.x), Math.abs(y - this.y)) <= 1;
+                        if (!Number.isInteger(x) || !Number.isInteger(y) || !adjacent || this.grid.isWalkable(x, y)) return;
+                        next = { x, y };
+                    }
+                    this.seat = next;
+                    const message = { type: "pose", payload: { userId: this.userId, seat: this.seat } };
+                    this.send(message);
+                    RoomManager.getInstance().broadcast(message, this, this.spaceId);
+                    break;
+                }
+                case "board-updated": {
+                    // A notice board changed over HTTP; tell everyone else in the room to refresh it
+                    if (!this.spaceId || !this.interactLimiter.take()) return;
+                    const boardId = parsedData.payload?.boardId;
+                    if (typeof boardId !== "string" || boardId.length > 64) return;
+                    RoomManager.getInstance().broadcast({ type: "board-updated", payload: { boardId } }, this, this.spaceId);
+                    break;
+                }
+                case "rtc": {
+                    // Relays WebRTC signalling (offer/answer/ICE/bye) to one player in the same space.
+                    // The payload is opaque to the server; media flows peer-to-peer.
+                    if (!this.spaceId || !this.userId || !this.rtcLimiter.take()) return;
+                    const to = parsedData.payload?.to;
+                    const signal = parsedData.payload?.data;
+                    if (typeof to !== "string" || to === this.userId || typeof signal !== "object" || signal === null) return;
+                    const target = RoomManager.getInstance().findUser(this.spaceId, to);
+                    target?.send({ type: "rtc", payload: { from: this.userId, data: signal } });
+                    break;
+                }
+                case "avatar-changed": {
+                    // The client saved a new avatar over HTTP; read it back from the database
+                    // rather than trusting a URL from the socket, then tell the room.
+                    if (!this.spaceId || !this.userId || !this.avatarLimiter.take()) return;
+                    const dbUser = await client.user.findUnique({
+                        where: { id: this.userId },
+                        select: { avatar: { select: { imageUrl: true } } },
+                    });
+                    this.avatar = dbUser?.avatar?.imageUrl ?? null;
+                    const message = { type: "avatar-changed", payload: { userId: this.userId, avatar: this.avatar } };
+                    this.send(message);
+                    RoomManager.getInstance().broadcast(message, this, this.spaceId);
+                    break;
+                }
+                case "emote": {
+                    if (!this.spaceId || !this.userId) return;
+                    const emote = parsedData.payload?.emote;
+                    if (!EMOTES.includes(emote) || !this.emoteLimiter.take()) return;
+                    RoomManager.getInstance().broadcast({
+                        type: "emote",
+                        payload: { userId: this.userId, emote }
+                    }, this, this.spaceId);
+                    break;
+                }
                 case "move": {
-                    const { x, y } = parsedData.payload;
-                    const xDistance = Math.abs(this.x - x);
-                    const yDistance = Math.abs(this.y - y);
-                    if ((xDistance === 1 && yDistance === 0) || (xDistance === 0 && yDistance === 1)) {
+                    if (!this.spaceId || !this.grid) return;
+                    const x = Number(parsedData.payload?.x);
+                    const y = Number(parsedData.payload?.y);
+                    const now = Date.now();
+                    const step = Math.abs(this.x - x) + Math.abs(this.y - y);
+                    if (step === 1 && now - this.lastMoveAt >= MIN_MOVE_INTERVAL && this.grid.isWalkable(x, y)) {
+                        this.lastMoveAt = now;
                         this.x = x;
                         this.y = y;
+                        this.seat = null; // walking away stands you up (clients clear it on "move")
                         this.send({
                             type: "movement-accepted",
                             payload: { x: this.x, y: this.y, userId: this.userId }
@@ -124,7 +253,7 @@ export class User {
                         RoomManager.getInstance().broadcast({
                             type: "move",
                             payload: { x: this.x, y: this.y, userId: this.userId }
-                        }, this, this.spaceId!);
+                        }, this, this.spaceId);
                         return;
                     }
                     this.send({
@@ -139,6 +268,7 @@ export class User {
 
     destroy() {
         this.stopHeartbeat();
+        if (!this.spaceId) return;
         RoomManager.getInstance().broadcast({
             type: "user-left",
             payload: { userId: this.userId }

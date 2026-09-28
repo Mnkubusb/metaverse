@@ -1,0 +1,42 @@
+[
+ {
+  "id": "avatar-classic",
+  "name": "Classic",
+  "imageUrl": "/avatars/classic.png"
+ },
+ {
+  "id": "avatar-cse-blue",
+  "name": "CSE Blue",
+  "imageUrl": "/avatars/cse-blue.png"
+ },
+ {
+  "id": "avatar-crimson",
+  "name": "Crimson",
+  "imageUrl": "/avatars/crimson.png"
+ },
+ {
+  "id": "avatar-forest",
+  "name": "Forest",
+  "imageUrl": "/avatars/forest.png"
+ },
+ {
+  "id": "avatar-violet",
+  "name": "Violet",
+  "imageUrl": "/avatars/violet.png"
+ },
+ {
+  "id": "avatar-rose",
+  "name": "Rose",
+  "imageUrl": "/avatars/rose.png"
+ },
+ {
+  "id": "avatar-charcoal",
+  "name": "Charcoal",
+  "imageUrl": "/avatars/charcoal.png"
+ },
+ {
+  "id": "avatar-teal",
+  "name": "Teal",
+  "imageUrl": "/avatars/teal.png"
+ }
+]

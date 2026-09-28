@@ -1,24 +1,95 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import WebSocketService from '../lib/webSocket';
 import { useAuth } from './authContext';
 
+export type Seat = { x: number; y: number };
+
+export interface RemoteUser {
+  userId: string;
+  username?: string;
+  // sprite sheet URL, null = default character
+  avatar?: string | null;
+  // bench tile the player is sitting on
+  seat?: Seat | null;
+  x: number;
+  y: number;
+}
+
+// Authoritative position from the server. `seq` increases on every correction
+// (join or rejected move) so the renderer knows when to snap the local player.
+export interface ServerPosition {
+  x: number;
+  y: number;
+  seq: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  userId: string | null;
+  username: string;
+  text: string;
+  createdAt: string;
+  // join/leave notices generated locally; never sent to the server
+  system?: boolean;
+}
+
+const MAX_CHAT_MESSAGES = 200;
+
+export interface EmoteEvent {
+  userId: string;
+  emote: string;
+  // increases per event so the same emote twice in a row still triggers
+  seq: number;
+}
+
 interface WebSocketContextType {
   connected: boolean;
-  users: Map<any, any>;
-  currentUser: { x: number, y: number, userId: string };
+  users: Map<string, RemoteUser>;
+  selfId: string;
+  serverPosition: ServerPosition;
   sendMessage: (type: string, payload: any) => void;
   moveUser: (x: number, y: number) => void;
-  messages: any[];
+  chat: ChatMessage[];
+  chatError: string;
+  sendChat: (text: string) => void;
+  lastEmote: EmoteEvent | null;
+  sendEmote: (emote: string) => void;
+  selfAvatar: string | null;
+  // call after saving a new avatar over HTTP so everyone in the space sees it
+  announceAvatarChange: () => void;
+  // WebRTC signalling relayed through the server to one player in the space
+  sendRtc: (to: string, data: unknown) => void;
+  subscribeRtc: (handler: RtcHandler) => () => void;
+  selfSeat: Seat | null;
+  sit: (seat: Seat | null) => void;
+  // bumps when someone else changes a notice board, so an open board can refresh
+  boardUpdate: { boardId: string; seq: number } | null;
+  announceBoardUpdate: (boardId: string) => void;
 }
+
+export type RtcHandler = (from: string, data: any) => void;
 
 const WebSocketContext = createContext<WebSocketContextType>({
   connected: false,
   users: new Map(),
-  currentUser: { x: 0, y: 0, userId: '' },
+  selfId: '',
+  serverPosition: { x: 0, y: 0, seq: 0 },
   sendMessage: () => { },
   moveUser: () => { },
-  messages: [{ type: "mock", payload: "hello" }],
+  chat: [],
+  chatError: '',
+  sendChat: () => { },
+  lastEmote: null,
+  sendEmote: () => { },
+  selfAvatar: null,
+  announceAvatarChange: () => { },
+  sendRtc: () => { },
+  subscribeRtc: () => () => { },
+  selfSeat: null,
+  sit: () => { },
+  boardUpdate: null,
+  announceBoardUpdate: () => { },
 });
 
 export const WebSocketProvider = ({ children, spaceId }: {
@@ -27,84 +98,129 @@ export const WebSocketProvider = ({ children, spaceId }: {
 }) => {
   const [socket, setSocket] = useState<WebSocketService | null>(null);
   const [connected, setConnected] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any>({});
-  const [users, setUsers] = useState(new Map());
-  const [messages, setMessages] = useState<any[]>([]);
+  const [selfId, setSelfId] = useState('');
+  const [serverPosition, setServerPosition] = useState<ServerPosition>({ x: 0, y: 0, seq: 0 });
+  const [users, setUsers] = useState<Map<string, RemoteUser>>(new Map());
+  const [chat, setChat] = useState<ChatMessage[]>([]);
+  const [chatError, setChatError] = useState('');
+  const [lastEmote, setLastEmote] = useState<EmoteEvent | null>(null);
+  const [selfAvatar, setSelfAvatar] = useState<string | null>(null);
+  const [selfSeat, setSelfSeat] = useState<Seat | null>(null);
+  const [boardUpdate, setBoardUpdate] = useState<{ boardId: string; seq: number } | null>(null);
+  const boardSeq = useRef(0);
+  const selfIdRef = useRef('');
+  const rtcHandlers = useRef<Set<RtcHandler>>(new Set());
+  const seq = useRef(0);
+  const emoteSeq = useRef(0);
+  const namesRef = useRef<Map<string, string>>(new Map());
   const { token } = useAuth();
 
-  const handleMessage = useCallback((message: any) => {
-    setMessages(prevMessages => [...prevMessages, message]);
-    switch (message.type) {
-      case 'space-joined': {
-        setCurrentUser({
-          x: message.payload.spawn.x,
-          y: message.payload.spawn.y,
-          userId: message.payload.userId
-        });
-        // Initialize other users from the payload
-        const userMap = new Map();
-        message.payload.users.forEach((user: any) => {
-          userMap.set(user.userId, user);
-        });
-        setUsers(userMap);
-        setConnected(true)
-        break;
-      }
-
-      case 'user-joined':
-        setUsers(prev => {
-          const newUsers = new Map(prev);
-          newUsers.set(message.payload.userId, {
-            x: message.payload.x,
-            y: message.payload.y,
-            userId: message.payload.userId
-          });
-          return newUsers;
-        });
-        break;
-
-      case 'move':
-        setUsers(prev => {
-          const newUsers = new Map(prev);
-          newUsers.set(message.payload.userId, {
-            x: message.payload.x,
-            y: message.payload.y,
-            userId: message.payload.userId
-          });
-          return newUsers;
-        });
-        break;
-
-      case 'movement-accepted':
-        // Update current user position if movement was accepted
-        setCurrentUser((prev: any) => ({
-          ...prev,
-          x: message.payload.x,
-          y: message.payload.y
-        }));
-        break;
-
-      case 'movement-rejected':
-        // Reset current user position if movement was rejected
-        setCurrentUser((prev: any) => ({
-          ...prev,
-          x: message.payload.x,
-          y: message.payload.y
-        }));
-        break;
-
-      case 'user-left':
-        setUsers(prev => {
-          const newUsers = new Map(prev);
-          newUsers.delete(message.payload.userId);
-          return newUsers;
-        });
-        break;
-    }
+  const correct = useCallback((x: number, y: number) => {
+    seq.current += 1;
+    setServerPosition({ x, y, seq: seq.current });
   }, []);
 
-  useEffect(() => {
+  const pushChat = useCallback((...msgs: ChatMessage[]) => {
+    setChat(prev => [...prev, ...msgs].slice(-MAX_CHAT_MESSAGES));
+  }, []);
 
+  const notice = useCallback((text: string) => {
+    pushChat({ id: `sys-${Date.now()}-${Math.random()}`, userId: null, username: '', text, createdAt: new Date().toISOString(), system: true });
+  }, [pushChat]);
+
+  const handleMessage = useCallback((message: any) => {
+    const { type, payload } = message;
+    if (payload?.userId && payload?.username) namesRef.current.set(payload.userId, payload.username);
+    switch (type) {
+      case 'space-joined': {
+        setSelfId(payload.userId);
+        selfIdRef.current = payload.userId;
+        setSelfAvatar(payload.avatar ?? null);
+        correct(payload.spawn.x, payload.spawn.y);
+        setUsers(new Map((payload.users as RemoteUser[]).map((u) => [u.userId, u])));
+        (payload.users as RemoteUser[]).forEach((u) => u.username && namesRef.current.set(u.userId, u.username));
+        setChat((payload.chat ?? []).slice(-MAX_CHAT_MESSAGES));
+        setConnected(true);
+        break;
+      }
+      case 'chat':
+        setChatError('');
+        pushChat(payload);
+        break;
+      case 'emote':
+        emoteSeq.current += 1;
+        setLastEmote({ userId: payload.userId, emote: payload.emote, seq: emoteSeq.current });
+        break;
+      case 'chat-rejected':
+        setChatError(payload?.reason === 'rate-limited'
+          ? 'You are sending messages too fast. Wait a moment.'
+          : 'That message could not be sent.');
+        break;
+      case 'user-joined':
+        if (payload.username) notice(`${payload.username} joined`);
+        setUsers(prev => new Map(prev).set(payload.userId, {
+          userId: payload.userId, username: payload.username, avatar: payload.avatar, x: payload.x, y: payload.y,
+        }));
+        break;
+      case 'rtc':
+        rtcHandlers.current.forEach((h) => h(payload.from, payload.data));
+        break;
+      case 'pose':
+        if (payload.userId === selfIdRef.current) {
+          setSelfSeat(payload.seat ?? null);
+        } else {
+          setUsers(prev => {
+            const existing = prev.get(payload.userId);
+            return existing ? new Map(prev).set(payload.userId, { ...existing, seat: payload.seat ?? null }) : prev;
+          });
+        }
+        break;
+      case 'board-updated':
+        boardSeq.current += 1;
+        setBoardUpdate({ boardId: payload.boardId, seq: boardSeq.current });
+        break;
+      case 'avatar-changed':
+        if (payload.userId === selfIdRef.current) {
+          setSelfAvatar(payload.avatar ?? null);
+        } else {
+          setUsers(prev => {
+            const existing = prev.get(payload.userId);
+            return existing ? new Map(prev).set(payload.userId, { ...existing, avatar: payload.avatar }) : prev;
+          });
+        }
+        break;
+      case 'move':
+        setUsers(prev => {
+          const next = new Map(prev);
+          const existing = next.get(payload.userId);
+          next.set(payload.userId, {
+            userId: payload.userId,
+            username: payload.username ?? existing?.username,
+            avatar: existing?.avatar,
+            seat: null, // moving stands a player up
+            x: payload.x,
+            y: payload.y,
+          });
+          return next;
+        });
+        break;
+      case 'movement-rejected':
+        correct(payload.x, payload.y);
+        break;
+      case 'user-left': {
+        const name = namesRef.current.get(payload.userId);
+        if (name) notice(`${name} left`);
+        setUsers(prev => {
+          const next = new Map(prev);
+          next.delete(payload.userId);
+          return next;
+        });
+        break;
+      }
+    }
+  }, [correct, pushChat, notice]);
+
+  useEffect(() => {
     if (!token || !spaceId) return;
     const wsService = new WebSocketService(
       process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001',
@@ -118,41 +234,86 @@ export const WebSocketProvider = ({ children, spaceId }: {
     setSocket(newSocket);
 
     return () => {
-      if (newSocket) {
-        newSocket.disconnect();
-      }
+      newSocket.disconnect();
     };
   }, [token, spaceId, handleMessage]);
 
-  interface MessagePayload {
-    type: string;
-    payload: any;
-  }
-
   const sendMessage = useCallback((type: string, payload: any) => {
     if (socket && connected) {
-      const message: MessagePayload = { type, payload };
-      socket.sendMessage(message);
+      socket.sendMessage({ type, payload });
     }
   }, [socket, connected]);
 
   const moveUser = useCallback((x: number, y: number) => {
     if (socket && connected) {
       socket.move(x, y);
-      setCurrentUser({ x, y });
+      setSelfSeat(null); // the server stands you up when you move
     }
   }, [socket, connected]);
+
+  const sit = useCallback((seat: Seat | null) => {
+    if (socket && connected) socket.sendMessage({ type: 'sit', payload: { seat } });
+  }, [socket, connected]);
+
+  const announceBoardUpdate = useCallback((boardId: string) => {
+    if (socket && connected) socket.sendMessage({ type: 'board-updated', payload: { boardId } });
+  }, [socket, connected]);
+
+  const sendChat = useCallback((text: string) => {
+    const trimmed = text.trim();
+    if (socket && connected && trimmed) {
+      socket.sendMessage({ type: 'chat', payload: { text: trimmed } });
+    }
+  }, [socket, connected]);
+
+  // shown locally right away; the server relays it to everyone else
+  const sendEmote = useCallback((emote: string) => {
+    if (socket && connected && selfId) {
+      socket.sendMessage({ type: 'emote', payload: { emote } });
+      emoteSeq.current += 1;
+      setLastEmote({ userId: selfId, emote, seq: emoteSeq.current });
+    }
+  }, [socket, connected, selfId]);
+
+  const announceAvatarChange = useCallback(() => {
+    if (socket && connected) socket.sendMessage({ type: 'avatar-changed', payload: {} });
+  }, [socket, connected]);
+
+  const sendRtc = useCallback((to: string, data: unknown) => {
+    if (socket && connected) socket.sendMessage({ type: 'rtc', payload: { to, data } });
+  }, [socket, connected]);
+
+  const subscribeRtc = useCallback((handler: RtcHandler) => {
+    rtcHandlers.current.add(handler);
+    return () => { rtcHandlers.current.delete(handler); };
+  }, []);
 
   const value = useMemo(() => ({
     connected,
     users,
-    currentUser,
-    messages,
-  }), [connected, users, currentUser, messages]);
+    selfId,
+    serverPosition,
+    sendMessage,
+    moveUser,
+    chat,
+    chatError,
+    sendChat,
+    lastEmote,
+    sendEmote,
+    selfAvatar,
+    announceAvatarChange,
+    sendRtc,
+    subscribeRtc,
+    selfSeat,
+    sit,
+    boardUpdate,
+    announceBoardUpdate,
+  }), [sendRtc, subscribeRtc, selfSeat, sit, boardUpdate, announceBoardUpdate, connected, users, selfId, serverPosition, sendMessage, moveUser, chat, chatError, sendChat, lastEmote, sendEmote,
+    selfAvatar, announceAvatarChange]);
 
-  return  <WebSocketContext.Provider value={{ ...value, sendMessage, moveUser }} >
-              {connected ? children : <div>Connecting WebSocket...</div>}
-          </WebSocketContext.Provider>;
+  return <WebSocketContext.Provider value={value}>
+    {connected ? children : <div className="flex h-screen items-center justify-center text-gray-500">Connecting to space...</div>}
+  </WebSocketContext.Provider>;
 };
 
 export const useWebSocket = () => useContext(WebSocketContext);

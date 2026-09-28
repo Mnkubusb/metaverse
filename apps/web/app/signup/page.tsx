@@ -3,17 +3,18 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/authContext';
-import { avatarAPI, userAPI } from '@/lib/api';
 import { toast } from 'sonner';
 
 const Signup = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [type, setType] = useState('user');
   const [error, setError] = useState('');
   const { signup, user, loading } = useAuth();
   const router = useRouter();
+  // carries ?next= between login and signup; read after mount to keep server and client HTML identical
+  const [search, setSearch] = useState('');
+  useEffect(() => setSearch(window.location.search), []);
 
   useEffect(() => {
     // Redirect if already logged in
@@ -36,16 +37,23 @@ const Signup = () => {
       return;
     }
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long');
+    if (!/^[a-zA-Z0-9_.-]{3,32}$/.test(username)) {
+      setError('Usernames are 3–32 characters: letters, numbers, dots, dashes and underscores');
       return;
     }
 
-    const result = await signup(username, password, type as "user" | "admin");
+    if (password.length < 8 || password.length > 72) {
+      setError('Password must be 8–72 characters long');
+      return;
+    }
+
+    const result = await signup(username, password);
 
     if (result.success) {
       toast.success('Signup successful');
-      router.push('/login?registered=true');
+      // keep ?next= (e.g. an invite link) so login can return there
+      const next = new URLSearchParams(window.location.search).get('next');
+      router.push(`/login?registered=true${next ? `&next=${encodeURIComponent(next)}` : ''}`);
     } else {
       setError(result.error || 'Failed to sign up');
     }
@@ -84,8 +92,12 @@ const Signup = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full border rounded px-3 py-2"
+              autoComplete="username"
               required
             />
+            <p className="text-xs text-gray-500 mt-1">
+              3–32 characters: letters, numbers, dots, dashes and underscores
+            </p>
           </div>
 
           <div className="mb-4">
@@ -98,6 +110,7 @@ const Signup = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full border rounded px-3 py-2"
+              autoComplete="new-password"
               required
             />
             <p className="text-xs text-gray-500 mt-1">
@@ -115,24 +128,11 @@ const Signup = () => {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="w-full border rounded px-3 py-2"
+              autoComplete="new-password"
               required
             />
           </div>
 
-          <div className="mb-6">
-            <label className="block text-gray-700 mb-2" htmlFor="type">
-              Account Type
-            </label>
-            <select
-              id="type"
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="w-full border rounded px-3 py-2"
-            >
-              <option value="user">Regular User</option>
-              <option value="admin">Administrator</option>
-            </select>
-          </div>
 
           <button
             type="submit"
@@ -145,7 +145,7 @@ const Signup = () => {
         <div className="mt-4 text-center">
           <p>
             Already have an account?{' '}
-            <Link href="/login" className="text-blue-500 hover:underline">
+            <Link href={`/login${search}`} className="text-blue-500 hover:underline">
               Sign In
             </Link>
           </p>
