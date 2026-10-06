@@ -15,6 +15,8 @@ import NoticeBoard from './NoticeBoard';
 import { Check, DoorOpen, Globe, Link2, Lock, MapPin, Map as MapIcon, Settings } from 'lucide-react';
 import { useProximityMedia } from '@/lib/useProximityMedia';
 import MediaDock, { MediaControls } from './MediaDock';
+import Joystick, { useCoarsePointer } from './TouchControls';
+import { cn } from '@/lib/utils';
 
 // A building interior; the outdoor map is the "main" area with the space's own dimensions.
 interface AreaDef {
@@ -141,7 +143,13 @@ const SpaceGrid = ({ id }: { id: string }) => {
   sitRef.current = sit;
   const elementsRef = useRef<spaceElement[]>([]);
   const [place, setPlace] = useState<string | null>(null);
+  const touch = useCoarsePointer();
+  // phones: the minimap and chat start closed to leave room for the joystick
   const [showMinimap, setShowMinimap] = useState(true);
+  const [showEmotes, setShowEmotes] = useState(false);
+  useEffect(() => { if (touch) setShowMinimap(false); }, [touch]);
+  const touchDirRef = useRef<Direction | null>(null);
+  const setTouchDir = useCallback((d: Direction | null) => { touchDirRef.current = d; }, []);
   const [copied, setCopied] = useState(false);
   const minimapRef = useRef<HTMLCanvasElement | null>(null);
   const emotesRef = useRef<Map<string, { emoji: string; start: number }>>(new Map());
@@ -563,7 +571,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
       // step the local player one tile at a time while a direction key is held (or was just tapped)
       const arrived = Math.abs(self.rx - self.x) < 0.05 && Math.abs(self.ry - self.y) < 0.05;
       const canStep = arrived && now - lastStepRef.current >= STEP_MS;
-      const dir = canStep ? (tapsRef.current.shift() ?? heldRef.current[0]) : undefined;
+      const dir = canStep ? (tapsRef.current.shift() ?? heldRef.current[0] ?? touchDirRef.current ?? undefined) : undefined;
       if (dir) {
         self.dir = dir;
         const [dx, dy] = DIR_DELTA[dir];
@@ -658,18 +666,18 @@ const SpaceGrid = ({ id }: { id: string }) => {
   if (!space) return <div className="text-center p-8">Loading space...</div>;
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-[#2f3b2a]">
-      <div className="absolute left-4 top-4 z-20 flex max-w-[calc(100%-2rem)] flex-wrap items-start gap-2">
-        <div className="rounded-lg bg-black/60 px-4 py-3 text-white shadow-lg">
-          <h2 className="flex items-center gap-1.5 text-lg font-bold">
+    <div className="relative h-dvh w-full overflow-hidden overscroll-none bg-[#2f3b2a]">
+      <div className="absolute left-3 top-3 z-20 flex max-w-[calc(100%-1.5rem)] flex-wrap items-start gap-2 sm:left-4 sm:top-4">
+        <div className="max-w-full rounded-lg bg-black/60 px-3 py-2 text-white shadow-lg sm:px-4 sm:py-3">
+          <h2 className="flex items-center gap-1.5 truncate text-base font-bold sm:text-lg">
             {meta?.visibility === 'Private' && <Lock className="size-4 opacity-70" aria-label="Private space" />}
             {meta?.visibility === 'Public' && <Globe className="size-4 opacity-70" aria-label="Public space" />}
             {meta?.name ?? space.name}
           </h2>
-          <p className="text-sm opacity-80">
-            {users.size + 1} online · WASD to move · Enter to chat · 1–6 emotes · E interact · M map
+          <p className="text-xs opacity-80 sm:text-sm">
+            {users.size + 1} online{!touch && ' · WASD to move · Enter to chat · 1–6 emotes · E interact · M map'}
           </p>
-          {indoors && <p className="mt-1 text-xs text-emerald-200">Walk onto the green mat at the bottom to go back outside.</p>}
+          {indoors && <p className="mt-1 text-xs text-emerald-200">{touch ? 'Step on the green mat to go back outside.' : 'Walk onto the green mat at the bottom to go back outside.'}</p>}
         </div>
         <button
           type="button"
@@ -679,7 +687,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
           className="flex h-10 items-center gap-2 rounded-lg bg-black/60 px-3 text-sm font-semibold text-white shadow-lg transition hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {copied ? <Check className="size-4 text-emerald-300" /> : <Link2 className="size-4" />}
-          {copied ? 'Link copied' : 'Invite'}
+          <span className={cn(!copied && 'hidden sm:inline')}>{copied ? 'Link copied' : 'Invite'}</span>
         </button>
         {meta?.role === 'Owner' && (
           <SpaceSettings
@@ -689,7 +697,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
             trigger={
               <button type="button" aria-label="Space settings"
                 className="flex h-10 items-center gap-2 rounded-lg bg-black/60 px-3 text-sm font-semibold text-white shadow-lg transition hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60">
-                <Settings className="size-4" /> Settings
+                <Settings className="size-4" /> <span className="hidden sm:inline">Settings</span>
               </button>
             }
           />
@@ -706,18 +714,51 @@ const SpaceGrid = ({ id }: { id: string }) => {
               <span className="relative size-8 overflow-hidden rounded-md bg-emerald-100/90">
                 <AvatarSprite url={selfAvatar} className="absolute -left-6 -top-3" />
               </span>
-              Avatar
+              <span className="hidden sm:inline">Avatar</span>
             </button>
           }
         />
       </div>
       {place && (
-        <div aria-live="polite" className="pointer-events-none absolute right-4 top-4 z-20 flex items-center gap-1.5 rounded-full bg-black/60 px-4 py-1.5 text-sm font-medium text-white shadow-lg">
+        <div aria-live="polite" className={cn('pointer-events-none absolute right-3 z-20 flex max-w-[60%] items-center gap-1.5 truncate rounded-full bg-black/60 px-3 py-1.5 text-xs font-medium text-white shadow-lg sm:right-4 sm:top-4 sm:text-sm',
+          touch ? 'top-[4.5rem]' : 'top-4')}>
           {indoors ? <DoorOpen className="size-4 text-emerald-300" /> : <MapPin className="size-4 text-emerald-300" />}
           {indoors ? place : `Near ${place}`}
         </div>
       )}
-      <div role="toolbar" aria-label="Voice, video and emotes" className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 gap-1 rounded-xl bg-black/75 p-1.5 shadow-lg backdrop-blur-sm">
+      {touch && (
+        <>
+          <div className="absolute bottom-4 left-3 z-30" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+            <Joystick onDirection={setTouchDir} />
+          </div>
+          <div className="absolute bottom-4 right-3 z-30 flex flex-col items-end gap-2" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+            {showEmotes && (
+              <div role="toolbar" aria-label="Emotes" className="grid grid-cols-3 gap-1 rounded-xl bg-black/75 p-1 shadow-lg backdrop-blur-sm">
+                {EMOTES.map((e) => (
+                  <button key={e.id} type="button" onClick={() => { sendEmote(e.id); setShowEmotes(false); }} aria-label={e.label}
+                    className="flex size-10 items-center justify-center rounded-lg text-xl active:bg-white/20">
+                    {e.emoji}
+                  </button>
+                ))}
+              </div>
+            )}
+            {(selfSeat || interaction) && (
+              <button type="button" onClick={interact}
+                className="flex h-14 items-center gap-2 rounded-full bg-emerald-500 px-5 text-sm font-bold text-white shadow-xl active:bg-emerald-600">
+                {selfSeat ? 'Stand up' : interaction?.kind === 'board' ? 'Read' : 'Sit'}
+              </button>
+            )}
+            <div role="toolbar" aria-label="Voice, video and emotes" className="flex gap-1 rounded-xl bg-black/75 p-1.5 shadow-lg backdrop-blur-sm">
+              <MediaControls micOn={media.micOn} camOn={media.camOn} onMic={media.toggleMic} onCam={media.toggleCam} />
+              <button type="button" onClick={() => setShowEmotes((v) => !v)} aria-expanded={showEmotes} aria-label="Emotes"
+                className={cn('flex size-10 items-center justify-center rounded-lg text-xl', showEmotes ? 'bg-white/20' : 'active:bg-white/15')}>
+                😊
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+      <div role="toolbar" aria-label="Voice, video and emotes" className={cn('absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 gap-1 rounded-xl bg-black/75 p-1.5 shadow-lg backdrop-blur-sm', touch && 'hidden')}>
         <MediaControls micOn={media.micOn} camOn={media.camOn} onMic={media.toggleMic} onCam={media.toggleCam} />
         {EMOTES.map((e, i) => (
           <button
@@ -733,13 +774,13 @@ const SpaceGrid = ({ id }: { id: string }) => {
           </button>
         ))}
       </div>
-      <div className="absolute bottom-4 right-4 z-30 flex flex-col items-end gap-2">
+      <div className={cn('absolute z-30 flex flex-col items-end gap-2', touch ? 'right-3 top-28' : 'bottom-4 right-4')}>
         {showMinimap && (
           <canvas
             ref={minimapRef}
             aria-label="Minimap"
             className="rounded-lg border-2 border-black/40 shadow-xl"
-            style={{ width: MINIMAP_W, height: dims ? Math.round(MINIMAP_W * dims.h / dims.w) : 0 }}
+            style={{ width: touch ? 140 : MINIMAP_W, height: dims ? Math.round((touch ? 140 : MINIMAP_W) * dims.h / dims.w) : 0 }}
           />
         )}
         <button
@@ -748,7 +789,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
           aria-pressed={showMinimap}
           className="flex h-8 items-center gap-1.5 rounded-lg bg-black/60 px-3 text-xs font-semibold text-white shadow-lg hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
         >
-          <MapIcon className="size-3.5" /> {showMinimap ? 'Hide map' : 'Show map'} (M)
+          <MapIcon className="size-3.5" /> {showMinimap ? 'Hide map' : 'Show map'}{!touch && ' (M)'}
         </button>
       </div>
       {loadingArt && (
@@ -756,7 +797,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
           {indoors ? `Entering ${area!.name}…` : 'Loading map...'}
         </div>
       )}
-      {(selfSeat || interaction) && (
+      {(selfSeat || interaction) && !touch && (
         <button
           type="button"
           onClick={interact}
@@ -767,7 +808,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
         </button>
       )}
       <NoticeBoard spaceId={id} boardId={openBoard?.id ?? null} title={openBoard?.title ?? ''} onClose={() => setOpenBoard(null)} />
-      <ChatPanel />
+      <ChatPanel compact={touch} />
       <MediaDock
         remote={media.remote}
         names={names}
@@ -777,7 +818,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
         nearbyCount={media.nearbyCount}
         error={media.mediaError}
       />
-      <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" style={{ imageRendering: "pixelated" }} />
+      <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" style={{ imageRendering: "pixelated", touchAction: "none" }} />
     </div>
   );
 };
