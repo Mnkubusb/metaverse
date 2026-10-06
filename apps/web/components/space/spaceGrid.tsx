@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { inviteLink, spaceAPI, Visibility } from '../../lib/api';
 import SpaceSettings from './SpaceSettings';
-import { useWebSocket } from '../../contexts/WebSocketsContexts';
+import { MAIN_AREA, useWebSocket } from '../../contexts/WebSocketsContexts';
 import { useAuth } from '../../contexts/authContext';
 import { spaceElement } from './SpaceElement';
 import { buildWalkability } from '@/lib/collision';
@@ -12,14 +12,24 @@ import { EMOTES, emojiFor } from '@/lib/emotes';
 import { findPlaces, nearestPlace } from '@/lib/places';
 import { findInteraction, Interaction } from '@/lib/interactions';
 import NoticeBoard from './NoticeBoard';
-import { Check, Globe, Link2, Lock, MapPin, Map as MapIcon, Settings } from 'lucide-react';
+import { Check, DoorOpen, Globe, Link2, Lock, MapPin, Map as MapIcon, Settings } from 'lucide-react';
 import { useProximityMedia } from '@/lib/useProximityMedia';
 import MediaDock, { MediaControls } from './MediaDock';
+
+// A building interior; the outdoor map is the "main" area with the space's own dimensions.
+interface AreaDef {
+  id: string;
+  name: string;
+  width: number;
+  height: number;
+  ground?: 'grass' | 'dark';
+}
 
 interface Space {
   name: string;
   dimensions: string;
   elements: spaceElement[];
+  areas?: AreaDef[];
   visibility: Visibility;
   role: 'Owner' | 'Member' | null;
   inviteCode: string | null;
@@ -51,7 +61,13 @@ const BUBBLE_MS = 6000;         // how long a chat message floats above its auth
 const EMOTE_MS = 2800;          // how long an emote floats above an avatar
 const MINIMAP_W = 200;          // minimap width in CSS pixels
 const DEFAULT_AVATAR = "/Characters/WalkAnimations.png";
-const GROUND_TILES = ["/Tiles/BasicTiles8.png", "/Tiles/BasicTiles22.png"];
+// Outdoor ground: plain grass, tufts, flowers and darker patches (from tools/campus-map/generate.py)
+const GROUND_TILES = ["/campus/grass-a.png", "/campus/grass-b.png", "/campus/grass-c.png", "/campus/grass-d.png"];
+// Deterministic scatter of the ground tiles; keep in sync with ground_tile() in the generator.
+function groundTile(x: number, y: number) {
+  const n = (x * 7919 + y * 104729) % 100;
+  return n < 6 ? 2 : n < 24 ? 1 : n < 34 ? 3 : 0;
+}
 
 // Avatar sheets: 5x5 grid of 80px frames, 6 frames per direction.
 const FRAME = 80;
@@ -84,20 +100,24 @@ const ready = (img: HTMLImageElement | undefined): img is HTMLImageElement =>
 
 // Floor and wall layers never change while you're in a space, so they're drawn once
 // onto an offscreen canvas and blitted every frame.
-async function renderBackground(width: number, height: number, elements: spaceElement[]) {
+async function renderBackground(width: number, height: number, elements: spaceElement[], ground: 'grass' | 'dark') {
   const canvas = document.createElement("canvas");
   canvas.width = width * TILE;
   canvas.height = height * TILE;
   const ctx = canvas.getContext("2d")!;
   ctx.imageSmoothingEnabled = false;
 
-  const [grass, tuft] = await Promise.all(GROUND_TILES.map(loadImage));
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      // deterministic scatter of grass tufts
-      const tile = ((x * 7919 + y * 104729) % 100) < 12 ? tuft : grass;
-      if (ready(tile)) ctx.drawImage(tile, x * TILE, y * TILE, TILE, TILE);
+  if (ground === 'grass') {
+    const tiles = await Promise.all(GROUND_TILES.map(loadImage));
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const tile = tiles[groundTile(x, y)];
+        if (ready(tile)) ctx.drawImage(tile, x * TILE, y * TILE, TILE, TILE);
+      }
     }
+  } else {
+    ctx.fillStyle = "#18161c";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
   for (const layer of ["floor", "wall"]) {
     for (const e of elements.filter((el) => (el.element.layer ?? "floor") === layer)) {
@@ -143,33 +163,46 @@ const SpaceGrid = ({ id }: { id: string }) => {
   // history loaded on join shouldn't pop up as bubbles
   const chatSeenRef = useRef(chat.length);
 
-  const dims = useMemo(() => {
+  // The area the player is in: outdoors, or one building interior. Each has its own map.
+  const areaId = serverPosition.area;
+  const area = useMemo<AreaDef | null>(() => {
     if (!space) return null;
+    if (areaId !== MAIN_AREA) {
+      const found = space.areas?.find((a) => a.id === areaId);
+      if (found) return found;
+    }
     const [w, h] = space.dimensions.split('x').map(Number);
-    return { w: w!, h: h! };
-  }, [space]);
+    return { id: MAIN_AREA, name: space.name, width: w!, height: h!, ground: 'grass' };
+  }, [space, areaId]);
+  const indoors = !!area && area.id !== MAIN_AREA;
 
-  const isWalkable = useMemo(
-    () => (space && dims ? buildWalkability(dims.w, dims.h, space.elements) : () => false),
-    [space, dims],
+  const dims = useMemo(() => (area ? { w: area.width, h: area.height } : null), [area]);
+
+  const areaElements = useMemo(
+    () => (space && area ? space.elements.filter((e) => (e.area ?? MAIN_AREA) === area.id) : []),
+    [space, area],
   );
 
-  const places = useMemo(() => findPlaces(space?.elements ?? []), [space]);
+  const isWalkable = useMemo(
+    () => (dims ? buildWalkability(dims.w, dims.h, areaElements) : () => false),
+    [areaElements, dims],
+  );
+
+  const places = useMemo(() => findPlaces(areaElements), [areaElements]);
 
   // --- proximity voice / video ---------------------------------------------
+  const areaRef = useRef(areaId);
+  areaRef.current = areaId;
   const getSelfPosition = useCallback(
-    () => (selfRef.current ? { x: selfRef.current.x, y: selfRef.current.y } : null), []);
+    () => (selfRef.current ? { area: areaRef.current, x: selfRef.current.x, y: selfRef.current.y } : null), []);
   const media = useProximityMedia(getSelfPosition);
   const names = useMemo(
     () => new Map([...users.values()].map((u) => [u.userId, u.username ?? 'Player'])), [users]);
 
-  const sprites = useMemo(() => {
-    const els = space?.elements ?? [];
-    return {
-      objects: els.filter((e) => e.element.layer === "objects"),
-      top: els.filter((e) => e.element.layer === "topObjects"),
-    };
-  }, [space]);
+  const sprites = useMemo(() => ({
+    objects: areaElements.filter((e) => e.element.layer === "objects"),
+    top: areaElements.filter((e) => e.element.layer === "topObjects"),
+  }), [areaElements]);
 
   // --- data loading ---------------------------------------------------------
   useEffect(() => {
@@ -184,20 +217,21 @@ const SpaceGrid = ({ id }: { id: string }) => {
       });
   }, [id]);
 
+  // Redrawn whenever the player changes area (walks into or out of a building).
   useEffect(() => {
-    if (!space || !dims) return;
+    if (!area || !dims) return;
     let cancelled = false;
     setLoadingArt(true);
-    const urls = new Set(space.elements.map((e) => e.element.imageUrl));
+    const urls = new Set(areaElements.map((e) => e.element.imageUrl));
     Promise.all([...urls].map(loadImage))
-      .then(() => renderBackground(dims.w, dims.h, space.elements))
+      .then(() => renderBackground(dims.w, dims.h, areaElements, area.ground ?? 'grass'))
       .then((bg) => {
         if (cancelled) return;
         backgroundRef.current = bg;
         setLoadingArt(false);
       });
     return () => { cancelled = true; };
-  }, [space, dims]);
+  }, [area, areaElements, dims]);
 
   const selfAvatar = selfAvatarUrl ?? DEFAULT_AVATAR;
 
@@ -228,6 +262,8 @@ const SpaceGrid = ({ id }: { id: string }) => {
     const now = performance.now();
     for (const [uid, u] of users) {
       if (uid === selfId) continue;
+      // only players in the same area are drawn; the rest keep their state in `users`
+      if ((u.area ?? MAIN_AREA) !== areaId) { actors.delete(uid); continue; }
       const a = actors.get(uid);
       const avatar = u.avatar || DEFAULT_AVATAR;
       const name = u.username ?? "Player";
@@ -248,7 +284,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
       a.name = name;
     }
     for (const uid of [...actors.keys()]) if (!users.has(uid)) actors.delete(uid);
-  }, [users, selfId]);
+  }, [users, selfId, areaId]);
 
   // --- chat bubbles -----------------------------------------------------------
   useEffect(() => {
@@ -261,7 +297,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
     }
   }, [chat]);
 
-  useEffect(() => { elementsRef.current = space?.elements ?? []; }, [space]);
+  useEffect(() => { elementsRef.current = areaElements; }, [areaElements]);
 
   // the local player's seat comes from the server ("pose"); moving clears it
   useEffect(() => {
@@ -556,14 +592,18 @@ const SpaceGrid = ({ id }: { id: string }) => {
       const ctx = canvas.getContext("2d")!;
       ctx.imageSmoothingEnabled = false;
 
-      // camera follows the player, clamped to the world (centred if the world is smaller)
+      // Rooms are small, so indoors the view is magnified (whole pixels only) to fill the screen.
       const worldW = dims.w * TILE, worldH = dims.h * TILE;
-      const camX = worldW <= cw ? (worldW - cw) / 2 : Math.max(0, Math.min(self.rx * TILE + TILE / 2 - cw / 2, worldW - cw));
-      const camY = worldH <= ch ? (worldH - ch) / 2 : Math.max(0, Math.min(self.ry * TILE + TILE / 2 - ch / 2, worldH - ch));
+      const zoom = indoors ? Math.max(1, Math.min(2, Math.floor(Math.min(cw / worldW, ch / worldH)))) : 1;
+      const vw = cw / zoom, vh = ch / zoom;
+      // camera follows the player, clamped to the world (centred if the world is smaller)
+      const camX = worldW <= vw ? (worldW - vw) / 2 : Math.max(0, Math.min(self.rx * TILE + TILE / 2 - vw / 2, worldW - vw));
+      const camY = worldH <= vh ? (worldH - vh) / 2 : Math.max(0, Math.min(self.ry * TILE + TILE / 2 - vh / 2, worldH - vh));
 
-      ctx.fillStyle = "#2f3b2a";
+      ctx.fillStyle = indoors ? "#18161c" : "#2f3b2a";
       ctx.fillRect(0, 0, cw, ch);
       ctx.save();
+      ctx.scale(zoom, zoom);
       ctx.translate(-Math.round(camX), -Math.round(camY));
       if (backgroundRef.current) ctx.drawImage(backgroundRef.current, 0, 0);
 
@@ -596,7 +636,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
       // HUD updates that don't need 60fps
       if (now - lastPlaceCheck > 250) {
         lastPlaceCheck = now;
-        setPlace(nearestPlace(places, self.x, self.y));
+        setPlace(indoors ? `Inside ${area!.name}` : nearestPlace(places, self.x, self.y));
         const hit = self.seat ? null : findInteraction(elementsRef.current, self.x, self.y);
         if (JSON.stringify(hit) !== JSON.stringify(interactionRef.current)) {
           interactionRef.current = hit;
@@ -612,7 +652,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [dims, loadingArt, isWalkable, sprites, moveUser, selfId, places]);
+  }, [dims, loadingArt, isWalkable, sprites, moveUser, selfId, places, indoors, area]);
 
   if (error) return <div className="text-center p-8 text-red-500">{error}</div>;
   if (!space) return <div className="text-center p-8">Loading space...</div>;
@@ -626,7 +666,10 @@ const SpaceGrid = ({ id }: { id: string }) => {
             {meta?.visibility === 'Public' && <Globe className="size-4 opacity-70" aria-label="Public space" />}
             {meta?.name ?? space.name}
           </h2>
-          <p className="text-sm opacity-80">{users.size + 1} online · WASD to move · Enter to chat · 1–6 emotes · E interact · M map</p>
+          <p className="text-sm opacity-80">
+            {users.size + 1} online · WASD to move · Enter to chat · 1–6 emotes · E interact · M map
+          </p>
+          {indoors && <p className="mt-1 text-xs text-emerald-200">Walk onto the green mat at the bottom to go back outside.</p>}
         </div>
         <button
           type="button"
@@ -670,7 +713,8 @@ const SpaceGrid = ({ id }: { id: string }) => {
       </div>
       {place && (
         <div aria-live="polite" className="pointer-events-none absolute right-4 top-4 z-20 flex items-center gap-1.5 rounded-full bg-black/60 px-4 py-1.5 text-sm font-medium text-white shadow-lg">
-          <MapPin className="size-4 text-emerald-300" /> Near {place}
+          {indoors ? <DoorOpen className="size-4 text-emerald-300" /> : <MapPin className="size-4 text-emerald-300" />}
+          {indoors ? place : `Near ${place}`}
         </div>
       )}
       <div role="toolbar" aria-label="Voice, video and emotes" className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 gap-1 rounded-xl bg-black/75 p-1.5 shadow-lg backdrop-blur-sm">
@@ -708,7 +752,9 @@ const SpaceGrid = ({ id }: { id: string }) => {
         </button>
       </div>
       {loadingArt && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center text-white">Loading map...</div>
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60 text-white">
+          {indoors ? `Entering ${area!.name}…` : 'Loading map...'}
+        </div>
       )}
       {(selfSeat || interaction) && (
         <button
@@ -717,7 +763,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
           className="absolute bottom-[7.5rem] left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/70 py-1.5 pl-1.5 pr-4 text-sm font-medium text-white shadow-lg backdrop-blur-sm hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
         >
           <kbd className="flex size-6 items-center justify-center rounded-md bg-white font-mono text-xs font-bold text-gray-900">E</kbd>
-          {selfSeat ? 'Stand up' : interaction?.kind === 'board' ? `Read the ${interaction.label}` : 'Sit on the bench'}
+          {selfSeat ? 'Stand up' : interaction?.kind === 'board' ? `Read the ${interaction.label}` : 'Sit down'}
         </button>
       )}
       <NoticeBoard spaceId={id} boardId={openBoard?.id ?? null} title={openBoard?.title ?? ''} onClose={() => setOpenBoard(null)} />

@@ -33,7 +33,7 @@ spaceRouter.post("/" ,userMiddleware, async (req, res) => {
 
     const map = await client.map.findUnique({
         where: { id: mapId },
-        select: { mapElements: true, width: true, height: true, thumbnail: true, spawnX: true, spawnY: true },
+        select: { mapElements: true, width: true, height: true, thumbnail: true, spawnX: true, spawnY: true, areas: true },
     });
     if (!map) {
         res.status(404).json({ message: "Map not found" });
@@ -49,6 +49,7 @@ spaceRouter.post("/" ,userMiddleware, async (req, res) => {
                 thumbnail: map.thumbnail,
                 spawnX: map.spawnX,
                 spawnY: map.spawnY,
+                areas: map.areas ?? [],
                 creatorId: req.userId,
                 ...ownership,
             },
@@ -59,6 +60,10 @@ spaceRouter.post("/" ,userMiddleware, async (req, res) => {
                 elementId: e.elementId,
                 x: e.x,
                 y: e.y,
+                area: e.area,
+                toArea: e.toArea,
+                toX: e.toX,
+                toY: e.toY,
             })),
         });
         return space;
@@ -400,6 +405,8 @@ spaceRouter.get("/:spaceId",userMiddleware, async (req, res) => {
         inviteCode: isOwner ? space.inviteCode : null,
         dimensions: `${space.width}x${space.height}`,
         spawn: space.spawnX !== null && space.spawnY !== null ? { x: space.spawnX, y: space.spawnY } : null,
+        // building interiors; the outdoor map is the "main" area with the dimensions above
+        areas: space.areas ?? [],
         elements: space.elements.map(e => ({
             id: e.id,
             element: {
@@ -412,6 +419,9 @@ spaceRouter.get("/:spaceId",userMiddleware, async (req, res) => {
             },
             x: e.x,
             y: e.y,
+            area: e.area,
+            // a door: stepping on this tile moves you to `to`
+            to: e.toArea && e.toX !== null && e.toY !== null ? { area: e.toArea, x: e.toX, y: e.toY } : null,
         }))
     })
 });

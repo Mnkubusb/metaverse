@@ -45,6 +45,9 @@ model Space {
   visibility  Visibility      @default(Unlisted)
   // Secret part of the invite link; resetting it revokes old links
   inviteCode  String          @unique @default(cuid())
+  // Extra areas (building interiors): [{ id, name, width, height, spawnX, spawnY, ground }].
+  // The outdoor map itself is the "main" area with the space's width/height.
+  areas       Json            @default("[]")
   createdAt   DateTime        @default(now())
   creatorId   String
   creator     User            @relation(fields: [creatorId], references: [id])
@@ -99,6 +102,12 @@ model spaceElements {
   spaceId   String
   x         Int
   y         Int
+  // which area of the space this placement is in ("main" = outdoors)
+  area      String       @default("main")
+  // set on doors: stepping on this tile moves the player to (toX, toY) in area toArea
+  toArea    String?
+  toX       Int?
+  toY       Int?
   space     Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   element   Element      @relation(fields: [elementId], references: [id])
   notices   NoticePost[]
@@ -126,6 +135,7 @@ model Map {
   thumbnail   String
   spawnX      Int?
   spawnY      Int?
+  areas       Json          @default("[]")
   mapElements mapElements[]
 }
 
@@ -135,6 +145,10 @@ model mapElements {
   elementId String
   x         Int
   y         Int
+  area      String  @default("main")
+  toArea    String?
+  toX       Int?
+  toY       Int?
   map       Map     @relation(fields: [mapId], references: [id], onDelete: Cascade)
   element   Element @relation(fields: [elementId], references: [id])
 

@@ -5,8 +5,13 @@ Generates the GEC Bilaspur campus map: pixel-art tiles, the map layout and a pre
 Outputs
   apps/web/public/campus/*.png                    tile / building sprites (32px per tile)
   apps/web/public/campus/gec-bilaspur-thumb.png   map thumbnail shown in the space creator
-  packages/db/prisma/maps/gec-bilaspur.json       elements + placements consumed by the seed script
-  tools/campus-map/preview.png                    full-size render, for eyeballing the layout
+  packages/db/prisma/maps/gec-bilaspur.json       elements, areas + placements consumed by the seed script
+  tools/campus-map/preview.png                    full-size render of the campus, for eyeballing the layout
+  tools/campus-map/preview-interiors.png          every building interior on one sheet
+
+Every building you can walk into has its own "area" (a small indoor map, see interiors.py).
+Doors are placements with a target: stepping on the mat in front of a building takes you inside,
+the green mat at the bottom of a room takes you back out.
 
 Layer rules (mirrored by the web renderer and the ws server):
   floor       drawn first, never blocks movement
@@ -19,9 +24,13 @@ Edit LAYOUT below to move buildings around, then re-run and `pnpm db:seed`.
 """
 import json
 import random
+import sys
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import interiors  # noqa: E402  (sprites + room templates for building insides)
 
 ROOT = Path(__file__).resolve().parents[2]
 PUBLIC = ROOT / "apps/web/public"
@@ -476,6 +485,113 @@ def notice_board():
     return im
 
 
+def grass(kind):
+    """Ground tiles: plain, with tufts, with flowers, and a darker patch."""
+    base = {"a": GRASS, "b": GRASS, "c": GRASS, "d": (166, 216, 92)}[kind]
+    im, d = new(1, 1, base + (255,))
+    speckle(d, (0, 0, 32, 32), base, 0.12, 6)
+    if kind in ("b", "d"):
+        for _ in range(5):
+            x, y = rng.randrange(2, 30), rng.randrange(4, 31)
+            d.line((x, y, x, y - 3), fill=GRASS_DARK)
+            d.line((x + 2, y, x + 2, y - 2), fill=GRASS_DARK)
+    if kind == "c":
+        for _ in range(3):
+            x, y = rng.randrange(3, 29), rng.randrange(3, 29)
+            d.point((x, y), fill=rng.choice([(255, 240, 120), (255, 255, 255), (250, 150, 170)]))
+            d.point((x + 1, y), fill=rng.choice([(255, 240, 120), (255, 255, 255)]))
+    return im
+
+
+def shadow(w, h):
+    """Soft drop shadow laid under a building, offset by one tile to its bottom-right."""
+    im, d = new(w, h)
+    d.rectangle((0, 0, w * T - 1, h * T - 1), fill=(0, 0, 0, 70))
+    return im
+
+
+def hedge():
+    im, d = new(1, 1)
+    d.rectangle((0, 26, 31, 31), fill=(0, 0, 0, 40))
+    d.rounded_rectangle((0, 8, 31, 28), radius=6, fill=(52, 128, 66), outline=(30, 80, 40))
+    d.rounded_rectangle((2, 6, 29, 18), radius=6, fill=(84, 166, 88))
+    for _ in range(18):
+        x, y = rng.randrange(3, 29), rng.randrange(8, 27)
+        d.point((x, y), fill=rng.choice([(110, 190, 104), (40, 104, 54), (70, 150, 78)]))
+    return im
+
+
+def scooter(color):
+    im, d = new(1, 1)
+    d.ellipse((4, 24, 28, 31), fill=(0, 0, 0, 60))
+    d.rounded_rectangle((6, 10, 26, 24), radius=5, fill=color, outline=OUTLINE)
+    d.rectangle((9, 6, 23, 11), fill=(40, 40, 46), outline=OUTLINE)
+    d.rectangle((5, 24, 9, 28), fill=(30, 30, 30))
+    d.rectangle((23, 24, 27, 28), fill=(30, 30, 30))
+    d.rectangle((14, 4, 18, 7), fill=(200, 200, 204))
+    return im
+
+
+def auto_rickshaw():
+    im, d = new(2, 1)
+    d.ellipse((4, 24, 60, 31), fill=(0, 0, 0, 60))
+    d.rounded_rectangle((6, 4, 58, 26), radius=7, fill=(240, 200, 40), outline=OUTLINE)
+    d.rectangle((6, 4, 58, 10), fill=(40, 40, 46))
+    d.rectangle((14, 10, 50, 20), fill=(30, 98, 72))
+    d.rectangle((8, 12, 13, 20), fill=GLASS)
+    for x in (10, 48):
+        d.rectangle((x, 26, x + 6, 29), fill=(30, 30, 30))
+    return im
+
+
+def tea_stall():
+    w, h = 3, 2
+    im, d = new(w, h)
+    W, H = w * T, h * T
+    d.rectangle((2, 2, W - 3, 22), fill=(40, 140, 200), outline=OUTLINE)
+    for x in range(4, W - 4, 12):
+        d.rectangle((x, 2, x + 5, 22), fill=(230, 230, 230))
+    d.rectangle((6, 22, W - 7, H - 4), fill=(170, 112, 66), outline=OUTLINE)
+    d.rectangle((8, 24, W - 9, 30), fill=(196, 146, 96))
+    d.rectangle((14, 32, 30, 44), fill=(200, 200, 196), outline=OUTLINE)
+    d.ellipse((40, 34, 52, 44), fill=(60, 60, 64), outline=OUTLINE)
+    for x in (62, 72, 82):
+        d.rectangle((x, 36, x + 6, 42), fill=WHITE, outline=OUTLINE)
+    text_center(d, W // 2, 12, "CHAI", 10, (255, 230, 120))
+    return im
+
+
+def water_tower():
+    im, d = new(2, 3)
+    d.ellipse((10, 86, 54, 94), fill=(0, 0, 0, 60))
+    for x in (14, 46):
+        d.rectangle((x, 30, x + 3, 90), fill=(90, 94, 100), outline=OUTLINE)
+    d.line((17, 40, 46, 80), fill=(90, 94, 100), width=2)
+    d.line((46, 40, 17, 80), fill=(90, 94, 100), width=2)
+    d.ellipse((6, 2, 57, 34), fill=(200, 200, 196), outline=OUTLINE)
+    d.ellipse((6, 18, 57, 40), fill=(170, 170, 166), outline=OUTLINE)
+    d.rectangle((6, 18, 57, 29), fill=(190, 190, 186))
+    d.line((6, 18, 6, 29), fill=OUTLINE)
+    d.line((57, 18, 57, 29), fill=OUTLINE)
+    d.rectangle((16, 8, 46, 14), fill=SIGN_GREEN)
+    text_center(d, 32, 11, "GEC", 8, WHITE)
+    return im
+
+
+def cow():
+    im, d = new(2, 1)
+    d.ellipse((6, 24, 56, 31), fill=(0, 0, 0, 50))
+    d.rounded_rectangle((10, 8, 50, 26), radius=7, fill=(236, 232, 224), outline=OUTLINE)
+    d.ellipse((20, 10, 34, 24), fill=(90, 70, 60))
+    d.rounded_rectangle((44, 4, 60, 18), radius=5, fill=(236, 232, 224), outline=OUTLINE)
+    d.rectangle((48, 2, 50, 6), fill=(60, 50, 44))
+    d.rectangle((56, 2, 58, 6), fill=(60, 50, 44))
+    d.point((54, 9), fill=OUTLINE)
+    for x in (14, 22, 36, 44):
+        d.rectangle((x, 24, x + 3, 30), fill=(200, 196, 186), outline=OUTLINE)
+    return im
+
+
 def load_png(rel, w, h):
     src = Image.open(PUBLIC / rel).convert("RGBA")
     return src.resize((w * T, h * T), Image.NEAREST)
@@ -571,14 +687,40 @@ def build_catalogue():
 
     element("gate-arch", gate_arch(), "topObjects", False)
 
+    for k in "abcd":
+        element(f"grass-{k}", grass(k), "floor", False)
+    element("hedge", hedge(), "objects", True)
+    element("scooter-red", scooter((200, 50, 50)), "objects", True)
+    element("scooter-blue", scooter((50, 90, 190)), "objects", True)
+    element("auto", auto_rickshaw(), "objects", True)
+    element("tea-stall", tea_stall(), "wall", True)
+    element("water-tower", water_tower(), "wall", True)
+    element("cow", cow(), "objects", True)
+
+    interiors.catalogue(element)
+
 
 # --------------------------------------------------------------------------- layout
 
-PLACEMENTS = []
+PLACEMENTS = []   # (element key, x, y, area id, door target or None)
+AREAS = []        # interior area definitions, see interiors.Room.area_def
+BUILDINGS = []    # (key, x, y, template) for every building you can walk into
 
 
-def put(key, x, y):
-    PLACEMENTS.append((key, x, y))
+def put(key, x, y, area="main", to=None):
+    PLACEMENTS.append((key, x, y, area, to))
+
+
+def put_building(key, x, y, template):
+    """Places a building and remembers it so build_interiors() can give it an inside."""
+    e = ELEMENTS[key]
+    # drop shadow under the bottom-right edge (a floor tile, so it never blocks)
+    shadow_key = f"shadow-{e['width']}x{e['height']}"
+    if shadow_key not in ELEMENTS:
+        element(shadow_key, shadow(e["width"], e["height"]), "floor", False)
+    put(shadow_key, x + 1, y + 1)
+    put(key, x, y)
+    BUILDINGS.append((key, x, y, template))
 
 
 def road_h(x0, x1, y):
@@ -639,8 +781,8 @@ def build_layout():
 
     # --- central plaza, admin block, fountain, flag ----------------------------
     area("plaza", 31, 23, 44, 29)
-    put("admin-block", 32, 17)
-    put("fountain", 36, 24)
+    put_building("admin-block", 32, 17, "admin")
+    put("fountain", 36, 26)
     put("flagpole", 41, 24)
     for x in (31, 44):
         put("lamp", x, 23)
@@ -652,11 +794,11 @@ def build_layout():
     area("path", 2, 40, 35, 41)            # west walkway between the two rows
     area("path", 39, 40, 73, 41)           # east walkway
     for key, x in [("dept-civil", 4), ("dept-mechanical", 14), ("dept-mining", 24)]:
-        put(key, x, 33)
+        put_building(key, x, 33, "dept")
         door_path(x, 33, 8, 5, 39)
-    put("workshop", 4, 43)
+    put_building("workshop", 4, 43, "workshop")
     door_apron(4, 43, 9, 5)
-    put("dispensary", 15, 44)
+    put_building("dispensary", 15, 44, "dispensary")
     door_apron(15, 44, 5, 4)
     put("parking", 23, 44)
     area("path", 23, 42, 30, 43)
@@ -667,20 +809,20 @@ def build_layout():
 
     # --- academic zone, east: CSE / IT / ETC / electrical / canteen / auditorium
     for key, x in [("dept-cse", 41), ("dept-it", 51), ("dept-etc", 61)]:
-        put(key, x, 33)
+        put_building(key, x, 33, "lab" if key == "dept-cse" else "dept")
         door_path(x, 33, 8, 5, 39)
-    put("dept-electrical", 48, 43)
+    put_building("dept-electrical", 48, 43, "dept")
     door_apron(48, 43, 8, 5)
-    put("canteen", 58, 44)
+    put_building("canteen", 58, 44, "canteen")
     door_apron(58, 44, 6, 4)
     area("path", 57, 48, 64, 48)
     for x in (58, 61):
         put("bench", x, 49)
-    put("auditorium", 66, 42)
+    put_building("auditorium", 66, 42, "auditorium")
     door_apron(66, 42, 9, 6)
 
     # --- middle band: library, pond garden, basketball, garden -----------------
-    put("central-library", 18, 16)
+    put_building("central-library", 18, 16, "library")
     door_path(18, 16, 9, 5, 29)
     put("pond", 6, 17)
     area("path", 5, 23, 13, 23)
@@ -701,14 +843,14 @@ def build_layout():
         put("notice-board", x, y)
 
     # --- north: hostels + sports ground ----------------------------------------
-    put("boys-hostel-1", 3, 2)
-    put("boys-hostel-2", 12, 2)
-    put("first-year-hostel", 21, 2)
+    put_building("boys-hostel-1", 3, 2, "hostel")
+    put_building("boys-hostel-2", 12, 2, "hostel")
+    put_building("first-year-hostel", 21, 2, "hostel")
     for (x, w) in [(3, 8), (12, 8), (21, 6)]:
         door_path(x, 2, w, 5, 11)
     put("sports-ground", 28, 1)
-    put("girls-hostel-1", 55, 2)
-    put("girls-hostel-2", 65, 2)
+    put_building("girls-hostel-1", 55, 2, "hostel")
+    put_building("girls-hostel-2", 65, 2, "hostel")
     for x in (55, 65):
         door_path(x, 2, 8, 5, 11)
     for x in (30, 34, 40, 44):
@@ -736,18 +878,99 @@ def build_layout():
     for (x, y) in [(34, 39), (41, 39), (22, 43), (57, 43), (63, 29), (12, 29)]:
         put("dustbin", x, y)
     for x in range(8, 70, 12):
-        if not 33 <= x <= 43:
+        if not 33 <= x <= 45:
             put("lamp", x, 38)
+
+    # --- more life: hedges along the ring road, a chai stall, scooters, cows, water tower
+    for x in range(5, 72, 1):
+        if 33 <= x <= 41 or x in (26, 27, 48, 49, 65, 66):
+            continue  # gaps for the avenue, library and lawn paths
+        put("hedge", x, 31)
+    for x in range(5, 72, 1):
+        if 36 <= x <= 40 or x in (22, 23, 65, 66):
+            continue  # gaps for the sign, library path and lawn path
+        put("hedge", x, 14)
+    put("tea-stall", 54, 49)
+    for (x, y) in [(57, 50), (58, 50)]:
+        put("scooter-red" if x % 2 else "scooter-blue", x, y)
+    put("auto", 44, 50)
+    put("scooter-blue", 30, 48)
+    put("scooter-red", 31, 48)
+    put("cow", 46, 8)
+    put("cow", 16, 26)
+    put("water-tower", 26, 7)
+    put("notice-board", 47, 45)
+
+
+def tiled(key, w, h):
+    """An element made by repeating `key`'s sprite w x h times (same layer and blocking)."""
+    base = ELEMENTS[key]
+    bw, bh = base["width"], base["height"]
+    if (w, h) == (bw, bh):
+        return key
+    name = f"{key}-{w}x{h}"
+    if name not in ELEMENTS:
+        im = Image.new("RGBA", (w * T, h * T))
+        for y in range(0, h, bh):
+            for x in range(0, w, bw):
+                im.alpha_composite(IMAGES[key], (x * T, y * T))
+        element(name, im, base["layer"], base["static"])
+    return name
+
+
+def build_interiors():
+    """One room per building, linked to the two door tiles in front of it."""
+    sizes = {"admin": (20, 13), "library": (20, 13), "auditorium": (20, 13), "dept": (22, 13), "lab": (18, 12),
+             "workshop": (18, 12), "canteen": (16, 11), "dispensary": (14, 10), "hostel": (18, 12)}
+    floors = {"admin": "floor-carpet", "library": "floor-wood", "auditorium": "floor-carpet", "dept": "floor-tile",
+              "lab": "floor-tile-blue", "workshop": "floor-concrete", "canteen": "floor-tile", "dispensary": "floor-tile-blue",
+              "hostel": "floor-tile"}
+    walls = {"library": "in-wall-back-blue", "dispensary": "in-wall-back-blue", "workshop": "in-wall-back-grey",
+             "lab": "in-wall-back-blue"}
+    for key, bx, by, template in BUILDINGS:
+        e = ELEMENTS[key]
+        area_id = f"in-{key}"
+        name = PLACE_NAMES.get(key, key)
+        w, h = sizes[template]
+        wall = walls.get(template, "in-wall-back-pink" if "girls" in key else "in-wall-back")
+        room = interiors.Room(area_id, name, w, h, floors[template], wall, put, tiled)
+        interiors.TEMPLATES[template](room)
+        # door mats outside, on the two tiles in front of the door, lead to the room's spawn
+        cx = bx + e["width"] // 2 - 1
+        dy = by + e["height"]
+        for x in (cx, cx + 1):
+            put("door-in", x, dy, "main", (area_id, *room.spawn))
+        # the room's exit mats lead to the tile just below the door mats
+        room.exits("main", cx, dy + 1)
+        AREAS.append(room.area_def())
+
+
+# Names shown in the HUD; also used for the interiors. Keep in sync with apps/web/lib/places.ts.
+PLACE_NAMES = {
+    "admin-block": "Administrative Block", "central-library": "Central Library", "auditorium": "Auditorium",
+    "dept-civil": "Civil Engineering", "dept-mechanical": "Mechanical Engineering", "dept-mining": "Mining Engineering",
+    "dept-electrical": "Electrical Engineering", "dept-cse": "Computer Science & Engineering",
+    "dept-it": "Information Technology", "dept-etc": "Electronics & Telecom", "workshop": "Central Workshop",
+    "canteen": "Canteen", "dispensary": "Dispensary", "boys-hostel-1": "Boys Hostel 1", "boys-hostel-2": "Boys Hostel 2",
+    "first-year-hostel": "First Year Hostel", "girls-hostel-1": "Girls Hostel 1", "girls-hostel-2": "Girls Hostel 2",
+}
 
 
 # --------------------------------------------------------------------------- output
 
-def footprint_blocked():
-    """Tiles blocked for movement, using the same rules as the game."""
+def area_size(area):
+    if area == "main":
+        return MAP_W, MAP_H
+    a = next(a for a in AREAS if a["id"] == area)
+    return a["width"], a["height"]
+
+
+def footprint_blocked(area="main"):
+    """Tiles blocked for movement in one area, using the same rules as the game."""
     blocked = set()
-    for key, x, y in PLACEMENTS:
+    for key, x, y, a, _ in PLACEMENTS:
         e = ELEMENTS[key]
-        if not e["static"]:
+        if a != area or not e["static"]:
             continue
         if e["layer"] == "wall":
             rows = range(y, y + e["height"])
@@ -761,58 +984,114 @@ def footprint_blocked():
     return blocked
 
 
-def render_preview():
-    W, H = MAP_W * T, MAP_H * T
-    canvas = Image.new("RGBA", (W, H))
-    grass = Image.open(PUBLIC / "Tiles/BasicTiles8.png").convert("RGBA")
-    tuft = Image.open(PUBLIC / "Tiles/BasicTiles22.png").convert("RGBA")
-    r = random.Random(7)
-    for ty in range(MAP_H):
-        for tx in range(MAP_W):
-            canvas.alpha_composite(tuft if r.random() < 0.12 else grass, (tx * T, ty * T))
+def ground_tile(tx, ty):
+    """Same deterministic scatter as the web renderer (apps/web/components/space/spaceGrid.tsx)."""
+    n = (tx * 7919 + ty * 104729) % 100
+    return "grass-c" if n < 6 else "grass-b" if n < 24 else "grass-d" if n < 34 else "grass-a"
+
+
+def render_preview(area="main"):
+    w, h = area_size(area)
+    canvas = Image.new("RGBA", (w * T, h * T), (24, 22, 28, 255))
+    if area == "main":
+        for ty in range(h):
+            for tx in range(w):
+                canvas.alpha_composite(IMAGES[ground_tile(tx, ty)], (tx * T, ty * T))
     order = {"floor": 0, "wall": 1, "objects": 2, "topObjects": 3}
-    placed = sorted(PLACEMENTS, key=lambda p: (order[ELEMENTS[p[0]]["layer"]],
-                                               p[2] + ELEMENTS[p[0]]["height"]))
-    for key, x, y in placed:
+    placed = sorted((p for p in PLACEMENTS if p[3] == area),
+                    key=lambda p: (order[ELEMENTS[p[0]]["layer"]], p[2] + ELEMENTS[p[0]]["height"]))
+    for key, x, y, _, _ in placed:
         canvas.alpha_composite(IMAGES[key], (x * T, y * T))
     return canvas
 
 
+def render_interiors_sheet():
+    tiles = [render_preview(a["id"]) for a in AREAS]
+    cols = 3
+    cw = max(t.width for t in tiles) + 16
+    ch = max(t.height for t in tiles) + 40
+    rows = (len(tiles) + cols - 1) // cols
+    sheet = Image.new("RGB", (cols * cw, rows * ch), (40, 40, 44))
+    d = ImageDraw.Draw(sheet)
+    for i, (t, a) in enumerate(zip(tiles, AREAS)):
+        x, y = (i % cols) * cw, (i // cols) * ch
+        d.text((x + 8, y + 6), f"{a['name']}  ({a['width']}x{a['height']})", font=font(14), fill=WHITE)
+        sheet.paste(t, (x + 8, y + 28))
+    return sheet
+
+
+def reachable_from(start, area):
+    blocked = footprint_blocked(area)
+    w, h = area_size(area)
+    reach = {start}
+    stack = [start]
+    while stack:
+        cx, cy = stack.pop()
+        for nx, ny in ((cx + 1, cy), (cx - 1, cy), (cx, cy + 1), (cx, cy - 1)):
+            if 0 <= nx < w and 0 <= ny < h and (nx, ny) not in blocked and (nx, ny) not in reach:
+                reach.add((nx, ny))
+                stack.append((nx, ny))
+    return reach, blocked
+
+
 def validate():
     errors = []
-    for key, x, y in PLACEMENTS:
+    area_ids = {"main", *(a["id"] for a in AREAS)}
+    for key, x, y, area, _ in PLACEMENTS:
         e = ELEMENTS[key]
-        if x < 0 or y < 0 or x + e["width"] > MAP_W or y + e["height"] > MAP_H:
-            errors.append(f"{key} at {x},{y} is out of bounds")
+        w, h = area_size(area)
+        if x < 0 or y < 0 or x + e["width"] > w or y + e["height"] > h:
+            errors.append(f"{key} at {x},{y} in {area} is out of bounds")
     # wall-layer footprints must not overlap each other
     seen = {}
-    for key, x, y in PLACEMENTS:
+    for key, x, y, area, _ in PLACEMENTS:
         e = ELEMENTS[key]
         if e["layer"] != "wall":
             continue
         for yy in range(y, y + e["height"]):
             for xx in range(x, x + e["width"]):
-                if (xx, yy) in seen and seen[(xx, yy)] != key:
-                    errors.append(f"{key} overlaps {seen[(xx, yy)]} at {xx},{yy}")
-                seen[(xx, yy)] = key
-    blocked = footprint_blocked()
+                if (area, xx, yy) in seen and seen[(area, xx, yy)] != key:
+                    errors.append(f"{key} overlaps {seen[(area, xx, yy)]} at {xx},{yy} in {area}")
+                seen[(area, xx, yy)] = key
+    reach, blocked = reachable_from(SPAWN, "main")
     if SPAWN in blocked:
         errors.append("spawn tile is blocked")
-    # every building door must be reachable from the spawn
-    reach = {SPAWN}
-    stack = [SPAWN]
-    while stack:
-        cx, cy = stack.pop()
-        for nx, ny in ((cx + 1, cy), (cx - 1, cy), (cx, cy + 1), (cx, cy - 1)):
-            if 0 <= nx < MAP_W and 0 <= ny < MAP_H and (nx, ny) not in blocked and (nx, ny) not in reach:
-                reach.add((nx, ny))
-                stack.append((nx, ny))
-    for key, x, y in PLACEMENTS:
+    # every door must be reachable, and lead somewhere walkable that isn't itself a door
+    doors = {(a, x, y) for _, x, y, a, to in PLACEMENTS if to}
+    reaches = {"main": reach}
+    for a in AREAS:
+        r, b = reachable_from((a["spawnX"], a["spawnY"]), a["id"])
+        reaches[a["id"]] = r
+        if (a["spawnX"], a["spawnY"]) in b:
+            errors.append(f"spawn of {a['id']} is blocked")
+        # no walkable pockets you can't reach (furniture boxing off part of a room)
+        w, h = a["width"], a["height"]
+        pockets = {(x, y) for y in range(h) for x in range(w)} - b - r
+        if pockets:
+            errors.append(f"{a['id']}: {len(pockets)} walkable tiles unreachable, e.g. {sorted(pockets)[:3]}")
+    for key, x, y, area, to in PLACEMENTS:
+        if not to:
+            continue
+        if (x, y) not in reaches[area]:
+            errors.append(f"door {key} at {x},{y} in {area} is unreachable")
+        ta, tx, ty = to
+        if ta not in area_ids:
+            errors.append(f"door {key} leads to unknown area {ta}")
+        elif (tx, ty) not in reaches[ta]:
+            errors.append(f"door {key} leads to blocked/unreachable tile {tx},{ty} in {ta}")
+        elif (ta, tx, ty) in doors:
+            errors.append(f"door {key} leads straight onto another door at {tx},{ty} in {ta}")
+    # every seat must have a free tile next to it
+    seats = {"campus-bench", "campus-chair", "campus-chair-red", "campus-seat-row", "campus-bench-long", "campus-sofa"}
+    for key, x, y, area, _ in PLACEMENTS:
         e = ELEMENTS[key]
-        if e["layer"] == "wall" and e["height"] >= 3 and not key.startswith(("pond", "fountain")):
-            door = (x + e["width"] // 2, y + e["height"])
-            if door not in reach:
-                errors.append(f"door of {key} at {door} is unreachable from spawn")
+        if e["id"] not in seats:
+            continue
+        sy = y + e["height"] - 1
+        for sx in range(x, x + e["width"]):
+            around = [(sx + dx, sy + dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if (dx or dy)]
+            if not any(t in reaches[area] for t in around):
+                errors.append(f"seat {key} at {sx},{sy} in {area} can't be reached")
     return errors, len(reach)
 
 
@@ -823,6 +1102,7 @@ def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     build_catalogue()
     build_layout()
+    build_interiors()
     errors, reachable = validate()
     if errors:
         raise SystemExit("Layout errors:\n  " + "\n  ".join(errors))
@@ -833,6 +1113,7 @@ def main():
 
     preview = render_preview()
     preview.convert("RGB").save(PREVIEW, optimize=True)
+    render_interiors_sheet().save(PREVIEW.with_name("preview-interiors.png"), optimize=True)
     thumb = preview.resize((MAP_W * 8, MAP_H * 8), Image.LANCZOS).convert("RGB")
     thumb.save(OUT_DIR / "gec-bilaspur-thumb.png", optimize=True)
 
@@ -846,12 +1127,17 @@ def main():
             "thumbnail": "/campus/gec-bilaspur-thumb.png",
             "spawnX": SPAWN[0],
             "spawnY": SPAWN[1],
+            "areas": AREAS,
         },
         "elements": list(ELEMENTS.values()),
-        "placements": [{"elementId": ELEMENTS[k]["id"], "x": x, "y": y} for k, x, y in PLACEMENTS],
+        "placements": [
+            {"elementId": ELEMENTS[k]["id"], "x": x, "y": y, "area": a,
+             **({"toArea": to[0], "toX": to[1], "toY": to[2]} if to else {})}
+            for k, x, y, a, to in PLACEMENTS
+        ],
     }
     MAP_JSON.write_text(json.dumps(data, indent=1) + "\n")
-    print(f"{len(ELEMENTS)} elements, {len(PLACEMENTS)} placements, {reachable} reachable tiles")
+    print(f"{len(ELEMENTS)} elements, {len(PLACEMENTS)} placements, {len(AREAS)} interiors, {reachable} reachable tiles")
 
 
 if __name__ == "__main__":

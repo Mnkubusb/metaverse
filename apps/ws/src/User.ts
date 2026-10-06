@@ -4,7 +4,7 @@ import { outgoingMessage } from "./types";
 import client from "@repo/db/client";
 import jwt, { JwtPayload } from "jsonwebtoken"
 import { JWT_SECRET } from "./config";
-import type { SpaceGrid } from "./SpaceGrid";
+import { MAIN_AREA, type SpaceGrid } from "./SpaceGrid";
 import { EMOTES, RateLimiter, chatRateLimiter, cleanChatText, emoteRateLimiter, recentChat, saveChatMessage } from "./chat";
 
 const HEARTBEAT_INTERVAL = 30_000; // 30 seconds
@@ -29,6 +29,8 @@ export class User {
     public avatar: string | null = null;
     // tile of the bench (or other seat) the player is sitting on
     public seat: { x: number; y: number } | null = null;
+    // which area of the space the player is in: "main" outdoors, or a building interior
+    public area: string = MAIN_AREA;
     public x: number;
     public y: number;
     private spaceId?: string;
@@ -131,7 +133,8 @@ export class User {
                     this.avatar = dbUser.avatar?.imageUrl ?? null;
                     this.spaceId = spaceId;
                     this.grid = grid;
-                    const spawn = grid.spawnPoint();
+                    const spawn = grid.main.spawnPoint();
+                    this.area = MAIN_AREA;
                     this.x = spawn.x;
                     this.y = spawn.y;
                     rooms.addUser(spaceId, this);
@@ -140,16 +143,16 @@ export class User {
                         payload: {
                             userId: this.userId,
                             avatar: this.avatar,
-                            spawn: { x: this.x, y: this.y },
+                            spawn: { area: this.area, x: this.x, y: this.y },
                             chat,
                             users: rooms.rooms.get(spaceId)
                                 ?.filter((u) => u.id !== this.id)
-                                .map((u) => ({ userId: u.userId, username: u.username, avatar: u.avatar, x: u.x, y: u.y, seat: u.seat })) ?? []
+                                .map((u) => ({ userId: u.userId, username: u.username, avatar: u.avatar, area: u.area, x: u.x, y: u.y, seat: u.seat })) ?? []
                         }
                     });
                     rooms.broadcast({
                         type: "user-joined",
-                        payload: { x: this.x, y: this.y, userId: this.userId, username: this.username, avatar: this.avatar }
+                        payload: { area: this.area, x: this.x, y: this.y, userId: this.userId, username: this.username, avatar: this.avatar }
                     }, this, spaceId);
                     break;
                 }
@@ -183,7 +186,8 @@ export class User {
                     if (seat) {
                         const x = Number(seat.x), y = Number(seat.y);
                         const adjacent = Math.max(Math.abs(x - this.x), Math.abs(y - this.y)) <= 1;
-                        if (!Number.isInteger(x) || !Number.isInteger(y) || !adjacent || this.grid.isWalkable(x, y)) return;
+                        const here = this.grid.area(this.area);
+                        if (!here || !Number.isInteger(x) || !Number.isInteger(y) || !adjacent || here.isWalkable(x, y)) return;
                         next = { x, y };
                     }
                     this.seat = next;
@@ -241,24 +245,38 @@ export class User {
                     const y = Number(parsedData.payload?.y);
                     const now = Date.now();
                     const step = Math.abs(this.x - x) + Math.abs(this.y - y);
-                    if (step === 1 && now - this.lastMoveAt >= MIN_MOVE_INTERVAL && this.grid.isWalkable(x, y)) {
+                    const here = this.grid.area(this.area);
+                    if (here && step === 1 && now - this.lastMoveAt >= MIN_MOVE_INTERVAL && here.isWalkable(x, y)) {
                         this.lastMoveAt = now;
                         this.x = x;
                         this.y = y;
                         this.seat = null; // walking away stands you up (clients clear it on "move")
-                        this.send({
-                            type: "movement-accepted",
-                            payload: { x: this.x, y: this.y, userId: this.userId }
-                        });
+                        const door = here.doorAt(x, y);
+                        if (door) {
+                            // through a door: the player is moved to the other side, in another area
+                            const to = this.grid.resolve(door);
+                            this.area = to.area;
+                            this.x = to.x;
+                            this.y = to.y;
+                            this.send({
+                                type: "teleported",
+                                payload: { area: this.area, x: this.x, y: this.y, userId: this.userId }
+                            });
+                        } else {
+                            this.send({
+                                type: "movement-accepted",
+                                payload: { area: this.area, x: this.x, y: this.y, userId: this.userId }
+                            });
+                        }
                         RoomManager.getInstance().broadcast({
                             type: "move",
-                            payload: { x: this.x, y: this.y, userId: this.userId }
+                            payload: { area: this.area, x: this.x, y: this.y, userId: this.userId }
                         }, this, this.spaceId);
                         return;
                     }
                     this.send({
                         type: "movement-rejected",
-                        payload: { x: this.x, y: this.y, userId: this.userId }
+                        payload: { area: this.area, x: this.x, y: this.y, userId: this.userId }
                     });
                     break;
                 }

@@ -26,6 +26,8 @@ const PLACE_NAMES: Record<string, string> = {
   'campus-fountain': 'Main Plaza',
   'campus-parking': 'Parking',
   'campus-gate-arch': 'Main Gate',
+  'campus-tea-stall': 'Chai Stall',
+  'campus-water-tower': 'Water Tower',
 };
 
 export interface Place {

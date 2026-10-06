@@ -3,7 +3,7 @@ import type { spaceElement } from '@/components/space/SpaceElement';
 // Elements you can use by walking up and pressing E.
 // Board ids must match BOARD_ELEMENT_IDS in apps/http/src/routes/v1/notices.ts.
 const BOARD_ELEMENTS = new Set(['campus-notice-board', 'campus-sign-welcome', 'campus-sign-hostels']);
-const SEAT_ELEMENTS = new Set(['campus-bench']);
+const SEAT_ELEMENTS = new Set(['campus-bench', 'campus-chair', 'campus-chair-red', 'campus-seat-row', 'campus-bench-long', 'campus-sofa']);
 
 export type Interaction =
   | { kind: 'board'; boardId: string; label: string }

@@ -29,7 +29,7 @@ export interface RemoteMedia {
   volume: number;
 }
 
-type Position = { x: number; y: number };
+type Position = { area?: string; x: number; y: number };
 
 /**
  * Proximity voice/video over peer-to-peer WebRTC. Signalling goes through the WebSocket server
@@ -53,6 +53,8 @@ export function useProximityMedia(getSelfPosition: () => Position | null) {
     const me = getSelfPosition();
     const other = usersRef.current.get(userId);
     if (!me || !other) return Infinity;
+    // someone inside a building can't be heard from outside it (or from another building)
+    if ((me.area ?? 'main') !== (other.area ?? 'main')) return Infinity;
     return Math.hypot(me.x - other.x, me.y - other.y);
   }, [getSelfPosition]);
 

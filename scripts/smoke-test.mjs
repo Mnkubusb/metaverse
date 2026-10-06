@@ -32,7 +32,7 @@ function connect(token, spaceId) {
         const timer = setInterval(() => {
             const i = inbox.findIndex((m) => m.type === type);
             if (i >= 0) { clearInterval(timer); resolve(inbox.splice(i, 1)[0]); }
-            else if (Date.now() - started > timeout) { clearInterval(timer); reject(new Error(`timed out waiting for ${type}`)); }
+            else if (Date.now() - started > timeout) { clearInterval(timer); reject(new Error(`timed out waiting for ${type}; inbox: ${inbox.map((m) => m.type + (m.payload?.x !== undefined ? `(${m.payload.x},${m.payload.y})` : "")).slice(-6).join(" ")}`)); }
         }, 10);
     });
     const send = (type, payload) => ws.send(JSON.stringify({ type, payload }));
@@ -70,16 +70,92 @@ await step("create a space from the campus map", async () => {
     assert.ok(space.body.elements.length > 1000);
 });
 
+// Shortest walk between two tiles of one area, using the game's collision rules
+// (wall blocks its footprint, objects block their bottom row). Returns the tiles after `from`.
+function walkRoute(space, areaId, from, to) {
+    const area = areaId === "main"
+        ? { width: Number(space.dimensions.split("x")[0]), height: Number(space.dimensions.split("x")[1]) }
+        : space.areas.find((x) => x.id === areaId);
+    const blocked = new Set();
+    for (const e of space.elements) {
+        if ((e.area ?? "main") !== areaId) continue;
+        // never walk over another door on the way (it would move us elsewhere)
+        if (e.to && !(e.x === to.x && e.y === to.y)) blocked.add(`${e.x},${e.y}`);
+        if (!e.element.static) continue;
+        const rows = e.element.layer === "wall"
+            ? Array.from({ length: e.element.height }, (_, i) => e.y + i)
+            : e.element.layer === "objects" ? [e.y + e.element.height - 1] : [];
+        for (const y of rows) for (let x = e.x; x < e.x + e.element.width; x++) blocked.add(`${x},${y}`);
+    }
+    const prev = new Map([[`${from.x},${from.y}`, null]]);
+    const queue = [from];
+    while (queue.length) {
+        const c = queue.shift();
+        if (c.x === to.x && c.y === to.y) {
+            const route = [];
+            for (let k = `${c.x},${c.y}`; prev.get(k); k = prev.get(k)) route.unshift({ x: Number(k.split(",")[0]), y: Number(k.split(",")[1]) });
+            return route;
+        }
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+            const n = { x: c.x + dx, y: c.y + dy }, k = `${n.x},${n.y}`;
+            if (n.x < 0 || n.y < 0 || n.x >= area.width || n.y >= area.height || blocked.has(k) || prev.has(k)) continue;
+            prev.set(k, `${c.x},${c.y}`);
+            queue.push(n);
+        }
+    }
+    return null;
+}
+
 const pa = await connect(a.token, spaceId);
 const joinedA = await pa.next("space-joined");
 await step("join spawns at the main gate", async () => {
-    assert.deepEqual(joinedA.payload.spawn, { x: 37, y: 48 });
+    assert.deepEqual(joinedA.payload.spawn, { area: "main", x: 37, y: 48 });
 });
 await step("movement is validated", async () => {
     pa.send("move", { x: 36, y: 48 });
     assert.equal((await pa.next("movement-accepted")).payload.x, 36);
     pa.send("move", { x: 36, y: 40 });
     assert.equal((await pa.next("movement-rejected")).payload.y, 48);
+});
+await step("walking onto a door leads into the building and the exit mat leads back out", async () => {
+    const space = (await call("GET", `/space/${spaceId}`, null, a.token)).body;
+    assert.ok(space.areas.length >= 18, "the campus map has building interiors");
+    const door = space.elements.find((e) => e.element.id === "campus-door-in" && e.to?.area === "in-auditorium");
+    assert.ok(door, "the auditorium has a door");
+    // walk from the gate to the tile below the door, then step onto it
+    const route = walkRoute(space, "main", { x: 36, y: 48 }, { x: door.x, y: door.y + 1 });
+    assert.ok(route, "the door is reachable from the gate");
+    for (const tile of route) {
+        pa.send("move", tile);
+        await pa.next("movement-accepted");
+        await new Promise((r) => setTimeout(r, 65));
+    }
+    pa.send("move", { x: door.x, y: door.y });
+    const inside = (await pa.next("teleported")).payload;
+    assert.equal(inside.area, "in-auditorium");
+    assert.deepEqual({ x: inside.x, y: inside.y }, { x: door.to.x, y: door.to.y });
+    // the exit mats are just below the indoor spawn
+    const exit = space.elements.find((e) => e.area === "in-auditorium" && e.element.id === "campus-door-out");
+    assert.ok(exit, "the room has an exit mat");
+    const toExit = walkRoute(space, "in-auditorium", { x: inside.x, y: inside.y }, { x: exit.x, y: exit.y - 1 });
+    for (const tile of toExit) {
+        pa.send("move", tile);
+        await pa.next("movement-accepted");
+        await new Promise((r) => setTimeout(r, 65));
+    }
+    await new Promise((r) => setTimeout(r, 65)); // the server allows one step per 60 ms
+    pa.send("move", { x: exit.x, y: exit.y });
+    const outside = (await pa.next("teleported")).payload;
+    assert.equal(outside.area, "main");
+    assert.deepEqual({ x: outside.x, y: outside.y }, { x: exit.to.x, y: exit.to.y });
+    // walk back to the gate so the later steps start where they expect
+    await new Promise((r) => setTimeout(r, 65));
+    const home = walkRoute(space, "main", { x: outside.x, y: outside.y }, { x: 36, y: 48 });
+    for (const tile of home) {
+        pa.send("move", tile);
+        await pa.next("movement-accepted");
+        await new Promise((r) => setTimeout(r, 65));
+    }
 });
 const pb = await connect(b.token, spaceId);
 await pb.next("space-joined");
