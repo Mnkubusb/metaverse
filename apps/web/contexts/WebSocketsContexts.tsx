@@ -113,6 +113,7 @@ export const WebSocketProvider = ({ children, spaceId }: {
   const [boardUpdate, setBoardUpdate] = useState<{ boardId: string; seq: number } | null>(null);
   const boardSeq = useRef(0);
   const selfIdRef = useRef('');
+  const everConnected = useRef(false);
   const rtcHandlers = useRef<Set<RtcHandler>>(new Set());
   const seq = useRef(0);
   const emoteSeq = useRef(0);
@@ -144,6 +145,7 @@ export const WebSocketProvider = ({ children, spaceId }: {
         setUsers(new Map((payload.users as RemoteUser[]).map((u) => [u.userId, { ...u, area: u.area ?? MAIN_AREA }])));
         (payload.users as RemoteUser[]).forEach((u) => u.username && namesRef.current.set(u.userId, u.username));
         setChat((payload.chat ?? []).slice(-MAX_CHAT_MESSAGES));
+        everConnected.current = true;
         setConnected(true);
         break;
       }
@@ -319,7 +321,13 @@ export const WebSocketProvider = ({ children, spaceId }: {
     selfAvatar, announceAvatarChange]);
 
   return <WebSocketContext.Provider value={value}>
-    {connected ? children : <div className="flex h-screen items-center justify-center text-gray-500">Connecting to space...</div>}
+    {connected ? children : (
+      <div className="flex h-dvh flex-col items-center justify-center gap-2 text-gray-500">
+        <div className="size-8 animate-spin rounded-full border-b-2 border-t-2 border-blue-500" />
+        <p>{everConnected.current ? 'Connection lost. Reconnecting…' : 'Connecting to space...'}</p>
+        {!everConnected.current && <p className="text-xs text-gray-400">A sleeping server can take up to a minute to wake up.</p>}
+      </div>
+    )}
   </WebSocketContext.Provider>;
 };
 

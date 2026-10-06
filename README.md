@@ -27,7 +27,15 @@ Welcome to **VirtuSpace**, a real-time 2D metaverse where users can explore, int
 
 - 📌 **Interactive Spots**  
   Walk up to a notice board and press **E** to read and pin notes (they update live for everyone), or
-  sit on a bench. Four corkboards are placed around the campus; the signboards work as boards too.
+  sit on a bench, chair or sofa. Corkboards hang around the campus and inside every building.
+
+- 🏫 **Walk into buildings**  
+  Step on the mat in front of any building to go inside: departments with a classroom and computer
+  lab, the library, hostels with a common room, the canteen, auditorium, workshop, admin block and
+  dispensary. People outside can't see or hear you until you step back out on the green exit mat.
+
+- 📱 **Works on phones**  
+  An on-screen joystick, a Sit/Read action button and a compact layout appear on touch devices.
 
 - 🔐 **Authentication & Space Permissions**  
   Each space is Private (members only, joined with the owner's invite link), Unlisted (anyone with the
@@ -52,7 +60,9 @@ Welcome to **VirtuSpace**, a real-time 2D metaverse where users can explore, int
 
 ![GEC Bilaspur campus map](./tools/campus-map/preview.png)
 
-The default map is a stylized **GEC Bilaspur (Koni) campus**: main gate on Korba Road, admin block with the flag and fountain plaza, the seven department blocks, central library, workshop, auditorium, canteen, dispensary, sports ground, and the boys', girls' and first-year hostels.
+The default map is a stylized **GEC Bilaspur (Koni) campus**: main gate on Korba Road, admin block with the flag and fountain plaza, the seven department blocks, central library, workshop, auditorium, canteen, dispensary, sports ground, and the boys', girls' and first-year hostels. Every building can be entered:
+
+![Building interiors](./tools/campus-map/preview-interiors.png)
 
 ---
 
@@ -114,12 +124,22 @@ pnpm db:make-admin <username>   # then sign in again to get an admin token
 
 ### Deploying
 
+Everything that can run on Vercel does; the one piece that can't is the realtime server.
+
 | Part | Host | Why |
 |---|---|---|
 | Web app (`apps/web`) | Vercel | Next.js |
 | HTTP API (`apps/http`) | Vercel (serverless function) | Express runs as one function via `apps/http/api/index.ts` |
-| WebSocket server (`apps/ws`) | Render (free web service, Docker) | Vercel functions can't hold WebSocket connections open |
+| WebSocket server (`apps/ws`) | Render (free web service, Docker) | see below |
 | Database | Neon Postgres | reachable from both |
+
+**Why the WebSocket server isn't on Vercel.** Vercel added WebSocket support to Functions in mid-2026
+(public beta), but each connection is pinned to whichever function instance accepted it, and connections
+are cut at the function's maximum duration (5 minutes on Hobby). This server keeps each space's room, player
+positions and seats in memory, so two players who land on different instances would never see each other.
+Moving it there would mean an external store (Redis) for presence and fan-out plus reconnect-every-5-minutes
+handling. Render's free tier runs it as a normal long-lived process; the client reconnects automatically if
+the connection drops (for example while a sleeping free instance wakes up).
 
 Secrets live only in each host's environment settings, never in git or Docker images.
 Generate the JWT secret once with `openssl rand -base64 48` and use the **same** value on Vercel and Render.
@@ -177,8 +197,19 @@ python3 tools/campus-map/generate.py   # writes apps/web/public/campus/*.png and
 pnpm db:seed                           # updates the map template in the database
 ```
 
-The generator checks that nothing overlaps and that every building door can be reached from the spawn point.
+The generator checks that nothing overlaps, that every door can be reached and leads somewhere walkable,
+that every seat has a free tile next to it, and that no part of a room is boxed off by furniture.
 New spaces created from the template pick up the changes; existing spaces keep their own copy.
+
+**Interiors** live in `tools/campus-map/interiors.py`: the furniture sprites and one template per kind of
+building (`classroom`, `lab`, `dept`, `library`, `hostel`, `canteen`, `admin`, `auditorium`, `workshop`,
+`dispensary`). `build_interiors()` in `generate.py` gives each building placed with `put_building()` a room
+of its own and two door placements: the mat outside leads to the room's spawn, the green mat inside leads
+back to the tile in front of the building.
+
+Each room is an **area** of the map (`areas` column, `area` on every placement); doors are placements with a
+target (`toArea`, `toX`, `toY`). The WebSocket server keeps one walkable grid per area and moves a player
+who steps on a door to its target (a `teleported` message), so the client never decides where doors lead.
 
 Element layers control drawing order and collision:
 
@@ -208,7 +239,7 @@ Element layers control drawing order and collision:
 ## 🧠 Future Roadmap
 
 - 🌍 User-generated worlds with teleportation
-- 📱 Mobile support
+- 🎒 Private study rooms and timetables inside departments
 - 🕹️ Mini-games inside rooms
 - 🌐 Public and private metaverse hubs
 - 🤖 AI-generated room layout suggestions

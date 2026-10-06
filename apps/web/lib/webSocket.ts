@@ -7,6 +7,9 @@ export default class WebSocketService {
   private isConnected: boolean;
   private onMessageCallback: (message: any) => void;
   private onCloseCallback: () => void;
+  private closedByUs = false;
+  private retries = 0;
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(url: string, token: string, spaceId: string, onMessage: (message: any) => void, onClose: () => void) {
     this.url = url || '';
@@ -26,6 +29,7 @@ export default class WebSocketService {
     this.socket = new WebSocket(this.url);
     this.socket.onopen = () => {
       this.isConnected = true;
+      this.retries = 0;
       this.joinSpace();
     };
 
@@ -44,6 +48,12 @@ export default class WebSocketService {
       this.isConnected = false;
       if (this.onCloseCallback) {
         this.onCloseCallback();
+      }
+      // Dropped by the network or the host (free tiers sleep, Vercel caps connection
+      // length): come back with exponential backoff and rejoin the space.
+      if (!this.closedByUs) {
+        const delay = Math.min(30_000, 1000 * 2 ** this.retries++);
+        this.retryTimer = setTimeout(() => this.connect(), delay);
       }
     };
 
@@ -81,10 +91,12 @@ export default class WebSocketService {
   }
 
   disconnect() {
-    if (this.socket?.readyState === 1) {
+    this.closedByUs = true;
+    if (this.retryTimer) clearTimeout(this.retryTimer);
+    if (this.socket && this.socket.readyState <= 1) {
       this.socket.close();
-      this.socket = null;
-      this.isConnected = false;
     }
+    this.socket = null;
+    this.isConnected = false;
   }
 }

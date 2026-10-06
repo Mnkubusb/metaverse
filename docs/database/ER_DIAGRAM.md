@@ -31,6 +31,7 @@ erDiagram
         int spawnY "nullable"
         Visibility visibility "Private | Unlisted | Public"
         text inviteCode UK "secret part of the invite link"
+        jsonb areas "building interiors: [{id, name, width, height, spawnX, spawnY, ground}]"
         timestamp createdAt
         text creatorId FK
     }
@@ -55,6 +56,10 @@ erDiagram
         text elementId FK
         int x "tile column"
         int y "tile row"
+        text area "main (outdoors) or an areas[].id"
+        text toArea "nullable; set on doors"
+        int toX "nullable; door target column"
+        int toY "nullable; door target row"
     }
     Element {
         text id PK "cuid() or stable seed id"
@@ -72,6 +77,7 @@ erDiagram
         text thumbnail
         int spawnX "nullable"
         int spawnY "nullable"
+        jsonb areas "same shape as Space.areas"
     }
     mapElements {
         text id PK "cuid()"
@@ -79,6 +85,10 @@ erDiagram
         text elementId FK
         int x "tile column"
         int y "tile row"
+        text area "main or an areas[].id"
+        text toArea "nullable; set on doors"
+        int toX "nullable"
+        int toY "nullable"
     }
     ChatMessage {
         text id PK "cuid()"
@@ -105,9 +115,16 @@ erDiagram
 ```
 
 A **Map** is an admin-authored template. Creating a **Space** from a map copies the map's
-size, thumbnail, spawn point and every `mapElements` row into `spaceElements`; after that the
-space is independent, so editing a map never changes existing spaces. The dotted line marks
-this copy relationship, which has no foreign key.
+size, thumbnail, spawn point, `areas` and every `mapElements` row (including its area and door
+target) into `spaceElements`; after that the space is independent, so editing a map never
+changes existing spaces. The dotted line marks this copy relationship, which has no foreign key.
+
+**Areas and doors** (migration `20260928000000_areas_and_portals`). A space is a set of areas:
+the outdoor map (`main`, sized by `width`/`height`) plus one entry per building interior in the
+`areas` JSON column. Every placement names its area. A placement whose `toArea`/`toX`/`toY` are
+set is a door: the WebSocket server moves a player who steps on it to that tile of that area.
+Areas are JSON rather than a table because they are only ever written by the map generator and
+copied whole; nothing joins on them.
 
 ## Relationships
 
