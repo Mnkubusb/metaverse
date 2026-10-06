@@ -20,9 +20,12 @@ function time(iso: string) {
 const isTypingTarget = (t: EventTarget | null) =>
   t instanceof HTMLElement && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName));
 
-export default function ChatPanel() {
+// `compact` (phones): starts closed as a small pill between the joystick and the buttons,
+// and opens across the bottom of the screen over the controls.
+export default function ChatPanel({ compact = false }: { compact?: boolean }) {
   const { chat, chatError, sendChat, selfId } = useWebSocket();
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(!compact);
+  useEffect(() => { if (compact) setOpen(false); }, [compact]);
   const [draft, setDraft] = useState('');
   const [seen, setSeen] = useState(chat.length);
   const listRef = useRef<HTMLOListElement>(null);
@@ -62,7 +65,12 @@ export default function ChatPanel() {
   return (
     <section
       aria-label="Chat"
-      className="pointer-events-auto absolute bottom-4 left-4 z-30 flex w-[min(360px,calc(100%-2rem))] flex-col overflow-hidden rounded-xl bg-black/65 text-white shadow-2xl backdrop-blur-sm"
+      className={cn(
+        'pointer-events-auto absolute z-40 flex flex-col overflow-hidden rounded-xl bg-black/65 text-white shadow-2xl backdrop-blur-sm',
+        compact
+          ? (open ? 'inset-x-3 bottom-3 bg-black/85' : 'left-3 top-[4.5rem]')
+          : 'bottom-4 left-4 w-[min(360px,calc(100%-2rem))]',
+      )}
     >
       <button
         type="button"
@@ -118,7 +126,7 @@ export default function ChatPanel() {
                   e.currentTarget.blur();
                 }
               }}
-              placeholder="Press Enter to chat · Esc to move"
+              placeholder={compact ? 'Type a message' : 'Press Enter to chat · Esc to move'}
               autoComplete="off"
               className="h-9 min-w-0 flex-1 rounded-lg bg-white/10 px-3 text-sm text-white placeholder:text-white/40 outline-none focus:bg-white/15 focus:ring-2 focus:ring-blue-400/60"
             />

@@ -4,6 +4,7 @@ import WebSocketService from '../lib/webSocket';
 import { useAuth } from './authContext';
 
 export type Seat = { x: number; y: number };
+export const MAIN_AREA = 'main';
 
 export interface RemoteUser {
   userId: string;
@@ -12,13 +13,16 @@ export interface RemoteUser {
   avatar?: string | null;
   // bench tile the player is sitting on
   seat?: Seat | null;
+  // "main" outdoors, or the id of the building interior they're in
+  area: string;
   x: number;
   y: number;
 }
 
 // Authoritative position from the server. `seq` increases on every correction
-// (join or rejected move) so the renderer knows when to snap the local player.
+// (join, rejected move or walking through a door) so the renderer knows when to snap the local player.
 export interface ServerPosition {
+  area: string;
   x: number;
   y: number;
   seq: number;
@@ -74,7 +78,7 @@ const WebSocketContext = createContext<WebSocketContextType>({
   connected: false,
   users: new Map(),
   selfId: '',
-  serverPosition: { x: 0, y: 0, seq: 0 },
+  serverPosition: { area: MAIN_AREA, x: 0, y: 0, seq: 0 },
   sendMessage: () => { },
   moveUser: () => { },
   chat: [],
@@ -99,7 +103,7 @@ export const WebSocketProvider = ({ children, spaceId }: {
   const [socket, setSocket] = useState<WebSocketService | null>(null);
   const [connected, setConnected] = useState(false);
   const [selfId, setSelfId] = useState('');
-  const [serverPosition, setServerPosition] = useState<ServerPosition>({ x: 0, y: 0, seq: 0 });
+  const [serverPosition, setServerPosition] = useState<ServerPosition>({ area: MAIN_AREA, x: 0, y: 0, seq: 0 });
   const [users, setUsers] = useState<Map<string, RemoteUser>>(new Map());
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [chatError, setChatError] = useState('');
@@ -109,15 +113,16 @@ export const WebSocketProvider = ({ children, spaceId }: {
   const [boardUpdate, setBoardUpdate] = useState<{ boardId: string; seq: number } | null>(null);
   const boardSeq = useRef(0);
   const selfIdRef = useRef('');
+  const everConnected = useRef(false);
   const rtcHandlers = useRef<Set<RtcHandler>>(new Set());
   const seq = useRef(0);
   const emoteSeq = useRef(0);
   const namesRef = useRef<Map<string, string>>(new Map());
   const { token } = useAuth();
 
-  const correct = useCallback((x: number, y: number) => {
+  const correct = useCallback((area: string | undefined, x: number, y: number) => {
     seq.current += 1;
-    setServerPosition({ x, y, seq: seq.current });
+    setServerPosition({ area: area ?? MAIN_AREA, x, y, seq: seq.current });
   }, []);
 
   const pushChat = useCallback((...msgs: ChatMessage[]) => {
@@ -136,10 +141,11 @@ export const WebSocketProvider = ({ children, spaceId }: {
         setSelfId(payload.userId);
         selfIdRef.current = payload.userId;
         setSelfAvatar(payload.avatar ?? null);
-        correct(payload.spawn.x, payload.spawn.y);
-        setUsers(new Map((payload.users as RemoteUser[]).map((u) => [u.userId, u])));
+        correct(payload.spawn.area, payload.spawn.x, payload.spawn.y);
+        setUsers(new Map((payload.users as RemoteUser[]).map((u) => [u.userId, { ...u, area: u.area ?? MAIN_AREA }])));
         (payload.users as RemoteUser[]).forEach((u) => u.username && namesRef.current.set(u.userId, u.username));
         setChat((payload.chat ?? []).slice(-MAX_CHAT_MESSAGES));
+        everConnected.current = true;
         setConnected(true);
         break;
       }
@@ -159,7 +165,8 @@ export const WebSocketProvider = ({ children, spaceId }: {
       case 'user-joined':
         if (payload.username) notice(`${payload.username} joined`);
         setUsers(prev => new Map(prev).set(payload.userId, {
-          userId: payload.userId, username: payload.username, avatar: payload.avatar, x: payload.x, y: payload.y,
+          userId: payload.userId, username: payload.username, avatar: payload.avatar,
+          area: payload.area ?? MAIN_AREA, x: payload.x, y: payload.y,
         }));
         break;
       case 'rtc':
@@ -198,6 +205,7 @@ export const WebSocketProvider = ({ children, spaceId }: {
             username: payload.username ?? existing?.username,
             avatar: existing?.avatar,
             seat: null, // moving stands a player up
+            area: payload.area ?? MAIN_AREA,
             x: payload.x,
             y: payload.y,
           });
@@ -205,7 +213,8 @@ export const WebSocketProvider = ({ children, spaceId }: {
         });
         break;
       case 'movement-rejected':
-        correct(payload.x, payload.y);
+      case 'teleported': // walked through a door: the server put us on the other side
+        correct(payload.area, payload.x, payload.y);
         break;
       case 'user-left': {
         const name = namesRef.current.get(payload.userId);
@@ -312,7 +321,13 @@ export const WebSocketProvider = ({ children, spaceId }: {
     selfAvatar, announceAvatarChange]);
 
   return <WebSocketContext.Provider value={value}>
-    {connected ? children : <div className="flex h-screen items-center justify-center text-gray-500">Connecting to space...</div>}
+    {connected ? children : (
+      <div className="flex h-dvh flex-col items-center justify-center gap-2 text-gray-500">
+        <div className="size-8 animate-spin rounded-full border-b-2 border-t-2 border-blue-500" />
+        <p>{everConnected.current ? 'Connection lost. Reconnecting…' : 'Connecting to space...'}</p>
+        {!everConnected.current && <p className="text-xs text-gray-400">A sleeping server can take up to a minute to wake up.</p>}
+      </div>
+    )}
   </WebSocketContext.Provider>;
 };
 

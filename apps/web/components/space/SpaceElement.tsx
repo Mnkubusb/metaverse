@@ -12,6 +12,10 @@ export type spaceElement = {
     }
     x: number;
     y: number;
+    // which area of the space it's in ("main" = outdoors); older spaces may omit it
+    area?: string;
+    // a door: stepping on it moves you to this tile of that area
+    to?: { area: string; x: number; y: number } | null;
 };
 
 const SpaceElement = ({ element, onRemove } : {
