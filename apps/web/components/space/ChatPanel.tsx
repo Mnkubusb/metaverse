@@ -20,24 +20,36 @@ function time(iso: string) {
 const isTypingTarget = (t: EventTarget | null) =>
   t instanceof HTMLElement && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName));
 
-// `compact` (phones): starts closed as a small pill between the joystick and the buttons,
-// and opens across the bottom of the screen over the controls.
-export default function ChatPanel({ compact = false }: { compact?: boolean }) {
+// `compact` (phones): opened from the chat button in the space's toolbar (pass `open`/`onOpenChange`),
+// it covers the bottom of the screen and renders nothing while closed.
+export default function ChatPanel({ compact = false, open: openProp, onOpenChange }: {
+  compact?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   const { chat, chatError, sendChat, selfId } = useWebSocket();
-  const [open, setOpen] = useState(!compact);
-  useEffect(() => { if (compact) setOpen(false); }, [compact]);
+  const [openState, setOpenState] = useState(true);
+  const open = openProp ?? openState;
+  const setOpen = (next: boolean | ((o: boolean) => boolean)) => {
+    const value = typeof next === 'function' ? next(open) : next;
+    if (onOpenChange) onOpenChange(value); else setOpenState(value);
+  };
   const [draft, setDraft] = useState('');
   const [seen, setSeen] = useState(chat.length);
   const listRef = useRef<HTMLOListElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const stickToBottom = useRef(true);
 
+  // the key handler is registered once, so it opens the panel through a ref
+  const setOpenRef = useRef(setOpen);
+  setOpenRef.current = setOpen;
+
   // Enter (while not typing elsewhere) jumps into the chat box
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Enter' && !isTypingTarget(e.target)) {
         e.preventDefault();
-        setOpen(true);
+        setOpenRef.current(true);
         requestAnimationFrame(() => inputRef.current?.focus());
       }
     };
@@ -62,13 +74,15 @@ export default function ChatPanel({ compact = false }: { compact?: boolean }) {
     stickToBottom.current = true;
   };
 
+  if (compact && !open) return null;
+
   return (
     <section
       aria-label="Chat"
       className={cn(
         'pointer-events-auto absolute z-40 flex flex-col overflow-hidden rounded-xl bg-black/65 text-white shadow-2xl backdrop-blur-sm',
         compact
-          ? (open ? 'inset-x-3 bottom-3 bg-black/85' : 'left-3 top-[4.5rem]')
+          ? 'inset-x-3 bottom-3 max-h-[70dvh] bg-black/85'
           : 'bottom-4 left-4 w-[min(360px,calc(100%-2rem))]',
       )}
     >
