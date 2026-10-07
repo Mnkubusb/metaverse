@@ -15,6 +15,11 @@ jobs:
     timeout-minutes: 20
 
     services:
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
       postgres:
         image: postgres:16-alpine
         env:
@@ -81,6 +86,25 @@ jobs:
       - name: Smoke test
         run: node scripts/smoke-test.mjs
 
+      # Two WebSocket instances sharing Redis must behave as one room (how it runs on Vercel)
+      - name: Start two WebSocket instances sharing Redis
+        env:
+          REDIS_URL: redis://localhost:6379
+        run: |
+          PORT=3005 node apps/ws/dist/index.js > ws-a.log 2>&1 &
+          PORT=3006 node apps/ws/dist/index.js > ws-b.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf localhost:3005/health > /dev/null && curl -sf localhost:3006/health > /dev/null && exit 0
+            sleep 1
+          done
+          echo "clustered servers did not start"; cat ws-a.log ws-b.log; exit 1
+
+      - name: Smoke test across two instances
+        env:
+          WS_URL: ws://localhost:3005
+          WS_URL_B: ws://localhost:3006
+        run: node scripts/smoke-test.mjs
+
       - name: Server logs
         if: failure()
-        run: cat http.log ws.log || true
+        run: cat http.log ws.log ws-a.log ws-b.log || true
