@@ -1,6 +1,7 @@
 import http from 'http';
 import { WebSocketServer } from 'ws';
 import { User } from './User';
+import { RoomManager } from './RoomManager';
 
 // Plain HTTP answers health checks (Render, load balancers); everything else must upgrade to a WebSocket.
 const server = http.createServer((req, res) => {
@@ -29,3 +30,10 @@ const port = Number(process.env.PORT) || 3001;
 server.listen(port, () => {
     console.log(`WebSocket server listening on port ${port}`);
 });
+
+// Leave Redis presence clean when the process is stopped (deploys, scale-downs).
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+    process.on(signal, () => {
+        RoomManager.getInstance().shutdown().finally(() => process.exit(0));
+    });
+}

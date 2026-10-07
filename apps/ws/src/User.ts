@@ -137,7 +137,7 @@ export class User {
                     this.area = MAIN_AREA;
                     this.x = spawn.x;
                     this.y = spawn.y;
-                    rooms.addUser(spaceId, this);
+                    await rooms.addUser(spaceId, this);
                     this.send({
                         type: "space-joined",
                         payload: {
@@ -145,9 +145,7 @@ export class User {
                             avatar: this.avatar,
                             spawn: { area: this.area, x: this.x, y: this.y },
                             chat,
-                            users: rooms.rooms.get(spaceId)
-                                ?.filter((u) => u.id !== this.id)
-                                .map((u) => ({ userId: u.userId, username: u.username, avatar: u.avatar, area: u.area, x: u.x, y: u.y, seat: u.seat })) ?? []
+                            users: rooms.roster(spaceId, this),
                         }
                     });
                     rooms.broadcast({
@@ -194,6 +192,7 @@ export class User {
                     const message = { type: "pose", payload: { userId: this.userId, seat: this.seat } };
                     this.send(message);
                     RoomManager.getInstance().broadcast(message, this, this.spaceId);
+                    RoomManager.getInstance().updatePresence(this.spaceId, this, true);
                     break;
                 }
                 case "board-updated": {
@@ -211,8 +210,7 @@ export class User {
                     const to = parsedData.payload?.to;
                     const signal = parsedData.payload?.data;
                     if (typeof to !== "string" || to === this.userId || typeof signal !== "object" || signal === null) return;
-                    const target = RoomManager.getInstance().findUser(this.spaceId, to);
-                    target?.send({ type: "rtc", payload: { from: this.userId, data: signal } });
+                    RoomManager.getInstance().sendTo(this.spaceId, to, { type: "rtc", payload: { from: this.userId, data: signal } });
                     break;
                 }
                 case "avatar-changed": {
@@ -227,6 +225,7 @@ export class User {
                     const message = { type: "avatar-changed", payload: { userId: this.userId, avatar: this.avatar } };
                     this.send(message);
                     RoomManager.getInstance().broadcast(message, this, this.spaceId);
+                    RoomManager.getInstance().updatePresence(this.spaceId, this, true);
                     break;
                 }
                 case "emote": {
@@ -272,6 +271,7 @@ export class User {
                             type: "move",
                             payload: { area: this.area, x: this.x, y: this.y, userId: this.userId }
                         }, this, this.spaceId);
+                        RoomManager.getInstance().updatePresence(this.spaceId, this, !!door);
                         return;
                     }
                     this.send({

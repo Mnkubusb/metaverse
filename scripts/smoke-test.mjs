@@ -4,6 +4,9 @@ import assert from "node:assert/strict";
 
 const API = process.env.API_URL ?? "http://localhost:3000/api/v1";
 const WS = process.env.WS_URL ?? "ws://localhost:3001";
+// Second player's server. Point it at another instance sharing the same REDIS_URL to check that
+// players on different instances share one room (the Vercel / multi-instance setup).
+const WS_B = process.env.WS_URL_B ?? WS;
 
 async function call(method, path, body, token) {
     const res = await fetch(API + path, {
@@ -23,8 +26,8 @@ async function account(prefix) {
     return { username, token: signin.body.token };
 }
 
-function connect(token, spaceId) {
-    const ws = new WebSocket(WS);
+function connect(token, spaceId, url = WS) {
+    const ws = new WebSocket(url);
     const inbox = [];
     ws.onmessage = (e) => inbox.push(JSON.parse(e.data));
     const next = (type, timeout = 5000) => new Promise((resolve, reject) => {
@@ -125,6 +128,7 @@ await step("walking onto a door leads into the building and the exit mat leads b
     // walk from the gate to the tile below the door, then step onto it
     const route = walkRoute(space, "main", { x: 36, y: 48 }, { x: door.x, y: door.y + 1 });
     assert.ok(route, "the door is reachable from the gate");
+    await new Promise((r) => setTimeout(r, 65)); // the server allows one step per 60 ms
     for (const tile of route) {
         pa.send("move", tile);
         await pa.next("movement-accepted");
@@ -157,7 +161,7 @@ await step("walking onto a door leads into the building and the exit mat leads b
         await new Promise((r) => setTimeout(r, 65));
     }
 });
-const pb = await connect(b.token, spaceId);
+const pb = await connect(b.token, spaceId, WS_B);
 await pb.next("space-joined");
 await step("presence reaches other players", async () => {
     assert.equal((await pa.next("user-joined")).payload.username, b.username);

@@ -124,25 +124,34 @@ pnpm db:make-admin <username>   # then sign in again to get an admin token
 
 ### Deploying
 
-Everything that can run on Vercel does; the one piece that can't is the realtime server.
+The whole project can run on Vercel + Neon + a Redis (Upstash); the realtime server can alternatively run
+on Render as one long-lived process.
 
-| Part | Host | Why |
+| Part | Host | Notes |
 |---|---|---|
 | Web app (`apps/web`) | Vercel | Next.js |
 | HTTP API (`apps/http`) | Vercel (serverless function) | Express runs as one function via `apps/http/api/index.ts` |
-| WebSocket server (`apps/ws`) | Render (free web service, Docker) | see below |
-| Database | Neon Postgres | reachable from both |
+| WebSocket server (`apps/ws`) | Vercel (WebSocket function) **or** Render | on Vercel it needs `REDIS_URL`, see below |
+| Database | Neon Postgres | reachable from all of them |
+| Redis | Upstash (Vercel Marketplace) or any Redis | only for the WebSocket server on Vercel / several instances |
 
-**Why the WebSocket server isn't on Vercel.** Vercel added WebSocket support to Functions in mid-2026
-(public beta), but each connection is pinned to whichever function instance accepted it, and connections
-are cut at the function's maximum duration (5 minutes on Hobby). This server keeps each space's room, player
-positions and seats in memory, so two players who land on different instances would never see each other.
-Moving it there would mean an external store (Redis) for presence and fan-out plus reconnect-every-5-minutes
-handling. Render's free tier runs it as a normal long-lived process; the client reconnects automatically if
-the connection drops (for example while a sleeping free instance wakes up).
+**How the WebSocket server runs on Vercel.** Vercel Functions can hold WebSocket connections (public beta
+since mid-2026), but each connection is pinned to whichever function instance accepted it, and a connection
+is closed when the function reaches its maximum duration (5 minutes on Hobby, up to 800 s on Pro via
+`maxDuration` in `apps/ws/vercel.json`). So the server keeps its rooms in memory *per instance* and, when
+`REDIS_URL` is set, mirrors them through Redis (`apps/ws/src/bus.ts`): who is in each space is stored in a
+hash, every broadcast is published on a per-space channel, and each instance heartbeats a key so players on
+an instance that died are dropped within about a minute. The client reconnects with backoff and rejoins
+when a connection is cut, so the 5-minute limit shows as a one-second blip. CI runs the smoke test against
+two instances sharing Redis to keep this working.
+
+Redis usage is roughly one command per player movement step (a publish) plus a presence write every two
+seconds while moving; a free Upstash database (500k commands/month) covers light use, and a paid one costs
+about $0.20 per 100k commands beyond that. Without `REDIS_URL` the Vercel function refuses connections
+with a clear message rather than silently splitting players across instances.
 
 Secrets live only in each host's environment settings, never in git or Docker images.
-Generate the JWT secret once with `openssl rand -base64 48` and use the **same** value on Vercel and Render.
+Generate the JWT secret once with `openssl rand -base64 48` and use the **same** value everywhere.
 
 **1. Database (Neon).** Run the migrations and seed from your machine with the Neon URL in `.env`:
 
@@ -162,15 +171,31 @@ ALLOWED_ORIGIN=https://<your-web-app>.vercel.app   # comma-separate extra origin
 
 The API is then served at `https://<api-project>.vercel.app/api/v1`.
 
-**3. WebSocket server on Render.** Dashboard → New → Blueprint → this repo. `render.yaml` creates
-`metaverse-ws`; fill in `DATABASE_URL` and `JWT_SECRET`. It's served at `wss://metaverse-ws-xxxx.onrender.com`.
-Free Render services sleep after 15 minutes without traffic and take about a minute to wake up.
+**3a. WebSocket server on Vercel.** Create a Redis database first (Vercel dashboard → Storage → Upstash
+Redis, or any Redis with a `rediss://` URL). Then New Project → import this repo → Root Directory `apps/ws`
+(framework: Other; `apps/ws/vercel.json` sets the rest and the function's `maxDuration`). Fluid Compute
+must be on (it is the default for new projects). Environment variables:
+
+```bash
+DATABASE_URL=<Neon connection string>
+JWT_SECRET=<the shared secret>
+REDIS_URL=<rediss://... from Upstash>
+```
+
+It's served at `wss://<ws-project>.vercel.app`. Opening that URL in a browser answers `ok` when Redis is
+configured (the function is also reachable directly at `/api`; use `wss://<ws-project>.vercel.app/api` as the
+WebSocket URL if the root path ever fails to upgrade).
+
+**3b. WebSocket server on Render (alternative).** Dashboard → New → Blueprint → this repo. `render.yaml`
+creates `metaverse-ws`; fill in `DATABASE_URL` and `JWT_SECRET` (`REDIS_URL` only if you run more than one
+instance). It's served at `wss://metaverse-ws-xxxx.onrender.com`. Free Render services sleep after 15 minutes
+without traffic and take about a minute to wake up.
 
 **4. Web app on Vercel.** In the existing web project, set:
 
 ```bash
 NEXT_PUBLIC_API_URL=https://<api-project>.vercel.app/api/v1
-NEXT_PUBLIC_WS_URL=wss://metaverse-ws-xxxx.onrender.com
+NEXT_PUBLIC_WS_URL=wss://<ws-project>.vercel.app      # or the Render URL
 ```
 
 and redeploy. With `NODE_ENV=production`, the API and WebSocket server refuse to start with a

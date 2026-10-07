@@ -16,8 +16,10 @@
     "@repo/db": "workspace:*",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/ws": "^8.18.1",
+    "@vercel/functions": "^3.9.11",
     "axios": "^1.8.4",
     "esbuild": "^0.25.2",
+    "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.2",
     "ws": "^8.18.1"
   }
