@@ -35,7 +35,9 @@ Welcome to **VirtuSpace**, a real-time 2D metaverse where users can explore, int
   dispensary. People outside can't see or hear you until you step back out on the green exit mat.
 
 - 📱 **Works on phones**  
-  An on-screen joystick, a Sit/Read action button and a compact layout appear on touch devices.
+  Walk with the on-screen joystick or just tap where you want to go (tap a bench or a notice board to
+  walk up and use it). Chat, emotes, mic and camera sit in one toolbar, there's a full-screen button, and
+  every page has a phone layout with a menu. Clicking to walk works with a mouse too.
 
 - 🔐 **Authentication & Space Permissions**  
   Each space is Private (members only, joined with the owner's invite link), Unlisted (anyone with the

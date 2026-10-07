@@ -4,8 +4,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 export type Direction = "down" | "right" | "left" | "up";
 
 // Phones and tablets: no keyboard, so movement comes from an on-screen joystick.
+const isCoarse = () =>
+  typeof window !== 'undefined' && (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0);
+
+// Read before the first paint (the space view only renders in the browser), so a phone
+// never flashes the keyboard layout first.
 export function useCoarsePointer() {
-  const [coarse, setCoarse] = useState(false);
+  const [coarse, setCoarse] = useState(isCoarse);
   useEffect(() => {
     const mq = window.matchMedia('(pointer: coarse)');
     const update = () => setCoarse(mq.matches || navigator.maxTouchPoints > 0);
@@ -17,6 +22,7 @@ export function useCoarsePointer() {
 }
 
 const SIZE = 140;      // pad diameter in CSS px
+const SIZE_SHORT = 112; // on short screens (a phone held sideways)
 const KNOB = 60;
 const DEAD_ZONE = 14;  // px from the centre before a direction registers
 
@@ -31,9 +37,19 @@ export default function Joystick({ onDirection }: { onDirection: (dir: Direction
   const [active, setActive] = useState(false);
   const lastDir = useRef<Direction | null>(null);
 
+  const [size, setSize] = useState(SIZE);
+  useEffect(() => {
+    const fit = () => setSize(window.innerHeight < 500 ? SIZE_SHORT : SIZE);
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, []);
+
   const report = useCallback((dir: Direction | null) => {
     if (dir !== lastDir.current) {
       lastDir.current = dir;
+      // a short tick on each new direction, where the device supports it
+      if (dir) navigator.vibrate?.(8);
       onDirection(dir);
     }
   }, [onDirection]);
@@ -81,7 +97,7 @@ export default function Joystick({ onDirection }: { onDirection: (dir: Direction
       onPointerUp={release}
       onPointerCancel={release}
       onLostPointerCapture={release}
-      style={{ width: SIZE, height: SIZE, touchAction: 'none' }}
+      style={{ width: size, height: size, touchAction: 'none' }}
       className="relative select-none rounded-full border-2 border-white/25 bg-black/45 shadow-xl backdrop-blur-sm"
     >
       {/* direction hints */}

@@ -57,10 +57,10 @@ export default function Dashboard() {
   return (
     <ProtectedRoute>
       <MainLayout>
-        <div className="max-w-screen mx-auto w-full my-4">
-          <div className="flex lg:w-6xl w-4xl gap-8 mx-auto">
+        <div className="mx-auto my-4 w-full max-w-6xl">
+          <div className="flex gap-8">
             <div className="px-4 w-full">
-              <div className="flex justify-between items-center mb-4">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div className='flex justify-between items-center gap-2'>
                   <h2 className="text-md font-semibold font-geist-sans">Recent</h2>
                   <div className='w-[0.5px] h-3 bg-gray-500 border'/>
@@ -88,11 +88,11 @@ export default function Dashboard() {
               </div>
 
               {recentSpaces.length > 0 ? (
-                <ul className="divide-x divide-gray-200 flex flex-wrap">
+                <ul className="grid grid-cols-1 gap-4 sm:flex sm:flex-wrap sm:gap-0 sm:divide-x sm:divide-gray-200">
                   {recentSpaces.map((space) => (
-                    <li key={space.id} className="py-3 px-2">
+                    <li key={space.id} className="sm:px-2 sm:py-3">
                       <Link href={`/space/${space.id}`} className="flex flex-col gap-2 " >
-                        <div className="w-80 h-48 bg-gray-200 rounded-md">
+                        <div className="aspect-[76/54] w-full rounded-md bg-gray-200 sm:h-48 sm:w-80 sm:aspect-auto">
                           {space.thumbnail && (
                             <img
                               src={space.thumbnail}
@@ -112,16 +112,16 @@ export default function Dashboard() {
                 <p className="text-gray-500">No spaces available.</p>
               )}
 
-              <div className="mt-8 mb-2 flex items-center justify-between">
+              <div className="mt-8 mb-2 flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-md font-semibold font-geist-sans">Joined</h2>
                 <Link href="/explore" className="text-sm font-medium text-blue-600 hover:underline">Explore public spaces →</Link>
               </div>
               {joined.length > 0 ? (
-                <ul className="flex flex-wrap divide-x divide-gray-200">
+                <ul className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:gap-0 sm:divide-x sm:divide-gray-200">
                   {joined.map((space) => (
-                    <li key={space.id} className="py-3 px-2">
+                    <li key={space.id} className="sm:px-2 sm:py-3">
                       <Link href={`/space/${space.id}`} className="flex flex-col gap-2">
-                        <div className="h-36 w-60 rounded-md bg-gray-200">
+                        <div className="aspect-[76/54] w-full rounded-md bg-gray-200 sm:h-36 sm:w-60 sm:aspect-auto">
                           {space.thumbnail && (
                             <img src={space.thumbnail} alt={space.name} className="h-full w-full rounded object-cover" />
                           )}

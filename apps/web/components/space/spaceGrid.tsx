@@ -12,10 +12,12 @@ import { EMOTES, emojiFor } from '@/lib/emotes';
 import { findPlaces, nearestPlace } from '@/lib/places';
 import { findInteraction, Interaction } from '@/lib/interactions';
 import NoticeBoard from './NoticeBoard';
-import { Check, DoorOpen, Globe, Link2, Lock, MapPin, Map as MapIcon, Settings } from 'lucide-react';
+import { ArrowLeft, Check, DoorOpen, Expand, Globe, Link2, Lock, MapPin, Map as MapIcon, MessageCircle, Minimize, Settings } from 'lucide-react';
+import Link from 'next/link';
 import { useProximityMedia } from '@/lib/useProximityMedia';
 import MediaDock, { MediaControls } from './MediaDock';
 import Joystick, { useCoarsePointer } from './TouchControls';
+import { findPath } from '@/lib/pathfind';
 import { cn } from '@/lib/utils';
 
 // A building interior; the outdoor map is the "main" area with the space's own dimensions.
@@ -149,7 +151,29 @@ const SpaceGrid = ({ id }: { id: string }) => {
   const [showEmotes, setShowEmotes] = useState(false);
   useEffect(() => { if (touch) setShowMinimap(false); }, [touch]);
   const touchDirRef = useRef<Direction | null>(null);
-  const setTouchDir = useCallback((d: Direction | null) => { touchDirRef.current = d; }, []);
+  // tap-to-walk: the steps still to take, the tile being walked to, and whether to use what's there on arrival
+  const pathRef = useRef<Direction[]>([]);
+  const targetRef = useRef<{ x: number; y: number; interact: boolean; since: number } | null>(null);
+  const cameraRef = useRef({ x: 0, y: 0, zoom: 1 });
+  const setTouchDir = useCallback((d: Direction | null) => {
+    touchDirRef.current = d;
+    if (d) { pathRef.current = []; targetRef.current = null; } // the joystick takes over from a tap
+  }, []);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatSeen, setChatSeen] = useState(chat.length);
+  useEffect(() => { if (chatOpen) setChatSeen(chat.length); }, [chatOpen, chat.length]);
+  const unread = chatOpen ? 0 : chat.slice(chatSeen).filter((m) => !m.system && m.userId !== selfId).length;
+  const [fullscreen, setFullscreen] = useState(false);
+  const canFullscreen = typeof document !== 'undefined' && !!document.fullscreenEnabled;
+  useEffect(() => {
+    const onChange = () => setFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined);
+    else document.documentElement.requestFullscreen().catch(() => undefined);
+  };
   const [copied, setCopied] = useState(false);
   const minimapRef = useRef<HTMLCanvasElement | null>(null);
   const emotesRef = useRef<Map<string, { emoji: string; start: number }>>(new Map());
@@ -197,6 +221,17 @@ const SpaceGrid = ({ id }: { id: string }) => {
   );
 
   const places = useMemo(() => findPlaces(areaElements), [areaElements]);
+
+  // door tiles: tap-to-walk routes around them unless you tapped the door itself
+  const doorTiles = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of areaElements) {
+      if (!e.to) continue;
+      for (let y = e.y; y < e.y + e.element.height; y++)
+        for (let x = e.x; x < e.x + e.element.width; x++) set.add(`${x},${y}`);
+    }
+    return set;
+  }, [areaElements]);
 
   // --- proximity voice / video ---------------------------------------------
   const areaRef = useRef(areaId);
@@ -256,6 +291,8 @@ const SpaceGrid = ({ id }: { id: string }) => {
       self.x = self.rx = serverPosition.x;
       self.y = self.ry = serverPosition.y;
     }
+    pathRef.current = [];
+    targetRef.current = null;
   }, [serverPosition, user, selfAvatar]);
 
   useEffect(() => {
@@ -373,6 +410,8 @@ const SpaceGrid = ({ id }: { id: string }) => {
       const dir = KEY_DIRS[e.key.toLowerCase()];
       if (!dir) return;
       e.preventDefault();
+      pathRef.current = [];
+      targetRef.current = null;
       heldRef.current = [dir, ...heldRef.current.filter((d) => d !== dir)];
       if (!e.repeat && tapsRef.current.length < 3) tapsRef.current.push(dir);
     };
@@ -571,7 +610,8 @@ const SpaceGrid = ({ id }: { id: string }) => {
       // step the local player one tile at a time while a direction key is held (or was just tapped)
       const arrived = Math.abs(self.rx - self.x) < 0.05 && Math.abs(self.ry - self.y) < 0.05;
       const canStep = arrived && now - lastStepRef.current >= STEP_MS;
-      const dir = canStep ? (tapsRef.current.shift() ?? heldRef.current[0] ?? touchDirRef.current ?? undefined) : undefined;
+      const manual = canStep ? (tapsRef.current.shift() ?? heldRef.current[0] ?? touchDirRef.current ?? undefined) : undefined;
+      const dir = manual ?? (canStep ? pathRef.current.shift() : undefined);
       if (dir) {
         self.dir = dir;
         const [dx, dy] = DIR_DELTA[dir];
@@ -582,6 +622,22 @@ const SpaceGrid = ({ id }: { id: string }) => {
           self.movingUntil = now + STEP_MS * 1.2;
           lastStepRef.current = now;
           moveUser(nx, ny);
+        } else {
+          // someone's route got blocked: stop rather than walk into the wall
+          pathRef.current = [];
+          targetRef.current = null;
+        }
+      }
+      // reached a tapped bench or board: use it
+      const target = targetRef.current;
+      if (target && pathRef.current.length === 0 && arrived && !dir) {
+        targetRef.current = null;
+        if (target.interact) {
+          const hit = findInteraction(elementsRef.current, self.x, self.y);
+          if (hit) {
+            interactionRef.current = hit;
+            interact();
+          }
         }
       }
 
@@ -610,10 +666,21 @@ const SpaceGrid = ({ id }: { id: string }) => {
 
       ctx.fillStyle = indoors ? "#18161c" : "#2f3b2a";
       ctx.fillRect(0, 0, cw, ch);
+      cameraRef.current = { x: Math.round(camX), y: Math.round(camY), zoom };
       ctx.save();
       ctx.scale(zoom, zoom);
       ctx.translate(-Math.round(camX), -Math.round(camY));
       if (backgroundRef.current) ctx.drawImage(backgroundRef.current, 0, 0);
+      if (targetRef.current) {
+        // a pulsing ring on the tile being walked to
+        const t = targetRef.current;
+        const pulse = 0.5 + 0.5 * Math.sin((now - t.since) / 140);
+        ctx.strokeStyle = `rgba(52, 211, 153, ${0.55 + 0.4 * pulse})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(t.x * TILE + TILE / 2, t.y * TILE + TILE - 6, 9 + 3 * pulse, 4 + 1.5 * pulse, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
 
       // objects and players, sorted by their bottom edge so nearer things overlap farther ones
       const actors = [self, ...othersRef.current.values()];
@@ -660,22 +727,59 @@ const SpaceGrid = ({ id }: { id: string }) => {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [dims, loadingArt, isWalkable, sprites, moveUser, selfId, places, indoors, area]);
+  }, [dims, loadingArt, isWalkable, sprites, moveUser, selfId, places, indoors, area, interact]);
+
+  // --- tap / click to walk ------------------------------------------------------------------
+  const pressRef = useRef<{ x: number; y: number; id: number } | null>(null);
+  const walkTo = useCallback((clientX: number, clientY: number) => {
+    const canvas = canvasRef.current, self = selfRef.current;
+    if (!canvas || !self || !dims) return;
+    const r = canvas.getBoundingClientRect();
+    const cam = cameraRef.current;
+    const tx = Math.floor(((clientX - r.left) / cam.zoom + cam.x) / TILE);
+    const ty = Math.floor(((clientY - r.top) / cam.zoom + cam.y) / TILE);
+    if (tx < 0 || ty < 0 || tx >= dims.w || ty >= dims.h) return;
+    // tapped something you can use (a bench, a board)? walk up to it and use it
+    const usable = elementsRef.current.some((e) =>
+      ['campus-notice-board', 'campus-sign-welcome', 'campus-sign-hostels', 'campus-bench', 'campus-chair', 'campus-chair-red',
+        'campus-seat-row', 'campus-bench-long', 'campus-sofa'].includes(e.element.id) &&
+      tx >= e.x && tx < e.x + e.element.width && ty >= e.y && ty < e.y + e.element.height);
+    const exact = isWalkable(tx, ty) && !usable;
+    const goal = exact
+      ? (x: number, y: number) => x === tx && y === ty
+      // a blocked tile (a tree, a building, a bench): the nearest free tile next to it
+      : (x: number, y: number) => Math.max(Math.abs(x - tx), Math.abs(y - ty)) <= 1 && !(x === tx && y === ty);
+    const from = { x: self.x, y: self.y };
+    const path = findPath(from, goal, isWalkable, doorTiles);
+    if (!path) return;
+    pathRef.current = path;
+    // stand up first if seated (moving does that on the server too)
+    if (selfSeatRef.current && path.length) sitRef.current(null);
+    let end = { ...from };
+    for (const d of path) { end = { x: end.x + DIR_DELTA[d][0], y: end.y + DIR_DELTA[d][1] }; }
+    // already next to it (empty path): the game loop uses it on the next frame
+    targetRef.current = { x: end.x, y: end.y, interact: usable, since: performance.now() };
+  }, [dims, isWalkable, doorTiles]);
 
   if (error) return <div className="text-center p-8 text-red-500">{error}</div>;
   if (!space) return <div className="text-center p-8">Loading space...</div>;
 
   return (
     <div className="relative h-dvh w-full overflow-hidden overscroll-none bg-[#2f3b2a]">
-      <div className="absolute left-3 top-3 z-20 flex max-w-[calc(100%-1.5rem)] flex-wrap items-start gap-2 sm:left-4 sm:top-4">
-        <div className="max-w-full rounded-lg bg-black/60 px-3 py-2 text-white shadow-lg sm:px-4 sm:py-3">
-          <h2 className="flex items-center gap-1.5 truncate text-base font-bold sm:text-lg">
+      <div className={cn('absolute z-20 flex max-w-[calc(100%-1.5rem)] flex-wrap items-start gap-2', touch ? 'left-3 top-3' : 'left-4 top-4')}>
+        {/* the icon rail is hidden on small screens, so the way out lives here */}
+        <Link href="/dashboard" aria-label="Leave space" title="Leave space"
+          className="flex size-10 items-center justify-center rounded-lg bg-black/60 text-white shadow-lg hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 md:hidden">
+          <ArrowLeft className="size-5" />
+        </Link>
+        <div className={cn('max-w-full rounded-lg bg-black/60 text-white shadow-lg', touch ? 'max-w-[11rem] px-3 py-1.5' : 'px-4 py-3')}>
+          <h2 className={cn('flex items-center gap-1.5 truncate font-bold', touch ? 'text-sm' : 'text-lg')}>
             {meta?.visibility === 'Private' && <Lock className="size-4 opacity-70" aria-label="Private space" />}
             {meta?.visibility === 'Public' && <Globe className="size-4 opacity-70" aria-label="Public space" />}
             {meta?.name ?? space.name}
           </h2>
-          <p className="text-xs opacity-80 sm:text-sm">
-            {users.size + 1} online{!touch && ' · WASD to move · Enter to chat · 1–6 emotes · E interact · M map'}
+          <p className={cn('opacity-80', touch ? 'text-xs' : 'text-sm')}>
+            {users.size + 1} online{!touch && ' · WASD or click to move · Enter to chat · 1–6 emotes · E interact · M map'}
           </p>
           {indoors && <p className="mt-1 text-xs text-emerald-200">{touch ? 'Step on the green mat to go back outside.' : 'Walk onto the green mat at the bottom to go back outside.'}</p>}
         </div>
@@ -687,7 +791,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
           className="flex h-10 items-center gap-2 rounded-lg bg-black/60 px-3 text-sm font-semibold text-white shadow-lg transition hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {copied ? <Check className="size-4 text-emerald-300" /> : <Link2 className="size-4" />}
-          <span className={cn(!copied && 'hidden sm:inline')}>{copied ? 'Link copied' : 'Invite'}</span>
+          <span className={cn(touch && !copied && 'sr-only')}>{copied ? 'Link copied' : 'Invite'}</span>
         </button>
         {meta?.role === 'Owner' && (
           <SpaceSettings
@@ -697,7 +801,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
             trigger={
               <button type="button" aria-label="Space settings"
                 className="flex h-10 items-center gap-2 rounded-lg bg-black/60 px-3 text-sm font-semibold text-white shadow-lg transition hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60">
-                <Settings className="size-4" /> <span className="hidden sm:inline">Settings</span>
+                <Settings className="size-4" /> <span className={cn(touch && 'sr-only')}>Settings</span>
               </button>
             }
           />
@@ -714,14 +818,14 @@ const SpaceGrid = ({ id }: { id: string }) => {
               <span className="relative size-8 overflow-hidden rounded-md bg-emerald-100/90">
                 <AvatarSprite url={selfAvatar} className="absolute -left-6 -top-3" />
               </span>
-              <span className="hidden sm:inline">Avatar</span>
+              <span className={cn(touch && 'sr-only')}>Avatar</span>
             </button>
           }
         />
       </div>
       {place && (
-        <div aria-live="polite" className={cn('pointer-events-none absolute right-3 z-20 flex max-w-[60%] items-center gap-1.5 truncate rounded-full bg-black/60 px-3 py-1.5 text-xs font-medium text-white shadow-lg sm:right-4 sm:top-4 sm:text-sm',
-          touch ? 'top-[4.5rem]' : 'top-4')}>
+        <div aria-live="polite" className={cn('pointer-events-none absolute z-20 flex items-center gap-1.5 truncate rounded-full bg-black/60 font-medium text-white shadow-lg',
+          touch ? 'right-3 top-[4.25rem] max-w-[55%] px-3 py-1 text-xs' : 'right-4 top-4 max-w-[60%] px-4 py-1.5 text-sm')}>
           {indoors ? <DoorOpen className="size-4 text-emerald-300" /> : <MapPin className="size-4 text-emerald-300" />}
           {indoors ? place : `Near ${place}`}
         </div>
@@ -748,8 +852,17 @@ const SpaceGrid = ({ id }: { id: string }) => {
                 {selfSeat ? 'Stand up' : interaction?.kind === 'board' ? 'Read' : 'Sit'}
               </button>
             )}
-            <div role="toolbar" aria-label="Voice, video and emotes" className="flex gap-1 rounded-xl bg-black/75 p-1.5 shadow-lg backdrop-blur-sm">
+            <div role="toolbar" aria-label="Voice, video, chat and emotes" className="flex gap-1 rounded-xl bg-black/75 p-1.5 shadow-lg backdrop-blur-sm">
               <MediaControls micOn={media.micOn} camOn={media.camOn} onMic={media.toggleMic} onCam={media.toggleCam} />
+              <button type="button" onClick={() => { setChatOpen(true); setShowEmotes(false); }} aria-label={unread ? `Chat, ${unread} new` : 'Chat'}
+                className="relative flex size-10 items-center justify-center rounded-lg text-white active:bg-white/15">
+                <MessageCircle className="size-5" />
+                {unread > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-blue-500 px-1 text-center text-[10px] font-bold leading-4 tabular-nums">
+                    {unread > 9 ? '9+' : unread}
+                  </span>
+                )}
+              </button>
               <button type="button" onClick={() => setShowEmotes((v) => !v)} aria-expanded={showEmotes} aria-label="Emotes"
                 className={cn('flex size-10 items-center justify-center rounded-lg text-xl', showEmotes ? 'bg-white/20' : 'active:bg-white/15')}>
                 😊
@@ -774,7 +887,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
           </button>
         ))}
       </div>
-      <div className={cn('absolute z-30 flex flex-col items-end gap-2', touch ? 'right-3 top-28' : 'bottom-4 right-4')}>
+      <div className={cn('absolute z-30 flex flex-col items-end gap-2', touch ? 'right-3 top-[6.5rem]' : 'bottom-4 right-4')}>
         {showMinimap && (
           <canvas
             ref={minimapRef}
@@ -791,6 +904,12 @@ const SpaceGrid = ({ id }: { id: string }) => {
         >
           <MapIcon className="size-3.5" /> {showMinimap ? 'Hide map' : 'Show map'}{!touch && ' (M)'}
         </button>
+        {touch && canFullscreen && (
+          <button type="button" onClick={toggleFullscreen} aria-pressed={fullscreen}
+            className="flex h-8 items-center gap-1.5 rounded-lg bg-black/60 px-3 text-xs font-semibold text-white shadow-lg active:bg-black/75">
+            {fullscreen ? <Minimize className="size-3.5" /> : <Expand className="size-3.5" />} {fullscreen ? 'Exit full screen' : 'Full screen'}
+          </button>
+        )}
       </div>
       {loadingArt && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60 text-white">
@@ -808,7 +927,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
         </button>
       )}
       <NoticeBoard spaceId={id} boardId={openBoard?.id ?? null} title={openBoard?.title ?? ''} onClose={() => setOpenBoard(null)} />
-      <ChatPanel compact={touch} />
+      <ChatPanel compact={touch} open={touch ? chatOpen : undefined} onOpenChange={touch ? setChatOpen : undefined} />
       <MediaDock
         remote={media.remote}
         names={names}
@@ -818,7 +937,18 @@ const SpaceGrid = ({ id }: { id: string }) => {
         nearbyCount={media.nearbyCount}
         error={media.mediaError}
       />
-      <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" style={{ imageRendering: "pixelated", touchAction: "none" }} />
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 h-full w-full"
+        style={{ imageRendering: "pixelated", touchAction: "none" }}
+        // a tap (or click) that didn't drag walks there
+        onPointerDown={(e) => { pressRef.current = { x: e.clientX, y: e.clientY, id: e.pointerId }; }}
+        onPointerUp={(e) => {
+          const p = pressRef.current;
+          pressRef.current = null;
+          if (p && p.id === e.pointerId && Math.hypot(e.clientX - p.x, e.clientY - p.y) < 10) walkTo(e.clientX, e.clientY);
+        }}
+      />
     </div>
   );
 };
