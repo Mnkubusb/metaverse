@@ -128,6 +128,7 @@ await step("walking onto a door leads into the building and the exit mat leads b
     // walk from the gate to the tile below the door, then step onto it
     const route = walkRoute(space, "main", { x: 36, y: 48 }, { x: door.x, y: door.y + 1 });
     assert.ok(route, "the door is reachable from the gate");
+    await new Promise((r) => setTimeout(r, 65)); // the server allows one step per 60 ms
     for (const tile of route) {
         pa.send("move", tile);
         await pa.next("movement-accepted");
