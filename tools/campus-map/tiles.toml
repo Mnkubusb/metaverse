@@ -4,19 +4,19 @@
 
 # ---- ground (Kenney Roguelike Modern City)
 [grass]
-pack = "roguelike-modern-city"
-sheet = "Tilemap/tilemap_packed.png"
-tile = 16
-x = 1
-y = 26
-scale = 2
-
-[grass-tuft]
-pack = "roguelike-modern-city"
+pack = "tiny-town"
 sheet = "Tilemap/tilemap_packed.png"
 tile = 16
 x = 0
-y = 25
+y = 0
+scale = 2
+
+[grass-tuft]
+pack = "tiny-town"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 1
+y = 0
 scale = 2
 
 [lawn]

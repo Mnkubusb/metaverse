@@ -117,15 +117,33 @@ def nearest_road_side(grid, cells):
     return best
 
 
-def door_position(cells):
-    """Door is always on the bottom edge (top-down art), centred on the widest bottom run."""
-    bottom = {}
-    for (x, y) in cells:
-        bottom[x] = max(bottom.get(x, y), y)
-    # longest run of bottom cells sharing the same y
+def open_cells(grid):
+    """Cells reachable from any road without crossing a building (grid-level flood)."""
+    seen = set(grid.find("road"))
+    stack = list(seen)
+    while stack:
+        x, y = stack.pop()
+        for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+            c = grid.get(nx, ny)
+            if c is None or c.startswith("building:") or (nx, ny) in seen:
+                continue
+            seen.add((nx, ny))
+            stack.append((nx, ny))
+    return seen
+
+
+def door_position(cells, open_set=None):
+    """Door is always on the bottom edge (top-down art), centred on the widest bottom run
+    whose approach cell (directly below) is open ground; any bottom run if none is."""
+    cellset = set(cells)
+    bottom = [(x, y) for (x, y) in cells if (x, y + 1) not in cellset]
+    if open_set is not None:
+        reachable = [(x, y) for (x, y) in bottom if (x, y + 1) in open_set]
+        if reachable:
+            bottom = reachable
+    # longest horizontal run of bottom cells sharing the same y
     runs = []
-    for x in sorted(bottom):
-        y = bottom[x]
+    for x, y in sorted(bottom):
         if runs and runs[-1][1] == y and runs[-1][2] == x - 1:
             runs[-1][2] = x
         else:
@@ -135,13 +153,13 @@ def door_position(cells):
     return dx, y - 1  # 2x2 door; its bottom row is the ring's bottom row
 
 
-def place_building(lay, grid, feat, style, rng):
+def place_building(lay, grid, feat, style, rng, open_set=None):
     cells = building_cells(grid, feat.osm_id)
     if not cells:
         return
     cellset = set(cells)
     same = lambda x, y: (x, y) in cellset  # noqa: E731
-    door = door_position(cells) if feat.name else None
+    door = door_position(cells, open_set) if feat.name else None
     door_cells = set()
     if door:
         dx, dy = door
@@ -322,8 +340,9 @@ def build(features, width, height, rng):
     lay = Layout(width, height)
     grid = paint(features, width, height)
     buildings = [f for f in features if f.kind == "building"]
+    open_set = open_cells(grid) if grid.find("road") else None
     for i, f in enumerate(sorted(buildings, key=lambda f: f.osm_id)):
-        place_building(lay, grid, f, STYLES[i % len(STYLES)], rng)
+        place_building(lay, grid, f, STYLES[i % len(STYLES)], rng, open_set)
     place_ground(lay, grid, rng)
     place_props(lay, grid, features, rng)
     if grid.find("road"):

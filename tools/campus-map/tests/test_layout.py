@@ -103,3 +103,10 @@ def test_parking_gets_cars_and_bikes():
     cars = [p for p in lay.placements if p.key.startswith("car-")]
     assert cars and placed(lay, "bike")
     assert all(2 <= p.x < 10 and 2 <= p.y < 6 for p in cars)
+
+
+def test_door_avoids_bottom_edge_blocked_by_another_building():
+    # A's widest bottom run (x 2..7) sits on top of B; only x 8..11 opens onto ground
+    feats = [building("A", 2, 2, 12, 8, osm_id=1), building(None, 2, 8, 8, 12, osm_id=2), road_h(14.5, 0, 20)]
+    lay = layout.build(feats, 20, 20, random.Random(1))
+    assert lay.doors == [("A", 9, 6)]
