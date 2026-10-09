@@ -4,16 +4,19 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/authContext';
 import { safeNext } from '@/lib/next';
+import AuthShell, { Field, FormError, SubmitButton } from '@/components/auth/AuthShell';
 
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
   const { login, user, loading } = useAuth();
   const router = useRouter();
   // carries ?next= between login and signup; read after mount to keep server and client HTML identical
   const [search, setSearch] = useState('');
   useEffect(() => setSearch(window.location.search), []);
+  const registered = new URLSearchParams(search).get('registered') === 'true';
 
   // e.g. an invite link opened while logged out: come back to it after signing in
   const next = () => safeNext(new URLSearchParams(window.location.search).get('next'));
@@ -24,93 +27,66 @@ const Login = () => {
     }
   }, [user, loading, router]);
 
-  const handleSubmit = async (e : React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     if (!username || !password) {
-      setError('Username and password are required');
+      setError('Enter your username and password.');
       return;
     }
-    
+
+    setBusy(true);
     const result = await login(username, password);
-    
+    setBusy(false);
+
     if (result.success) {
       router.push(next());
     } else {
-      setError(result.error || 'Failed to sign in');
+      setError(result.error || 'Those details didn’t match an account. Check your username and password.');
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex justify-center items-center min-h-screen">
-      <div className="p-8 rounded shadow-md w-full max-w-md bg-white text-black flex justify-center items-center flex-col gap-4">
-        <h1 className="text-2xl font-bold mb-6 text-center ">Sign In</h1>
-        
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-          </div>
-        )}
-        
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4 flex flex-col gap-2">
-            <label className="block text-gray-700 mb-2" htmlFor="username">
-              Username
-            </label>
-            <input
-              type="text"
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full border rounded px-3 py-2"
-              required
-            />
-          </div>
-          
-          <div className="mb-6">
-            <label className="block text-gray-700 mb-2" htmlFor="password">
-              Password
-            </label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full border rounded px-3 py-2"
-              required
-            />
-          </div>
-          
-          <button
-            type="submit"
-            className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 mt-4"
-          >
-            Sign In
-          </button>
-        </form>
-        
-        <div className="mt-4 text-center">
-          <p>
-            Don&apos;t have an account?{' '}
-            <Link href={`/signup${search}`} className="text-blue-500 hover:underline">
-              Sign Up
-            </Link>
-          </p>
-        </div>
-      </div>
-    </div>
+    <AuthShell title="Log in">
+      <p className="mt-2 text-asphalt-soft">
+        {registered ? 'Account created. Log in to pick your character.' : 'Pick up where you left off on campus.'}
+      </p>
+
+      <form onSubmit={handleSubmit} noValidate className="mt-8 flex flex-col gap-5">
+        {error && <FormError>{error}</FormError>}
+        <Field
+          id="username"
+          label="Username"
+          type="text"
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          aria-invalid={!!error && !username}
+          required
+        />
+        <Field
+          id="password"
+          label="Password"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          aria-invalid={!!error && !password}
+          required
+        />
+        <SubmitButton busy={busy} busyLabel="Logging in…">Log in</SubmitButton>
+      </form>
+
+      <p className="mt-8 text-asphalt-soft">
+        New here?{' '}
+        <Link href={`/signup${search}`} className="font-bold text-sign underline decoration-2 underline-offset-4 hover:text-sign-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sign">
+          Create an account
+        </Link>
+      </p>
+    </AuthShell>
   );
 };
 

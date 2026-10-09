@@ -11,7 +11,9 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const OUT_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "apps", "web", "public", "Office");
+const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "apps", "web", "public");
+const OUT_DIR = join(PUBLIC_DIR, "Office");
+const AVATAR_DIR = join(PUBLIC_DIR, "Avatars");
 const TILE = 32;
 
 // ---------------------------------------------------------------- png writer
@@ -127,6 +129,22 @@ class Canvas {
 
   vline(x, y, h, color) {
     this.rect(x, y, 1, h, color);
+  }
+
+  // Copies a rectangle, optionally flipped horizontally. Used to turn the
+  // right-facing walk frames into left-facing ones without redrawing them.
+  blit(sx, sy, w, h, dx, dy, flipX = false) {
+    const src = Buffer.from(this.data);
+    for (let j = 0; j < h; j++) {
+      for (let i = 0; i < w; i++) {
+        const si = ((sy + j) * this.w + (sx + (flipX ? w - 1 - i : i))) * 4;
+        const di = ((dy + j) * this.w + (dx + i)) * 4;
+        this.data[di] = src[si];
+        this.data[di + 1] = src[si + 1];
+        this.data[di + 2] = src[si + 2];
+        this.data[di + 3] = src[si + 3];
+      }
+    }
   }
 
   // Rounded-ish blob used for foliage and cushions.
@@ -413,14 +431,303 @@ sprites["lamp"] = () => {
   return c;
 };
 
+// ---------------------------------------------------------------- sheets
+// Multi-frame sheets. These live alongside the single tiles above but are
+// emitted from their own table so the 18 tiles stay byte-identical.
+
+const sheets = {};
+
+// Multiplies a hex colour, keeping alpha. Returns the [r,g,b,a] form that
+// Canvas.px already understands.
+function shade(hex, factor) {
+  const [r, g, b, a] = parseColor(hex);
+  const clamp = (v) => Math.max(0, Math.min(255, Math.round(v * factor)));
+  return [clamp(r), clamp(g), clamp(b), a];
+}
+
+// --- door-sheet -------------------------------------------------------
+// Four 32x32 frames: closed, ajar, open, wide. The wall and the jamb are
+// identical in every frame, so only the leaf reads as moving. Frame 0 is a
+// pixel-for-pixel copy of the `door` sprite above.
+
+const DOOR_LEAF_W = [20, 13, 7, 3];
+const doorway = "#2b2119";
+const doorwayFloor = "#3d3227";
+
+sheets["door-sheet"] = () => {
+  const c = new Canvas(TILE * 4, TILE);
+  for (let k = 0; k < 4; k++) {
+    const ox = k * TILE;
+    // Surround: wall, then the dark jamb. Identical across all four frames.
+    c.rect(ox, 0, TILE, TILE, C.wall);
+    c.rect(ox + 4, 2, 24, 28, C.woodDark);
+
+    if (k === 0) {
+      c.rect(ox + 6, 4, 20, 24, C.wood);
+      c.outline(ox + 6, 4, 20, 24, C.woodSeam);
+      c.rect(ox + 21, 15, 3, 3, C.metal);
+      continue;
+    }
+
+    // The opening behind the leaf: a dark room with a sliver of lit floor.
+    c.rect(ox + 6, 4, 20, 24, doorway);
+    c.rect(ox + 6, 24, 20, 4, doorwayFloor);
+    c.hline(ox + 6, 4, 20, shade(doorway, 0.7));
+
+    // The leaf is hinged on the left and swings inward, so it narrows and
+    // darkens as it turns away from the room light.
+    const w = DOOR_LEAF_W[k];
+    const dim = 1 - k * 0.09;
+    c.rect(ox + 6, 4, w, 24, shade(C.wood, dim));
+    c.outline(ox + 6, 4, w, 24, shade(C.woodSeam, dim));
+    if (w >= 7) {
+      c.vline(ox + 6 + w - 2, 4, 24, shade(C.woodSeam, dim * 0.9));
+      c.rect(ox + 6 + w - 5, 15, 3, 3, shade(C.metal, dim));
+    }
+    // Edge highlight on the swinging side reads as the leaf's thickness.
+    c.vline(ox + 6 + w, 4, 24, shade(C.woodSeam, 0.65));
+  }
+  return c;
+};
+
+// --- avatars ----------------------------------------------------------
+// 400x400 sheets: a 5x5 grid of 80x80 frames. 0-5 down, 6-11 right,
+// 12-17 left (mirrored right), 18-23 up, 24 sitting.
+
+const CELL = 80;
+
+// Contact / pass / contact / pass over six frames. Frame 0 is forced to a
+// neutral standing pose by the phase being exactly 0 there.
+const PHASE = [0, 0.55, 1, 0.55, -0.55, -1];
+
+const AVATARS = [
+  { skin: "#f0c49a", hair: "#3b2a20", style: "short", shirt: "#3f6fd8", pants: "#2f3a4d" },
+  { skin: "#e8b184", hair: "#8b3a1e", style: "ponytail", shirt: "#d8564a", pants: "#3a3f52" },
+  { skin: "#c98a5e", hair: "#1c1512", style: "curly", shirt: "#2fae7a", pants: "#333b46" },
+  { skin: "#8d5a34", hair: "#2a1c14", style: "bun", shirt: "#e0a33e", pants: "#2e3440" },
+  { skin: "#f6d8bd", hair: "#e0c05a", style: "long", shirt: "#8064a2", pants: "#3b3550" },
+  { skin: "#6b4326", hair: "#120d0a", style: "buzz", shirt: "#2dd4bf", pants: "#26333a" },
+  { skin: "#eab98c", hair: "#c4622a", style: "spiky", shirt: "#d95a9a", pants: "#3a3a44" },
+  { skin: "#d8a273", hair: "#7a4a9c", style: "bob", shirt: "#f2f2ef", pants: "#31415c" },
+];
+
+const SHOE = "#2a2a31";
+const EYE = "#241b18";
+const AV_SHADOW = "#00000026";
+
+// Draws one 80x80 frame at (ox, oy). `dir` is "down" | "right" | "up" | "sit".
+function drawAvatarFrame(c, ox, oy, s, dir, f) {
+  const R = (x, y, w, h, col) => c.rect(ox + x, oy + y, w, h, col);
+  const E = (cx, cy, rx, ry, col) => c.ellipse(ox + cx, oy + cy, rx, ry, col);
+
+  const skin = s.skin;
+  const skinD = shade(skin, 0.84);
+  const hair = s.hair;
+  const hairL = shade(hair, 1.3);
+  const shirt = s.shirt;
+  const shirtD = shade(shirt, 0.8);
+  const pants = s.pants;
+  const pantsD = shade(pants, 0.8);
+  const shoeD = shade(SHOE, 0.75);
+
+  const sit = dir === "sit";
+  const p = sit ? 0 : PHASE[f];
+  const bob = sit || f === 0 ? 0 : Math.abs(p) < 0.9 ? -1 : 0;
+  const cy = 25 + bob;
+  const hipY = 53 + bob;
+
+  // --- hair, drawn after the torso so it falls over the shoulders --------
+  const drawHair = (hy = cy) => {
+    const mass = () => E(40, hy, 10, 9.5, hair);
+    switch (s.style) {
+      case "buzz":
+        E(40, hy, 9.5, 9, hair);
+        break;
+      case "curly":
+        E(40, hy - 1, 11, 10, hair);
+        E(32, hy - 3, 4.5, 4, hair);
+        E(48, hy - 3, 4.5, 4, hair);
+        E(40, hy - 8, 5.5, 4.5, hair);
+        E(35, hy - 7, 4, 3.5, hairL);
+        E(45, hy - 6, 3.5, 3, hairL);
+        break;
+      case "spiky":
+        mass();
+        for (let i = 0; i < 5; i++) {
+          const len = [6, 10, 13, 9, 5][i];
+          R(31 + i * 4, hy - 3 - len, 4, len + 4, hair);
+        }
+        break;
+      case "bun":
+        mass();
+        E(40, hy - 11, 5, 4.5, hair);
+        E(39, hy - 12, 2.5, 2, hairL);
+        break;
+      case "ponytail":
+        mass();
+        if (dir === "up") {
+          R(37, hy + 4, 6, 16, hair);
+          E(40, hy + 20, 3, 3, hair);
+        } else if (dir === "right") {
+          E(30, hy + 2, 4, 5, hair);
+          R(27, hy + 3, 5, 12, hair);
+        } else {
+          R(28, hy - 2, 3, 9, hair);
+          R(49, hy - 2, 3, 9, hair);
+        }
+        break;
+      case "long":
+        mass();
+        R(29, hy - 4, 5, 18, hair);
+        R(46, hy - 4, 5, 18, hair);
+        if (dir === "up") { E(40, hy + 6, 9.5, 13, hair); E(40, hy + 16, 8, 4, hair); }
+        if (dir === "right") R(30, hy - 4, 8, 18, hair);
+        break;
+      case "bob":
+        E(40, hy - 1, 10.5, 10, hair);
+        R(29, hy - 2, 5, 12, hair);
+        R(46, hy - 2, 5, 12, hair);
+        if (dir === "up") E(40, hy + 3, 10.5, 11, hair);
+        if (dir === "right") R(30, hy - 2, 9, 12, hair);
+        break;
+      default:
+        mass();
+    }
+    if (s.style !== "curly") E(36, hy - 5, 4, 2.5, hairL);
+  };
+
+  if (dir === "right") {
+    // Side view: a narrow body, a nose/chin profile, limbs swinging along x.
+    const sw = Math.round(p * 5);
+    E(40, 66, 11, 4, AV_SHADOW);
+    // far leg + far arm sit behind the torso, darkened so they separate
+    R(36 - sw, hipY, 7, 63 - hipY, pantsD);
+    R(36 - sw, 63, 10, 3, shoeD);
+    R(37 - sw, 36 + bob, 5, 11, shade(shirt, 0.66));
+    R(37 - sw, 47 + bob, 5, 4, shade(skin, 0.7));
+    R(36 + sw, hipY, 7, 63 - hipY, pants);
+    R(36 + sw, 63, 10, 3, SHOE);
+    R(34, 35 + bob, 14, 19, shirt);
+    R(34, 35 + bob, 14, 3, shade(shirt, 1.08));
+    R(34, 52 + bob, 14, 2, shirtD);
+    R(38, 32 + bob, 6, 4, skinD);
+    // back of the skull, bulked out so the profile is unmistakable
+    E(39, cy, 9.5, 9, hair);
+    R(30, cy - 2, 9, 10, hair);
+    drawHair();
+    E(43, cy + 2, 7.5, 7.5, skin);
+    R(49, cy + 1, 3, 4, skin); // nose
+    R(49, cy + 5, 2, 1, skinD);
+    R(46, cy, 2, 3, EYE);
+    R(46, cy + 7, 3, 1, skinD); // mouth
+    // near arm swings in front of the torso
+    R(38 + sw, 37 + bob, 5, 10, shade(shirt, 0.88));
+    R(38 + sw, 47 + bob, 5, 4, skin);
+    return;
+  }
+
+  if (sit) {
+    // Seated, facing the viewer. The whole figure drops and compresses:
+    // stubby thighs pointing at the camera, feet planted forward, hands on
+    // the lap. The silhouette is a head shorter than the standing pose.
+    const scy = 31;
+    E(40, 68, 14, 4, AV_SHADOW);
+    R(29, 56, 10, 8, pants); // thighs
+    R(41, 56, 10, 8, pants);
+    R(30, 62, 8, 3, pantsD); // shins
+    R(42, 62, 8, 3, pantsD);
+    R(29, 64, 9, 3, SHOE);
+    R(42, 64, 9, 3, SHOE);
+    R(31, 41, 18, 16, shirt); // torso
+    R(31, 55, 18, 2, shirtD);
+    R(34, 41, 12, 3, shade(shirt, 1.12)); // collar
+    R(27, 43, 4, 9, shade(shirt, 0.88)); // upper arms
+    R(49, 43, 4, 9, shade(shirt, 0.88));
+    R(28, 52, 7, 4, skin); // forearms folded onto the lap
+    R(45, 52, 7, 4, skin);
+    R(37, 38, 6, 4, skinD); // neck
+    drawHair(scy);
+    E(40, scy + 2.5, 8.5, 8, skin);
+    R(35, scy + 3, 2, 3, EYE);
+    R(43, scy + 3, 2, 3, EYE);
+    R(38, scy + 8, 4, 1, skinD);
+    return;
+  }
+
+  // Front / back view.
+  const dl = Math.round(p * 3);
+  const lbot = 65 + dl;
+  const rbot = 65 - dl;
+  E(40, 66, 12, 4, AV_SHADOW);
+  R(31, hipY, 6, lbot - 2 - hipY, pants);
+  R(31, lbot - 2, 6, 3, SHOE);
+  R(43, hipY, 6, rbot - 2 - hipY, pants);
+  R(43, rbot - 2, 6, 3, SHOE);
+  R(27, 36 + bob - dl, 4, 10, shade(shirt, 0.86));
+  R(27, 46 + bob - dl, 4, 4, skin);
+  R(49, 36 + bob + dl, 4, 10, shade(shirt, 0.86));
+  R(49, 46 + bob + dl, 4, 4, skin);
+  R(31, 35 + bob, 18, 19, shirt);
+  R(31, 52 + bob, 18, 2, shirtD);
+  R(37, 32 + bob, 6, 4, skinD);
+
+  if (dir === "up") {
+    // Back of the head: all hair, no face.
+    R(34, 35 + bob, 12, 3, shirtD); // collar, tucked under the hair
+    E(40, cy + 2, 9, 8.5, hair);
+    drawHair();
+  } else {
+    drawHair();
+    E(40, cy + 2.5, 8.5, 8, skin);
+    R(35, cy + 3, 2, 3, EYE);
+    R(43, cy + 3, 2, 3, EYE);
+    R(38, cy + 8, 4, 1, skinD);
+    R(34, 35 + bob, 12, 3, shade(shirt, 1.12)); // collar
+  }
+}
+
+function avatarSheet(s) {
+  const c = new Canvas(CELL * 5, CELL * 5);
+  const at = (i) => [(i % 5) * CELL, Math.floor(i / 5) * CELL];
+  for (let f = 0; f < 6; f++) {
+    const [dx, dy] = at(f);
+    drawAvatarFrame(c, dx, dy, s, "down", f);
+    const [rx, ry] = at(6 + f);
+    drawAvatarFrame(c, rx, ry, s, "right", f);
+    const [ux, uy] = at(18 + f);
+    drawAvatarFrame(c, ux, uy, s, "up", f);
+  }
+  // Left is the mirrored right run.
+  for (let f = 0; f < 6; f++) {
+    const [rx, ry] = at(6 + f);
+    const [lx, ly] = at(12 + f);
+    c.blit(rx, ry, CELL, CELL, lx, ly, true);
+  }
+  const [sx, sy] = at(24);
+  drawAvatarFrame(c, sx, sy, s, "sit", 0);
+  return c;
+}
+
+AVATARS.forEach((s, i) => {
+  sheets[`avatar-${i + 1}`] = () => avatarSheet(s);
+});
+
 // ---------------------------------------------------------------- main
 
 mkdirSync(OUT_DIR, { recursive: true });
+mkdirSync(AVATAR_DIR, { recursive: true });
 let count = 0;
 for (const [name, draw] of Object.entries(sprites)) {
   const canvas = draw();
   writeFileSync(join(OUT_DIR, `${name}.png`), encodePng(canvas.w, canvas.h, canvas.data));
   count++;
-  console.log(`  ${name}.png  ${canvas.w}x${canvas.h}`);
+  console.log(`  Office/${name}.png  ${canvas.w}x${canvas.h}`);
 }
-console.log(`\nWrote ${count} sprites to ${OUT_DIR}`);
+for (const [name, draw] of Object.entries(sheets)) {
+  const dir = name.startsWith("avatar-") ? AVATAR_DIR : OUT_DIR;
+  const canvas = draw();
+  writeFileSync(join(dir, `${name}.png`), encodePng(canvas.w, canvas.h, canvas.data));
+  count++;
+  console.log(`  ${name.startsWith("avatar-") ? "Avatars" : "Office"}/${name}.png  ${canvas.w}x${canvas.h}`);
+}
+console.log(`\nWrote ${count} images`);

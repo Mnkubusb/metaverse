@@ -1,5 +1,19 @@
 import { Vector2 } from "@/types/Vector2";
 
+// One HTMLImageElement per resource URL, shared by every Sprite instance.
+// Sprites are constructed inside the draw loop (once per element per frame),
+// so without this every frame would issue a fresh HTTP request.
+const imageCache = new Map<string, HTMLImageElement>();
+
+export function getCachedImage(resource: string): HTMLImageElement {
+    const cached = imageCache.get(resource);
+    if (cached) return cached;
+    const img = new Image();
+    img.src = resource;
+    imageCache.set(resource, img);
+    return img;
+}
+
 export class Sprite {
     resource: string;
     frameSize: Vector2;
@@ -25,7 +39,7 @@ export class Sprite {
         this.vFrames = vFrames ?? 1;
         this.frame = frame ?? 0;
         this.frameMap = new Map();
-        this.scale = scale ?? 1;     
+        this.scale = scale ?? 1;
         this.position = position ?? new Vector2(0, 0);
         this.buildFrameMap();
     }
@@ -44,9 +58,11 @@ export class Sprite {
     }
 
     drawImage(ctx: CanvasRenderingContext2D ,x : number, y : number) {
-        const img = new Image();
-        img.src = this.resource;
         if(!this.resource) return;
+        const img = getCachedImage(this.resource);
+        // Draw nothing until the image has actually decoded. A missing or
+        // still-loading asset simply skips this frame instead of throwing.
+        if(!img.complete || img.naturalWidth === 0) return;
         let frameCordX = 0;
         let frameCordY = 0;
         const frame = this.frameMap.get(this.frame);
@@ -68,4 +84,4 @@ export class Sprite {
             frameSizeY * this.scale
         )
     }
-} 
+}

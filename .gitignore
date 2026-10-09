@@ -42,3 +42,9 @@ tools/campus-map/packs/
 # python
 __pycache__/
 .pytest_cache/
+
+# local tool state / screenshots
+.serena/
+.playwright-mcp/
+/home.png
+/office.png
