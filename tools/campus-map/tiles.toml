@@ -309,6 +309,7 @@ sheet = "Tilemap/tilemap_packed.png"
 tile = 16
 x = 31
 y = 18
+w = 2
 h = 2
 scale = 2
 
@@ -318,6 +319,7 @@ sheet = "Tilemap/tilemap_packed.png"
 tile = 16
 x = 31
 y = 22
+w = 2
 h = 2
 scale = 2
 
@@ -327,6 +329,7 @@ sheet = "Tilemap/tilemap_packed.png"
 tile = 16
 x = 31
 y = 26
+w = 2
 h = 2
 scale = 2
 
