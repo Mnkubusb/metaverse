@@ -1,0 +1,371 @@
+# Sliced by fetch_sprites.py into apps/web/public/campus/. See CREDITS.md.
+# Kenney packs are 16 px (scale = 2); LPC is 32 px (scale = 1).
+# x/y are tile column/row in the sheet (0-based).
+
+# ---- ground (Kenney Roguelike Modern City)
+[grass]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 1
+y = 26
+scale = 2
+
+[grass-tuft]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 0
+y = 25
+scale = 2
+
+[lawn]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 0
+y = 24
+scale = 2
+
+[flowerbed]
+pack = "tiny-town"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 2
+y = 0
+scale = 2
+
+[court]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 2
+y = 24
+scale = 2
+
+[paver]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 6
+y = 24
+scale = 2
+
+[asphalt]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 10
+y = 20
+scale = 2
+
+[road-plain]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 10
+y = 20
+scale = 2
+
+[road-h]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 9
+y = 19
+scale = 2
+
+[road-v]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 9
+y = 20
+scale = 2
+
+[road-x]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 12
+y = 19
+scale = 2
+
+[mark-p]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 13
+y = 24
+scale = 2
+
+[mark-bike]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 14
+y = 24
+scale = 2
+
+# ---- roofs (Kenney city, flat roof interiors)
+[roof-a]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 26
+y = 2
+scale = 2
+
+[roof-b]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 2
+y = 2
+scale = 2
+
+[roof-c]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 10
+y = 2
+scale = 2
+
+[roof-d]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 18
+y = 2
+scale = 2
+
+# ---- walls (LPC City Outside, 32 px)
+# a = yellow brick, b = red brick, c = grey brick, d = white wall
+[wall-a]
+pack = "lpc-city-outside"
+sheet = "LPC_city_outside/city_outside.png"
+tile = 32
+x = 19
+y = 7
+
+[wallbase-a]
+pack = "lpc-city-outside"
+sheet = "LPC_city_outside/city_outside.png"
+tile = 32
+x = 19
+y = 8
+
+[window-a]
+pack = "lpc-city-outside"
+sheet = "LPC_city_outside/city_outside.png"
+tile = 32
+x = 19
+y = 8
+over = [{ sheet = "LPC_city_outside/city_outside.png", tile = 32, x = 20, y = 1 }]
+
+[wall-b]
+pack = "lpc-city-outside"
+sheet = "LPC_city_outside/city_outside.png"
+tile = 32
+x = 4
+y = 4
+
+[wallbase-b]
+pack = "lpc-city-outside"
+sheet = "LPC_city_outside/city_outside.png"
+tile = 32
+x = 4
+y = 6
+
+[window-b]
+pack = "lpc-city-outside"
+sheet = "LPC_city_outside/city_outside.png"
+tile = 32
+x = 4
+y = 6
+over = [{ sheet = "LPC_city_outside/city_outside.png", tile = 32, x = 20, y = 1 }]
+
+[wall-c]
+pack = "lpc-city-outside"
+sheet = "LPC_city_outside/city_outside.png"
+tile = 32
+x = 15
+y = 9
+
+[wallbase-c]
+pack = "lpc-city-outside"
+sheet = "LPC_city_outside/city_outside.png"
+tile = 32
+x = 15
+y = 10
+
+[window-c]
+pack = "lpc-city-outside"
+sheet = "LPC_city_outside/city_outside.png"
+tile = 32
+x = 15
+y = 10
+over = [{ sheet = "LPC_city_outside/city_outside.png", tile = 32, x = 20, y = 1 }]
+
+[wall-d]
+pack = "lpc-city-outside"
+sheet = "LPC_city_outside/city_outside.png"
+tile = 32
+x = 10
+y = 3
+
+[wallbase-d]
+pack = "lpc-city-outside"
+sheet = "LPC_city_outside/city_outside.png"
+tile = 32
+x = 10
+y = 5
+
+[window-d]
+pack = "lpc-city-outside"
+sheet = "LPC_city_outside/city_outside.png"
+tile = 32
+x = 10
+y = 5
+over = [{ sheet = "LPC_city_outside/city_outside.png", tile = 32, x = 20, y = 1 }]
+
+[door]
+pack = "lpc-city-outside"
+sheet = "LPC_city_outside/city_outside.png"
+tile = 32
+x = 21
+y = 0
+w = 2
+h = 2
+
+# ---- props
+[tree-a]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 31
+y = 10
+h = 2
+scale = 2
+
+[tree-b]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 33
+y = 10
+h = 2
+scale = 2
+
+[lamp]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 4
+y = 17
+h = 2
+scale = 2
+
+[bench]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 17
+y = 16
+w = 2
+scale = 2
+
+[car-h-green]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 32
+y = 17
+w = 2
+scale = 2
+
+[car-h-gray]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 32
+y = 21
+w = 2
+scale = 2
+
+[car-h-orange]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 32
+y = 25
+w = 2
+scale = 2
+
+[car-v-green]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 31
+y = 18
+h = 2
+scale = 2
+
+[car-v-gray]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 31
+y = 22
+h = 2
+scale = 2
+
+[car-v-orange]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 31
+y = 26
+h = 2
+scale = 2
+
+[bike]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 14
+y = 24
+scale = 2
+
+[bin]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 12
+y = 14
+scale = 2
+
+[cone]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 14
+y = 18
+scale = 2
+
+[flag]
+pack = "lpc-city-outside"
+sheet = "LPC_city_outside/city_outside.png"
+tile = 32
+x = 20
+y = 3
+h = 2
+
+[gate-pillar]
+pack = "lpc-city-outside"
+sheet = "LPC_city_outside/city_outside.png"
+tile = 32
+x = 23
+y = 7
+h = 2
