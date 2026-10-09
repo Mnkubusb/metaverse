@@ -110,3 +110,17 @@ def test_door_avoids_bottom_edge_blocked_by_another_building():
     feats = [building("A", 2, 2, 12, 8, osm_id=1), building(None, 2, 8, 8, 12, osm_id=2), road_h(14.5, 0, 20)]
     lay = layout.build(feats, 20, 20, random.Random(1))
     assert lay.doors == [("A", 9, 6)]
+
+
+def test_gate_gets_notice_board_and_welcome_sign():
+    lay = layout.build([road_h(15.5, 8, 22, width=3)], 30, 20, random.Random(1))
+    assert placed(lay, "notice-board") and placed(lay, "sign-welcome")
+    assert lay.elements["notice-board"].layer == "objects" and lay.elements["notice-board"].static
+    assert (lay.elements["notice-board"].width, lay.elements["notice-board"].height) == (2, 2)
+    assert (lay.elements["sign-welcome"].width, lay.elements["sign-welcome"].height) == (3, 2)
+
+
+def test_first_hostel_gets_hostels_sign():
+    feats = [building("Amarkantak Hostel", 5, 5, 11, 11), road_h(13.0, 0, 20)]
+    lay = layout.build(feats, 20, 20, random.Random(1))
+    assert len(placed(lay, "sign-hostels")) == 1

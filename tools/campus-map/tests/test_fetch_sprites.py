@@ -61,7 +61,9 @@ def test_slice_removes_stale_files(tmp_path):
     out.mkdir()
     (out / "old.png").write_bytes(b"x")
     (out / "CREDITS.md").write_text("keep")
+    (out / "notice-board.png").write_bytes(b"x")
     manifest = {"a": {"pack": "demo", "sheet": "sheet.png", "tile": 16, "x": 0, "y": 0, "w": 1, "h": 1, "scale": 2}}
     fetch_sprites.slice_manifest(manifest, {"demo": pack}, out)
     assert not (out / "old.png").exists()
     assert (out / "CREDITS.md").exists()
+    assert (out / "notice-board.png").exists()  # hand-made board art is not in the manifest

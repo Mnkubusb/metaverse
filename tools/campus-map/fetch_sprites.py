@@ -37,7 +37,9 @@ ROOT = HERE.parents[1]
 PACKS_DIR = HERE / "packs"
 MANIFEST = HERE / "tiles.toml"
 OUT_DIR = ROOT / "apps/web/public/campus"
-KEEP = {"CREDITS.md"}
+# Hand-made art that is not sliced from a pack: the interactive notice boards the
+# notices API looks up by element id, also used as feature art on the landing page.
+KEEP = {"CREDITS.md", "notice-board.png", "sign-welcome.png", "sign-hostels.png"}
 
 PACKS = {
     "roguelike-modern-city": "https://kenney.nl/media/pages/assets/roguelike-modern-city/0ff3dfff2b-1677694743/kenney_roguelike-modern-city.zip",

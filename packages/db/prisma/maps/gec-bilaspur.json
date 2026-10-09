@@ -410,6 +410,14 @@
    "layer": "objects"
   },
   {
+   "id": "campus-sign-hostels",
+   "imageUrl": "/campus/sign-hostels.png",
+   "width": 3,
+   "height": 2,
+   "static": true,
+   "layer": "objects"
+  },
+  {
    "id": "campus-gate-pillar",
    "imageUrl": "/campus/gate-pillar.png",
    "width": 1,
@@ -421,6 +429,22 @@
    "id": "campus-flag",
    "imageUrl": "/campus/flag.png",
    "width": 1,
+   "height": 2,
+   "static": true,
+   "layer": "objects"
+  },
+  {
+   "id": "campus-sign-welcome",
+   "imageUrl": "/campus/sign-welcome.png",
+   "width": 3,
+   "height": 2,
+   "static": true,
+   "layer": "objects"
+  },
+  {
+   "id": "campus-notice-board",
+   "imageUrl": "/campus/notice-board.png",
+   "width": 2,
    "height": 2,
    "static": true,
    "layer": "objects"
@@ -152516,6 +152540,11 @@
    "y": 137
   },
   {
+   "elementId": "campus-sign-hostels",
+   "x": 119,
+   "y": 136
+  },
+  {
    "elementId": "campus-gate-pillar",
    "x": 71,
    "y": 168
@@ -152528,6 +152557,16 @@
   {
    "elementId": "campus-flag",
    "x": 70,
+   "y": 168
+  },
+  {
+   "elementId": "campus-sign-welcome",
+   "x": 66,
+   "y": 168
+  },
+  {
+   "elementId": "campus-notice-board",
+   "x": 78,
    "y": 168
   },
   {

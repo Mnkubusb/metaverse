@@ -19,6 +19,8 @@ SPRITE_SIZES = {
     "car-h-green": (2, 1), "car-h-gray": (2, 1), "car-h-orange": (2, 1),
     "car-v-green": (2, 2), "car-v-gray": (2, 2), "car-v-orange": (2, 2),
     "flag": (1, 2), "gate-pillar": (1, 2), "gate-arch": (5, 2),
+    # hand-made boards kept from the previous map; the notices API finds them by element id
+    "notice-board": (2, 2), "sign-welcome": (3, 2), "sign-hostels": (3, 2),
 }
 
 FLOOR = {"grass", "grass-tuft", "lawn", "flowerbed", "court", "paver", "asphalt",
@@ -295,6 +297,15 @@ def place_props(lay, grid, features, rng):
         if can("bin", dx + 2, dy + 1):
             take("bin", dx + 2, dy + 1)
 
+    # one "Hostels" sign by the first hostel's door (the notices API expects this board)
+    for (name, dx, dy) in lay.doors:
+        if "hostel" in name.lower():
+            for x in (dx - 4, dx + 3, dx - 6, dx + 5):
+                if can("sign-hostels", x, dy):
+                    take("sign-hostels", x, dy)
+                    break
+            break
+
 
 # ----------------------------------------------------------------------------- gate + spawn
 
@@ -321,6 +332,8 @@ def main_gate(lay, grid):
     put_if_inside("gate-pillar", x0 - 1, y - 2)
     put_if_inside("gate-pillar", x1 + 1, y - 2)
     put_if_inside("flag", x0 - 2, y - 2)
+    put_if_inside("sign-welcome", x0 - 6, y - 2)
+    put_if_inside("notice-board", x1 + 3, y - 2)
     put_if_inside("gate-arch", x0 - 1, y - 4, w=w, h=2, image_url="/campus/gate-arch.png")
     if "gate-arch" in lay.elements:
         lay.signs["gate-arch"] = "GEC BILASPUR"
