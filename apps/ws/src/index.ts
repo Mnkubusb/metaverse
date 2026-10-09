@@ -25,7 +25,7 @@ wss.on('connection', function connection(ws) {
     })
 });
 
-const port = Number(process.env.PORT) || 3001;
+const port = Number(process.env.WS_PORT) || 3001;
 server.listen(port, () => {
     console.log(`WebSocket server listening on port ${port}`);
 });
