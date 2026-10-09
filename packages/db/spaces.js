@@ -4,7 +4,7 @@
 //
 // `tx` is a Prisma client or interactive-transaction client.
 
-async function createSpaceFromMap(tx, mapId, { name, creatorId, visibility, parentId = null, members = true }) {
+async function createSpaceFromMap(tx, mapId, { name, creatorId, visibility, parentId = null, members = true, rootMapId = mapId }) {
     const map = await tx.map.findUnique({
         where: { id: mapId },
         include: { mapElements: true, portals: true },
@@ -30,10 +30,12 @@ async function createSpaceFromMap(tx, mapId, { name, creatorId, visibility, pare
     });
 
     // one child space per distinct target map; portals back to the root resolve to this space
+    // Portals back to the root's map (an interior's exit) never spawn a child: they resolve
+    // to the root space below. Without this check interiors would recreate the campus forever.
     const rootId = parentId ?? space.id;
     const children = new Map();
     for (const portal of map.portals) {
-        if (portal.targetMapId === mapId || children.has(portal.targetMapId)) continue;
+        if (portal.targetMapId === mapId || portal.targetMapId === rootMapId || children.has(portal.targetMapId)) continue;
         const target = await tx.map.findUnique({ where: { id: portal.targetMapId }, select: { name: true } });
         const child = await createSpaceFromMap(tx, portal.targetMapId, {
             name: `${name} · ${target?.name ?? "inside"}`,
@@ -41,6 +43,7 @@ async function createSpaceFromMap(tx, mapId, { name, creatorId, visibility, pare
             visibility,
             parentId: rootId,
             members: false,
+            rootMapId,
         });
         children.set(portal.targetMapId, child);
     }
@@ -77,6 +80,7 @@ async function attachPortals(tx, spaceId, mapId) {
             visibility: space.visibility,
             parentId: spaceId,
             members: false,
+            rootMapId: mapId,
         });
         children.set(portal.targetMapId, child);
     }
