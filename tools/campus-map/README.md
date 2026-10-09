@@ -37,3 +37,15 @@ uv run --with pillow --with pytest pytest tools/campus-map/tests -q
 
 Map data © OpenStreetMap contributors (ODbL). Sprites: see
 `apps/web/public/campus/CREDITS.md`.
+
+## Interiors and portals
+
+`generate.py` also emits one generated interior map per named building
+(`interiors` in the JSON, built by `campusmap/interiors.py` from the `/Office` art)
+and the door portals both ways (`portals`). The seed upserts them as maps +
+`MapPortal` rows; creating a space from the campus map (`@repo/db/spaces`) creates
+one child space per interior and the `SpacePortal` rows. Walking onto a door tile
+makes the ws server send `portal`, and the client opens the target space with
+`?via=<portalId>` so it spawns at that door's exit. To hand-design an interior,
+replace its entry in `interiors.py` (or edit the map in the admin editor after
+seeding — portals are matched by map id, not by content).
