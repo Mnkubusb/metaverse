@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+"""
+Downloads the sprite packs used by the campus map and slices the tiles named in
+tiles.toml into apps/web/public/campus/.
+
+Packs (see apps/web/public/campus/CREDITS.md for attribution):
+  roguelike-modern-city  Kenney, CC0
+  tiny-town              Kenney, CC0
+  lpc-city-outside       OpenGameArt, CC-BY-SA 3.0 / GPL 3.0
+
+Manifest entry (tiles.toml):
+  [road-h]
+  pack = "roguelike-modern-city"        # key of PACKS
+  sheet = "Tilemap/tilemap_packed.png"  # path inside the extracted pack
+  tile = 16                             # source tile size in px
+  x = 9        # column in the sheet
+  y = 19       # row in the sheet
+  w = 1        # tiles wide (optional, default 1)
+  h = 1        # tiles tall (optional, default 1)
+  scale = 2    # nearest-neighbour upscale so 16 px packs land on the 32 px grid
+  over = [{ sheet = "...", tile = 32, x = 0, y = 0 }]  # optional overlays, same size
+
+Run: uv run --with pillow python tools/campus-map/fetch_sprites.py
+"""
+import io
+import shutil
+import sys
+import tomllib
+import urllib.request
+import zipfile
+from pathlib import Path
+
+from PIL import Image
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parents[1]
+PACKS_DIR = HERE / "packs"
+MANIFEST = HERE / "tiles.toml"
+OUT_DIR = ROOT / "apps/web/public/campus"
+KEEP = {"CREDITS.md"}
+
+PACKS = {
+    "roguelike-modern-city": "https://kenney.nl/media/pages/assets/roguelike-modern-city/0ff3dfff2b-1677694743/kenney_roguelike-modern-city.zip",
+    "tiny-town": "https://kenney.nl/media/pages/assets/tiny-town/a415fbeb49-1735736916/kenney_tiny-town.zip",
+    "lpc-city-outside": "https://opengameart.org/sites/default/files/LPC_city_outside_1.zip",
+}
+
+
+def download_packs(dest: Path) -> dict[str, Path]:
+    """Download + extract every pack not already present. Returns name -> dir."""
+    dest.mkdir(parents=True, exist_ok=True)
+    dirs = {}
+    for name, url in PACKS.items():
+        target = dest / name
+        if not target.exists():
+            req = urllib.request.Request(url, headers={"User-Agent": "metaverse-campus-map"})
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                if resp.status != 200:
+                    sys.exit(f"{url}: HTTP {resp.status}")
+                data = resp.read()
+            tmp = dest / (name + ".tmp")
+            shutil.rmtree(tmp, ignore_errors=True)
+            with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                zf.extractall(tmp)
+            tmp.rename(target)
+        dirs[name] = target
+    return dirs
+
+
+def _crop(pack_dir: Path, sheet: str, tile: int, x: int, y: int, w: int, h: int) -> Image.Image:
+    path = pack_dir / sheet
+    if not path.exists():
+        sys.exit(f"missing sheet {path}")
+    im = Image.open(path).convert("RGBA")
+    box = (x * tile, y * tile, (x + w) * tile, (y + h) * tile)
+    if box[2] > im.width or box[3] > im.height:
+        sys.exit(f"{sheet}: tile ({x},{y}) {w}x{h} is outside the sheet")
+    return im.crop(box)
+
+
+def slice_manifest(manifest: dict, packs: dict[str, Path], out_dir: Path) -> list[str]:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for old in out_dir.iterdir():
+        if old.name not in KEEP and old.is_file():
+            old.unlink()
+    names = []
+    for name, spec in manifest.items():
+        pack_dir = packs[spec["pack"]]
+        w, h = spec.get("w", 1), spec.get("h", 1)
+        im = _crop(pack_dir, spec["sheet"], spec["tile"], spec["x"], spec["y"], w, h)
+        for layer in spec.get("over", []):
+            ov = _crop(pack_dir, layer["sheet"], layer["tile"], layer["x"], layer["y"], w, h)
+            im.alpha_composite(ov)
+        scale = spec.get("scale", 1)
+        if scale != 1:
+            im = im.resize((im.width * scale, im.height * scale), Image.NEAREST)
+        im.save(out_dir / f"{name}.png", optimize=True)
+        names.append(name)
+    return names
+
+
+def main():
+    manifest = tomllib.loads(MANIFEST.read_text())
+    packs = download_packs(PACKS_DIR)
+    names = slice_manifest(manifest, packs, OUT_DIR)
+    print(f"wrote {len(names)} sprites to {OUT_DIR}")
+
+
+if __name__ == "__main__":
+    main()
