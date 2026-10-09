@@ -64,6 +64,7 @@ class Layout:
     spawn: tuple = (0, 0)
     doors: list = field(default_factory=list)
     signs: dict = field(default_factory=dict)
+    footprints: dict = field(default_factory=dict)  # building name -> (w, h) of its bbox, for interiors
 
     def element(self, key, w=None, h=None, image_url=None):
         if key not in self.elements:
@@ -199,6 +200,9 @@ def place_building(lay, grid, feat, style, rng, open_set=None):
         dx, dy = door
         lay.put("door", dx, dy)
         lay.doors.append((feat.name, dx, dy))
+        xs = [c[0] for c in cells]
+        ys = [c[1] for c in cells]
+        lay.footprints[feat.name] = (max(xs) - min(xs) + 1, max(ys) - min(ys) + 1)
         key = f"sign:{slug(feat.name)}"
         lay.signs[key] = feat.name
         lay.put(key, dx - (SIGN_W - 2) // 2, dy - 1, w=SIGN_W, h=SIGN_H, image_url=f"/campus/sign-{slug(feat.name)}.png")

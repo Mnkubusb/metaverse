@@ -124,3 +124,23 @@ def render_preview(lay, public_campus_dir):
             cache[p.key] = Image.open(public_campus_dir / sprite_file(e)).convert("RGBA")
         canvas.alpha_composite(cache[p.key], (p.x * T, p.y * T))
     return canvas
+
+
+def interior_to_json(m):
+    """Same shape as the campus map (map / elements / placements) plus the interior's spawn."""
+    used = {p.key for p in m.placements}
+    return {
+        "map": {"id": m.map_id, "name": m.name, "width": m.width, "height": m.height,
+                "thumbnail": "/Office/floor-tile.png", "spawnX": m.spawn[0], "spawnY": m.spawn[1]},
+        "elements": [
+            {"id": element_id(e.key), "imageUrl": e.image_url, "width": e.width, "height": e.height,
+             "static": e.static, "layer": e.layer}
+            for e in m.elements.values() if e.key in used
+        ],
+        "placements": [{"elementId": element_id(p.key), "x": p.x, "y": p.y} for p in m.placements],
+    }
+
+
+def portal_to_json(pt):
+    return {"mapId": pt.map_id, "x": pt.x, "y": pt.y, "width": pt.width, "height": pt.height,
+            "targetMapId": pt.target_map_id, "targetX": pt.target_x, "targetY": pt.target_y}

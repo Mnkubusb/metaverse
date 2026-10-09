@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "client.js",
   "exports": {
-    "./client": "./client.js"
+    "./client": "./client.js",
+    "./spaces": "./spaces.js"
   },
   "scripts": {
     "postinstall": "prisma generate"

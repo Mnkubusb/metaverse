@@ -30,7 +30,7 @@ from pathlib import Path
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from campusmap import emit, geo, layout, reach  # noqa: E402
+from campusmap import emit, geo, interiors, layout, reach  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 PUBLIC = ROOT / "apps/web/public/campus"
@@ -64,12 +64,18 @@ def main():
     thumb = preview.resize((lay.width * 4, lay.height * 4), Image.LANCZOS).convert("RGB")
     thumb.save(PUBLIC / "gec-bilaspur-thumb.png", optimize=True)
 
+    data = emit.to_json(lay, MAP_ID, MAP_NAME, THUMB)
+    # one generated interior per named building, plus the door portals both ways
+    inside = interiors.build_all(lay, lay.footprints, random.Random(7))
+    data["interiors"] = [emit.interior_to_json(m) for m in inside.maps]
+    data["portals"] = [emit.portal_to_json(pt) for pt in inside.portals]
     MAP_JSON.parent.mkdir(parents=True, exist_ok=True)
-    MAP_JSON.write_text(json.dumps(emit.to_json(lay, MAP_ID, MAP_NAME, THUMB), indent=1) + "\n")
+    MAP_JSON.write_text(json.dumps(data, indent=1) + "\n")
 
     print(f"{lay.width}x{lay.height} tiles, {len(lay.elements)} elements, {len(lay.placements)} placements, "
           f"{reach.reachable_count(lay)} reachable tiles, spawn {lay.spawn}")
     print("doors:", ", ".join(f"{n}@{x},{y}" for n, x, y in lay.doors))
+    print(f"{len(inside.maps)} interiors, {len(inside.portals)} portals")
 
 
 if __name__ == "__main__":

@@ -29,16 +29,19 @@ function Blocked({ icon, title, body }: { icon: React.ReactNode; title: string; 
 // Registers the visit (and redeems an invite code from the link) before connecting to the space.
 function SpaceGate({ id }: { id: string }) {
     const [gate, setGate] = useState<Gate>('checking');
+    // the door the player arrived through; the server spawns them at its exit
+    const [via, setVia] = useState<string | null>(null);
 
     useEffect(() => {
         let cancelled = false;
         const params = new URLSearchParams(window.location.search);
         const invite = params.get('invite') ?? undefined;
+        setVia(params.get('via'));
         spaceAPI.joinSpace(id, invite)
             .then(() => {
                 if (cancelled) return;
                 // don't leave the invite code in the address bar where it's easy to share by accident
-                if (invite) window.history.replaceState(null, '', `/space/${id}`);
+                if (invite || params.get('via')) window.history.replaceState(null, '', `/space/${id}`);
                 setGate('ok');
             })
             .catch((err) => {
@@ -71,7 +74,7 @@ function SpaceGate({ id }: { id: string }) {
 
     return (
         <div className="mx-auto">
-            <WebSocketProvider spaceId={id} key={id}>
+            <WebSocketProvider spaceId={id} via={via} key={id}>
                 <SpaceGrid id={id} />
             </WebSocketProvider>
         </div>

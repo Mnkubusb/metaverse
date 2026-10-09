@@ -58,3 +58,16 @@ def test_render_preview_composites_layers(tmp_path):
     im = emit.render_preview(lay, tmp_path)
     assert im.size == (64, 32)
     assert im.getpixel((5, 5)) == (0, 255, 0, 255) and im.getpixel((40, 5)) == (255, 0, 0, 255)
+
+
+def test_interior_and_portal_json():
+    import random
+    from campusmap import interiors
+    m = interiors.build_interior("Canteen", "canteen", 12, 10, random.Random(1))
+    data = emit.interior_to_json(m)
+    assert data["map"]["id"] == "gec-bilaspur-canteen" and (data["map"]["spawnX"], data["map"]["spawnY"]) == m.spawn
+    ids = {e["id"] for e in data["elements"]}
+    assert "campus-int-floor" in ids and "campus-door" in ids
+    pt = interiors.Portal("gec-bilaspur-campus", 1, 2, 2, 2, "gec-bilaspur-canteen", 5, 7)
+    assert emit.portal_to_json(pt) == {"mapId": "gec-bilaspur-campus", "x": 1, "y": 2, "width": 2, "height": 2,
+                                       "targetMapId": "gec-bilaspur-canteen", "targetX": 5, "targetY": 7}

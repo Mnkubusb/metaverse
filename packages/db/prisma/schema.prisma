@@ -52,9 +52,34 @@ model Space {
   messages    ChatMessage[]
   members     SpaceMember[]
   noticePosts NoticePost[]
+  // Building interiors are child spaces of the campus space they belong to.
+  // Membership and visibility are checked on the root; children are not listed.
+  parentId    String?
+  parent      Space?          @relation("SpaceChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children    Space[]         @relation("SpaceChildren")
+  portals     SpacePortal[]   @relation("PortalFrom")
+  portalsIn   SpacePortal[]   @relation("PortalTo")
 
   @@index([creatorId])
   @@index([visibility, createdAt])
+  @@index([parentId])
+}
+
+// Walking onto a portal's footprint moves the player to another space.
+model SpacePortal {
+  id            String @id @default(cuid())
+  spaceId       String
+  x             Int
+  y             Int
+  width         Int
+  height        Int
+  targetSpaceId String
+  targetX       Int
+  targetY       Int
+  space         Space  @relation("PortalFrom", fields: [spaceId], references: [id], onDelete: Cascade)
+  target        Space  @relation("PortalTo", fields: [targetSpaceId], references: [id], onDelete: Cascade)
+
+  @@index([spaceId])
 }
 
 model SpaceMember {
@@ -127,6 +152,26 @@ model Map {
   spawnX      Int?
   spawnY      Int?
   mapElements mapElements[]
+  portals     MapPortal[]   @relation("MapPortalFrom")
+  portalsIn   MapPortal[]   @relation("MapPortalTo")
+}
+
+// Template for SpacePortal: creating a space from a map with portals also creates one
+// child space per target map and the portal rows between them.
+model MapPortal {
+  id          String @id @default(cuid())
+  mapId       String
+  x           Int
+  y           Int
+  width       Int
+  height      Int
+  targetMapId String
+  targetX     Int
+  targetY     Int
+  map         Map    @relation("MapPortalFrom", fields: [mapId], references: [id], onDelete: Cascade)
+  target      Map    @relation("MapPortalTo", fields: [targetMapId], references: [id], onDelete: Cascade)
+
+  @@index([mapId])
 }
 
 model mapElements {

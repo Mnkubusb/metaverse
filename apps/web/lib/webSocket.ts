@@ -8,10 +8,14 @@ export default class WebSocketService {
   private onMessageCallback: (message: any) => void;
   private onCloseCallback: () => void;
 
-  constructor(url: string, token: string, spaceId: string, onMessage: (message: any) => void, onClose: () => void) {
+  // id of the portal (door) the player arrived through, so the server spawns them at its exit
+  private portalId: string | null;
+
+  constructor(url: string, token: string, spaceId: string, onMessage: (message: any) => void, onClose: () => void, portalId: string | null = null) {
     this.url = url || '';
     this.token = token;
     this.spaceId = spaceId;
+    this.portalId = portalId;
     this.onMessageCallback = onMessage;
     this.onCloseCallback = onClose;
     this.socket = null;
@@ -58,7 +62,8 @@ export default class WebSocketService {
       type: 'join',
       payload: {
         spaceId: this.spaceId,
-        token: this.token
+        token: this.token,
+        ...(this.portalId ? { portalId: this.portalId } : {}),
       }
     });
   }

@@ -9,9 +9,13 @@ export function canEnter(visibility: Visibility, role: SpaceRole | null) {
     return role !== null || visibility !== "Private";
 }
 
+// Building interiors are child spaces: membership, visibility and invite codes live on
+// the root space, so access to a child is access to its root.
 export async function getAccess(spaceId: string, userId: string) {
+    const found = await client.space.findUnique({ where: { id: spaceId }, select: { id: true, parentId: true } });
+    if (!found) return null;
     const space = await client.space.findUnique({
-        where: { id: spaceId },
+        where: { id: found.parentId ?? found.id },
         select: {
             id: true,
             visibility: true,

@@ -26,6 +26,22 @@ const PLACE_NAMES: Record<string, string> = {
   'campus-fountain': 'Main Plaza',
   'campus-parking': 'Parking',
   'campus-gate-arch': 'Main Gate',
+  // OSM-based map: each named building has a sign element above its door
+  'campus-sign-cs-it-block': 'CS/IT Block',
+  'campus-sign-cs-it-annexe': 'CS/IT Annexe',
+  'campus-sign-main-building': 'Main Building',
+  'campus-sign-visvesvaraya-hall': 'Visvesvaraya Hall',
+  'campus-sign-electrical-dept': 'Electrical Dept',
+  'campus-sign-civil-dept': 'Civil Dept',
+  'campus-sign-electronics-dept': 'Electronics Dept',
+  'campus-sign-mechanical-dept': 'Mechanical Dept',
+  'campus-sign-workshop': 'Workshop',
+  'campus-sign-mining-dept': 'Mining Dept',
+  'campus-sign-canteen': 'Canteen',
+  'campus-sign-amarkantak-hostel': 'Amarkantak Hostel',
+  'campus-sign-svns-hostel': 'SVNS Hostel',
+  'campus-sign-panchsheel-hostel': 'Panchsheel Hostel',
+  'campus-sign-hostels': 'Hostels',
 };
 
 export interface Place {

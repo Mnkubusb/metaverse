@@ -1,4 +1,5 @@
 import client from "@repo/db/client";
+import { portalAt, PortalRect } from "./SpaceMap";
 
 type Layer = "floor" | "wall" | "objects" | "topObjects";
 
@@ -37,6 +38,7 @@ export class SpaceGrid {
         public readonly height: number,
         elements: PlacedElement[],
         private readonly spawnHint: { x: number; y: number } | null,
+        public readonly portals: PortalRect[] = [],
     ) {
         for (const e of elements) {
             for (const [tx, ty] of blockedTiles(e)) this.blocked.add(this.key(tx, ty));
@@ -46,11 +48,11 @@ export class SpaceGrid {
     static async load(spaceId: string): Promise<SpaceGrid | null> {
         const space = await client.space.findUnique({
             where: { id: spaceId },
-            include: { elements: { include: { element: true } } },
+            include: { elements: { include: { element: true } }, portals: true },
         });
         if (!space) return null;
         const spawn = space.spawnX !== null && space.spawnY !== null ? { x: space.spawnX, y: space.spawnY } : null;
-        return new SpaceGrid(space.width, space.height, space.elements, spawn);
+        return new SpaceGrid(space.width, space.height, space.elements, spawn, space.portals);
     }
 
     private key(x: number, y: number) {
@@ -65,9 +67,14 @@ export class SpaceGrid {
         );
     }
 
-    // Nearest walkable tile to the spawn point (or the centre), found with a BFS.
-    spawnPoint(): { x: number; y: number } {
-        const start = this.spawnHint ?? { x: Math.floor(this.width / 2), y: Math.floor(this.height / 2) };
+    // The portal (door) whose footprint contains the tile, if any.
+    portalAt(x: number, y: number) {
+        return portalAt(this.portals, x, y);
+    }
+
+    // Nearest walkable tile to `hint`, the spawn point, or the centre, found with a BFS.
+    spawnPoint(hint?: { x: number; y: number } | null): { x: number; y: number } {
+        const start = hint ?? this.spawnHint ?? { x: Math.floor(this.width / 2), y: Math.floor(this.height / 2) };
         const sx = Math.min(Math.max(start.x, 0), this.width - 1);
         const sy = Math.min(Math.max(start.y, 0), this.height - 1);
         const seen = new Set<number>([this.key(sx, sy)]);

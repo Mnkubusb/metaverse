@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { useRouter } from 'next/navigation';
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import WebSocketService from '../lib/webSocket';
 import { useAuth } from './authContext';
@@ -92,10 +93,13 @@ const WebSocketContext = createContext<WebSocketContextType>({
   announceBoardUpdate: () => { },
 });
 
-export const WebSocketProvider = ({ children, spaceId }: {
+export const WebSocketProvider = ({ children, spaceId, via = null }: {
   children: React.ReactNode;
-  spaceId: string
+  spaceId: string;
+  // portal the player came through (from ?via=), forwarded with the join
+  via?: string | null;
 }) => {
+  const router = useRouter();
   const [socket, setSocket] = useState<WebSocketService | null>(null);
   const [connected, setConnected] = useState(false);
   const [selfId, setSelfId] = useState('');
@@ -132,6 +136,11 @@ export const WebSocketProvider = ({ children, spaceId }: {
     const { type, payload } = message;
     if (payload?.userId && payload?.username) namesRef.current.set(payload.userId, payload.username);
     switch (type) {
+      case 'portal': {
+        // walked through a door: move to the other space, arriving at that door's exit
+        router.push(`/space/${payload.spaceId}?via=${encodeURIComponent(payload.portalId)}`);
+        break;
+      }
       case 'space-joined': {
         setSelfId(payload.userId);
         selfIdRef.current = payload.userId;
@@ -218,7 +227,7 @@ export const WebSocketProvider = ({ children, spaceId }: {
         break;
       }
     }
-  }, [correct, pushChat, notice]);
+  }, [correct, pushChat, notice, router]);
 
   useEffect(() => {
     if (!token || !spaceId) return;
@@ -227,7 +236,8 @@ export const WebSocketProvider = ({ children, spaceId }: {
       token,
       spaceId,
       handleMessage,
-      () => setConnected(false)
+      () => setConnected(false),
+      via,
     );
 
     const newSocket = wsService.connect();
@@ -236,7 +246,7 @@ export const WebSocketProvider = ({ children, spaceId }: {
     return () => {
       newSocket.disconnect();
     };
-  }, [token, spaceId, handleMessage]);
+  }, [token, spaceId, handleMessage, via]);
 
   const sendMessage = useCallback((type: string, payload: any) => {
     if (socket && connected) {

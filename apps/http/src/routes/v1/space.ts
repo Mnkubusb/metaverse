@@ -4,6 +4,7 @@ import { AddElementSchema, CreateSpaceSchema, DeleteElementSchema, JoinSpaceSche
 import { getAccess } from "../../access";
 import { noticeRouter } from "./notices";
 import client from "@repo/db/client";
+import { createSpaceFromMap } from "@repo/db/spaces";
 import { userMiddleware } from "../../middleware/user";
 export const spaceRouter = Router();
 spaceRouter.use("/:spaceId", noticeRouter);
@@ -31,38 +32,15 @@ spaceRouter.post("/" ,userMiddleware, async (req, res) => {
         return;
     }
 
-    const map = await client.map.findUnique({
-        where: { id: mapId },
-        select: { mapElements: true, width: true, height: true, thumbnail: true, spawnX: true, spawnY: true },
-    });
-    if (!map) {
+    // Maps with portals (the campus) also get one child space per building interior
+    const space = await client.$transaction(
+        (tx) => createSpaceFromMap(tx, mapId, { name, creatorId: req.userId, visibility: visibility ?? "Unlisted" }),
+        { timeout: 30_000 },
+    );
+    if (!space) {
         res.status(404).json({ message: "Map not found" });
         return;
     }
-
-    const space = await client.$transaction(async (tx) => {
-        const space = await tx.space.create({
-            data: {
-                name,
-                width: map.width,
-                height: map.height,
-                thumbnail: map.thumbnail,
-                spawnX: map.spawnX,
-                spawnY: map.spawnY,
-                creatorId: req.userId,
-                ...ownership,
-            },
-        });
-        await tx.spaceElements.createMany({
-            data: map.mapElements.map((e) => ({
-                spaceId: space.id,
-                elementId: e.elementId,
-                x: e.x,
-                y: e.y,
-            })),
-        });
-        return space;
-    });
 
     res.status(200).json({ spaceId: space.id, message: "Space created" });
 });
@@ -144,7 +122,8 @@ spaceRouter.get("/all",userMiddleware, async (req, res) => {
 
     const spaces = await client.space.findMany({
         where:{
-            creatorId: req.userId
+            creatorId: req.userId,
+            parentId: null, // building interiors are reached through their campus space
         }
     })
 
@@ -185,7 +164,7 @@ spaceRouter.get("/explore", userMiddleware, async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = 24;
     const spaces = await client.space.findMany({
-        where: { visibility: "Public" },
+        where: { visibility: "Public", parentId: null },
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
         take: limit,
@@ -381,7 +360,8 @@ spaceRouter.get("/:spaceId",userMiddleware, async (req, res) => {
                 include: {
                     element: true,
                 }
-            }
+            },
+            portals: true,
         }
     });
     if(!space){
@@ -398,6 +378,9 @@ spaceRouter.get("/:spaceId",userMiddleware, async (req, res) => {
         role: access?.role ?? null,
         // only the owner can hand out invite links to a private space
         inviteCode: isOwner ? space.inviteCode : null,
+        // interiors link back to the campus space they belong to
+        parentId: space.parentId,
+        portals: space.portals.map(p => ({ id: p.id, x: p.x, y: p.y, width: p.width, height: p.height, targetSpaceId: p.targetSpaceId })),
         dimensions: `${space.width}x${space.height}`,
         spawn: space.spawnX !== null && space.spawnY !== null ? { x: space.spawnX, y: space.spawnY } : null,
         elements: space.elements.map(e => ({

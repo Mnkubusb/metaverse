@@ -20,6 +20,9 @@ interface Space {
   name: string;
   dimensions: string;
   elements: spaceElement[];
+  // doors into other spaces (building interiors / back to the campus)
+  portals?: { id: string; x: number; y: number; width: number; height: number; targetSpaceId: string }[];
+  parentId?: string | null;
   visibility: Visibility;
   role: 'Owner' | 'Member' | null;
   inviteCode: string | null;

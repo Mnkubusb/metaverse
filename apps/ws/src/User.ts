@@ -22,6 +22,17 @@ function getRandomId(length: number) {
     return result;
 }
 
+// Same rule as apps/http/src/access.ts: a building interior is a child space, and its
+// membership/visibility live on the root campus space.
+async function rootAccess(spaceId: string, userId: string) {
+    const found = await client.space.findUnique({ where: { id: spaceId }, select: { parentId: true } });
+    if (!found) return null;
+    return client.space.findUnique({
+        where: { id: found.parentId ?? spaceId },
+        select: { visibility: true, members: { where: { userId }, select: { role: true } } },
+    });
+}
+
 export class User {
     public id: string;
     public userId?: string;
@@ -92,6 +103,8 @@ export class User {
                     if (this.spaceId) return; // one space per connection
                     const spaceId = parsedData.payload?.spaceId;
                     const token = parsedData.payload?.token;
+                    // arriving through a door: spawn where that portal lands instead of the space's spawn
+                    const portalId = typeof parsedData.payload?.portalId === "string" ? parsedData.payload.portalId : null;
                     let userId: string | undefined;
                     try {
                         userId = (jwt.verify(String(token), JWT_SECRET, { algorithms: ["HS256"] }) as JwtPayload).userId;
@@ -104,17 +117,17 @@ export class User {
                         return;
                     }
                     const rooms = RoomManager.getInstance();
-                    const [grid, dbUser, chat, access] = await Promise.all([
+                    const [grid, dbUser, chat, access, via] = await Promise.all([
                         rooms.getGrid(spaceId),
                         client.user.findUnique({
                             where: { id: userId },
                             select: { username: true, avatar: { select: { imageUrl: true } } },
                         }),
                         recentChat(spaceId).catch(() => []),
-                        client.space.findUnique({
-                            where: { id: spaceId },
-                            select: { visibility: true, members: { where: { userId }, select: { role: true } } },
-                        }),
+                        rootAccess(spaceId, userId),
+                        portalId
+                            ? client.spacePortal.findFirst({ where: { id: portalId, targetSpaceId: spaceId }, select: { targetX: true, targetY: true } })
+                            : null,
                     ]);
                     // Same rule as apps/http/src/access.ts: private spaces are members-only
                     if (access && access.visibility === "Private" && access.members.length === 0) {
@@ -131,7 +144,7 @@ export class User {
                     this.avatar = dbUser.avatar?.imageUrl ?? null;
                     this.spaceId = spaceId;
                     this.grid = grid;
-                    const spawn = grid.spawnPoint();
+                    const spawn = grid.spawnPoint(via ? { x: via.targetX, y: via.targetY } : null);
                     this.x = spawn.x;
                     this.y = spawn.y;
                     rooms.addUser(spaceId, this);
@@ -254,6 +267,11 @@ export class User {
                             type: "move",
                             payload: { x: this.x, y: this.y, userId: this.userId }
                         }, this, this.spaceId);
+                        // stepped onto a door: the client leaves this space and joins the other one
+                        const portal = this.grid.portalAt(x, y);
+                        if (portal) {
+                            this.send({ type: "portal", payload: { spaceId: portal.targetSpaceId, portalId: portal.id } });
+                        }
                         return;
                     }
                     this.send({

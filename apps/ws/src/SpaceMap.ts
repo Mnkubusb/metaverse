@@ -191,3 +191,26 @@ class SpaceMapCache {
 }
 
 export const SpaceMap = new SpaceMapCache();
+
+export type PortalRect = {
+    id: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    targetSpaceId: string;
+    targetX: number;
+    targetY: number;
+};
+
+/**
+ * Pure: the portal whose footprint contains tile (x, y), or null.
+ */
+export function portalAt<P extends PortalRect>(portals: P[], x: number, y: number): P | null {
+    for (const p of portals) {
+        if (x >= p.x && x < p.x + p.width && y >= p.y && y < p.y + p.height) {
+            return p;
+        }
+    }
+    return null;
+}
