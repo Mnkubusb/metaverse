@@ -50,3 +50,36 @@ def test_stroke_width_3_is_centred():
 
 def test_bbox_of():
     assert bbox_of([(1.2, 3.9), (4.7, 0.1)]) == (1, 0, 4, 3)
+
+
+def test_orthogonalize_turns_diagonal_into_l_legs():
+    from campusmap.raster import orthogonalize
+    pts = orthogonalize([(0, 0), (10, 10)])
+    assert pts == [(0, 0), (10, 0), (10, 10)]
+
+
+def test_orthogonalize_vertical_first_when_steeper():
+    from campusmap.raster import orthogonalize
+    assert orthogonalize([(0, 0), (3, 10)]) == [(0, 0), (0, 10), (3, 10)]
+
+
+def test_orthogonalize_simplifies_jitter_first():
+    from campusmap.raster import orthogonalize
+    # tiny wobble along a straight line collapses to a single leg
+    assert orthogonalize([(0, 0), (5, 0.4), (10, 0)]) == [(0, 0), (10, 0)]
+
+
+def test_orthogonalize_keeps_endpoints():
+    from campusmap.raster import orthogonalize
+    pts = orthogonalize([(1.2, 3.4), (7.7, 2.1), (9.9, 8.8)])
+    assert pts[0] == (1.2, 3.4) and pts[-1] == (9.9, 8.8)
+    for (ax, ay), (bx, by) in zip(pts, pts[1:]):
+        assert ax == bx or ay == by
+
+
+def test_orthogonalize_bounds_deviation_on_long_diagonals():
+    from campusmap.raster import _dist_to_segment, orthogonalize
+    pts = orthogonalize([(0, 0), (48, 48)])
+    assert len(pts) > 3
+    for (x, y) in pts:
+        assert _dist_to_segment(x, y, 0, 0, 48, 48) <= 12

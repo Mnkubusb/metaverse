@@ -112,32 +112,32 @@ scale = 2
 pack = "roguelike-modern-city"
 sheet = "Tilemap/tilemap_packed.png"
 tile = 16
-x = 26
-y = 2
+x = 25
+y = 1
 scale = 2
 
 [roof-b]
 pack = "roguelike-modern-city"
 sheet = "Tilemap/tilemap_packed.png"
 tile = 16
-x = 2
-y = 2
+x = 1
+y = 1
 scale = 2
 
 [roof-c]
 pack = "roguelike-modern-city"
 sheet = "Tilemap/tilemap_packed.png"
 tile = 16
-x = 10
-y = 2
+x = 9
+y = 1
 scale = 2
 
 [roof-d]
 pack = "roguelike-modern-city"
 sheet = "Tilemap/tilemap_packed.png"
 tile = 16
-x = 18
-y = 2
+x = 17
+y = 1
 scale = 2
 
 # ---- walls (LPC City Outside, 32 px)
@@ -372,3 +372,270 @@ tile = 32
 x = 23
 y = 7
 h = 2
+
+# ---- sidewalk (Kenney city grey pavement)
+[sidewalk]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 1
+y = 20
+scale = 2
+
+# ---- roof edges / corners (Kenney city 4x4 roof blocks; a=tan col 24, b=red col 0, c=grey col 8, d=light col 16)
+[roof-a-tl]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 24
+y = 0
+scale = 2
+
+[roof-a-t]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 25
+y = 0
+scale = 2
+
+[roof-a-tr]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 27
+y = 0
+scale = 2
+
+[roof-a-l]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 24
+y = 1
+scale = 2
+
+[roof-a-r]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 27
+y = 1
+scale = 2
+
+[roof-a-bl]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 24
+y = 3
+scale = 2
+
+[roof-a-b]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 25
+y = 3
+scale = 2
+
+[roof-a-br]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 27
+y = 3
+scale = 2
+
+[roof-b-tl]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 0
+y = 0
+scale = 2
+
+[roof-b-t]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 1
+y = 0
+scale = 2
+
+[roof-b-tr]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 3
+y = 0
+scale = 2
+
+[roof-b-l]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 0
+y = 1
+scale = 2
+
+[roof-b-r]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 3
+y = 1
+scale = 2
+
+[roof-b-bl]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 0
+y = 3
+scale = 2
+
+[roof-b-b]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 1
+y = 3
+scale = 2
+
+[roof-b-br]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 3
+y = 3
+scale = 2
+
+[roof-c-tl]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 8
+y = 0
+scale = 2
+
+[roof-c-t]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 9
+y = 0
+scale = 2
+
+[roof-c-tr]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 11
+y = 0
+scale = 2
+
+[roof-c-l]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 8
+y = 1
+scale = 2
+
+[roof-c-r]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 11
+y = 1
+scale = 2
+
+[roof-c-bl]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 8
+y = 3
+scale = 2
+
+[roof-c-b]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 9
+y = 3
+scale = 2
+
+[roof-c-br]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 11
+y = 3
+scale = 2
+
+[roof-d-tl]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 16
+y = 0
+scale = 2
+
+[roof-d-t]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 17
+y = 0
+scale = 2
+
+[roof-d-tr]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 19
+y = 0
+scale = 2
+
+[roof-d-l]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 16
+y = 1
+scale = 2
+
+[roof-d-r]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 19
+y = 1
+scale = 2
+
+[roof-d-bl]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 16
+y = 3
+scale = 2
+
+[roof-d-b]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 17
+y = 3
+scale = 2
+
+[roof-d-br]
+pack = "roguelike-modern-city"
+sheet = "Tilemap/tilemap_packed.png"
+tile = 16
+x = 19
+y = 3
+scale = 2
+

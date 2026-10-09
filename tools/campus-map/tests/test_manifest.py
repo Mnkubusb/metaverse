@@ -30,3 +30,19 @@ def test_manifest_entries_land_on_32px_grid():
     for name, spec in m.items():
         assert spec["pack"] in fetch_sprites.PACKS, name
         assert spec["tile"] * spec.get("scale", 1) == 32, name
+
+
+def test_sprite_sizes_match_manifest():
+    sys.path.insert(0, str(HERE))
+    from campusmap.layout import SPRITE_SIZES
+    m = tomllib.loads((HERE / "tiles.toml").read_text())
+    for name, (w, h) in SPRITE_SIZES.items():
+        if name in m:
+            assert (m[name].get("w", 1), m[name].get("h", 1)) == (w, h), name
+
+
+def test_generated_map_fits_payload_budget():
+    import json
+    data = json.loads((HERE.parents[1] / "packages/db/prisma/maps/gec-bilaspur.json").read_text())
+    assert len(data["placements"]) < 10000
+    assert not any(p["elementId"] in ("campus-grass", "campus-grass-tuft") for p in data["placements"])

@@ -67,3 +67,43 @@ def stroke_polyline(grid, points, width, value):
             for x in range(max(x0, 0), min(x1, grid.width - 1) + 1):
                 if _dist_to_segment(x + 0.5, y + 0.5, ax, ay, bx, by) < r:
                     grid.set(x, y, value)
+
+
+def _simplify(points, tol):
+    """Douglas-Peucker: drop points that deviate less than `tol` from the chord."""
+    if len(points) < 3:
+        return list(points)
+    (ax, ay), (bx, by) = points[0], points[-1]
+    far_i, far_d = 0, -1.0
+    for i in range(1, len(points) - 1):
+        d = _dist_to_segment(points[i][0], points[i][1], ax, ay, bx, by)
+        if d > far_d:
+            far_i, far_d = i, d
+    if far_d <= tol:
+        return [points[0], points[-1]]
+    left = _simplify(points[: far_i + 1], tol)
+    right = _simplify(points[far_i:], tol)
+    return left[:-1] + right
+
+
+STEP = 16  # longest L leg; longer diagonals become a few big steps
+
+
+def orthogonalize(points, tol=2.0, step=STEP):
+    """Route a polyline as axis-aligned legs. Each simplified segment becomes one or
+    more L steps (longer axis first), so a diagonal stays within ~step/2 of the real
+    line without turning into a fine staircase. Endpoints are kept exactly."""
+    pts = _simplify(list(points), tol)
+    out = [pts[0]]
+    for (ax, ay), (bx, by) in zip(pts, pts[1:]):
+        if ax == bx or ay == by:
+            out.append((bx, by))
+            continue
+        n = max(1, math.ceil(max(abs(bx - ax), abs(by - ay)) / step))
+        for i in range(1, n + 1):
+            px, py = out[-1]
+            qx, qy = ax + (bx - ax) * i / n, ay + (by - ay) * i / n
+            corner = (qx, py) if abs(bx - ax) >= abs(by - ay) else (px, qy)
+            out.append(corner)
+            out.append((qx, qy))
+    return out

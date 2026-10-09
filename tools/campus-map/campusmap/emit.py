@@ -106,6 +106,15 @@ def validate(lay, public_campus_dir):
 
 def render_preview(lay, public_campus_dir):
     canvas = Image.new("RGBA", (lay.width * T, lay.height * T), (0, 0, 0, 0))
+    # grass base with the same deterministic tuft scatter as spaceGrid.tsx renderBackground
+    grass = public_campus_dir / "grass.png"
+    if grass.exists():
+        g = Image.open(grass).convert("RGBA")
+        tuft_path = public_campus_dir / "grass-tuft.png"
+        tuft = Image.open(tuft_path).convert("RGBA") if tuft_path.exists() else g
+        for y in range(lay.height):
+            for x in range(lay.width):
+                canvas.alpha_composite(tuft if (x * 7919 + y * 104729) % 100 < 12 else g, (x * T, y * T))
     cache = {}
     order = {"floor": 0, "wall": 1, "objects": 2, "topObjects": 3}
     placed = sorted(lay.placements, key=lambda p: (order[lay.elements[p.key].layer], p.y + lay.elements[p.key].height))

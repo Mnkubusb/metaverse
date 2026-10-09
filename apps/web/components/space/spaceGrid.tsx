@@ -51,7 +51,8 @@ const BUBBLE_MS = 6000;         // how long a chat message floats above its auth
 const EMOTE_MS = 2800;          // how long an emote floats above an avatar
 const MINIMAP_W = 200;          // minimap width in CSS pixels
 const DEFAULT_AVATAR = "/Characters/WalkAnimations.png";
-const GROUND_TILES = ["/Tiles/BasicTiles8.png", "/Tiles/BasicTiles22.png"];
+// Same grass the campus generator uses for overview.png, so the space matches the landing page
+const GROUND_TILES = ["/campus/grass.png", "/campus/grass-tuft.png"];
 
 // Avatar sheets: 5x5 grid of 80px frames, 6 frames per direction.
 const FRAME = 80;

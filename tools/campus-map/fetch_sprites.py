@@ -26,6 +26,8 @@ import io
 import shutil
 import sys
 import tomllib
+import tempfile
+import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -40,6 +42,44 @@ OUT_DIR = ROOT / "apps/web/public/campus"
 # Hand-made art that is not sliced from a pack: the interactive notice boards the
 # notices API looks up by element id, also used as feature art on the landing page.
 KEEP = {"CREDITS.md", "notice-board.png", "sign-welcome.png", "sign-hostels.png"}
+# Sprites from the previous, hand-drawn campus map. Spaces created from that map still
+# reference them, so they stay until those spaces are migrated or deleted.
+LEGACY = {
+    "admin-block.png",
+    "auditorium.png",
+    "basketball-court.png",
+    "bikes.png",
+    "boys-hostel-1.png",
+    "boys-hostel-2.png",
+    "canteen.png",
+    "car-blue.png",
+    "car-red.png",
+    "car-white.png",
+    "central-library.png",
+    "dept-civil.png",
+    "dept-cse.png",
+    "dept-electrical.png",
+    "dept-etc.png",
+    "dept-it.png",
+    "dept-mechanical.png",
+    "dept-mining.png",
+    "dispensary.png",
+    "dustbin.png",
+    "first-year-hostel.png",
+    "flagpole.png",
+    "fountain.png",
+    "girls-hostel-1.png",
+    "girls-hostel-2.png",
+    "parking.png",
+    "path.png",
+    "plaza.png",
+    "pond.png",
+    "sports-ground.png",
+    "wall-h.png",
+    "wall-v.png",
+    "workshop.png",
+}
+KEEP |= LEGACY
 
 PACKS = {
     "roguelike-modern-city": "https://kenney.nl/media/pages/assets/roguelike-modern-city/0ff3dfff2b-1677694743/kenney_roguelike-modern-city.zip",
@@ -56,10 +96,11 @@ def download_packs(dest: Path) -> dict[str, Path]:
         target = dest / name
         if not target.exists():
             req = urllib.request.Request(url, headers={"User-Agent": "metaverse-campus-map"})
-            with urllib.request.urlopen(req, timeout=120) as resp:
-                if resp.status != 200:
-                    sys.exit(f"{url}: HTTP {resp.status}")
-                data = resp.read()
+            try:
+                with urllib.request.urlopen(req, timeout=120) as resp:
+                    data = resp.read()
+            except (urllib.error.HTTPError, urllib.error.URLError) as err:
+                sys.exit(f"{url}: {err}")
             tmp = dest / (name + ".tmp")
             shutil.rmtree(tmp, ignore_errors=True)
             with zipfile.ZipFile(io.BytesIO(data)) as zf:
@@ -69,35 +110,45 @@ def download_packs(dest: Path) -> dict[str, Path]:
     return dirs
 
 
+class SliceError(SystemExit):
+    pass
+
+
 def _crop(pack_dir: Path, sheet: str, tile: int, x: int, y: int, w: int, h: int) -> Image.Image:
     path = pack_dir / sheet
     if not path.exists():
-        sys.exit(f"missing sheet {path}")
+        raise SliceError(f"missing sheet {path}")
     im = Image.open(path).convert("RGBA")
     box = (x * tile, y * tile, (x + w) * tile, (y + h) * tile)
     if box[2] > im.width or box[3] > im.height:
-        sys.exit(f"{sheet}: tile ({x},{y}) {w}x{h} is outside the sheet")
+        raise SliceError(f"{sheet}: tile ({x},{y}) {w}x{h} is outside the sheet")
     return im.crop(box)
 
 
 def slice_manifest(manifest: dict, packs: dict[str, Path], out_dir: Path) -> list[str]:
+    """Slice every manifest entry. All-or-nothing: sprites are written to a temp dir and
+    only swapped into out_dir once every entry succeeded; stale sprites are then removed."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    for old in out_dir.iterdir():
-        if old.name not in KEEP and old.is_file():
-            old.unlink()
     names = []
-    for name, spec in manifest.items():
-        pack_dir = packs[spec["pack"]]
-        w, h = spec.get("w", 1), spec.get("h", 1)
-        im = _crop(pack_dir, spec["sheet"], spec["tile"], spec["x"], spec["y"], w, h)
-        for layer in spec.get("over", []):
-            ov = _crop(pack_dir, layer["sheet"], layer["tile"], layer["x"], layer["y"], w, h)
-            im.alpha_composite(ov)
-        scale = spec.get("scale", 1)
-        if scale != 1:
-            im = im.resize((im.width * scale, im.height * scale), Image.NEAREST)
-        im.save(out_dir / f"{name}.png", optimize=True)
-        names.append(name)
+    with tempfile.TemporaryDirectory(dir=out_dir.parent) as tmp:
+        tmp_dir = Path(tmp)
+        for name, spec in manifest.items():
+            pack_dir = packs[spec["pack"]]
+            w, h = spec.get("w", 1), spec.get("h", 1)
+            im = _crop(pack_dir, spec["sheet"], spec["tile"], spec["x"], spec["y"], w, h)
+            for layer in spec.get("over", []):
+                ov = _crop(pack_dir, layer["sheet"], layer["tile"], layer["x"], layer["y"], w, h)
+                im.alpha_composite(ov)
+            scale = spec.get("scale", 1)
+            if scale != 1:
+                im = im.resize((im.width * scale, im.height * scale), Image.NEAREST)
+            im.save(tmp_dir / f"{name}.png", optimize=True)
+            names.append(name)
+        for old in out_dir.iterdir():
+            if old.name not in KEEP and old.is_file() and old.name[:-4] not in manifest:
+                old.unlink()
+        for name in names:
+            (tmp_dir / f"{name}.png").replace(out_dir / f"{name}.png")
     return names
 
 

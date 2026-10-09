@@ -67,3 +67,31 @@ def test_slice_removes_stale_files(tmp_path):
     assert not (out / "old.png").exists()
     assert (out / "CREDITS.md").exists()
     assert (out / "notice-board.png").exists()  # hand-made board art is not in the manifest
+
+
+def test_slice_is_atomic_on_missing_sheet(tmp_path):
+    import pytest
+    pack = tmp_path / "packs" / "demo"
+    pack.mkdir(parents=True)
+    make_sheet(pack / "sheet.png", 16, 2, 2)
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "existing.png").write_bytes(b"x")
+    manifest = {
+        "a": {"pack": "demo", "sheet": "sheet.png", "tile": 16, "x": 0, "y": 0, "scale": 2},
+        "b": {"pack": "demo", "sheet": "missing.png", "tile": 16, "x": 0, "y": 0, "scale": 2},
+    }
+    with pytest.raises(SystemExit):
+        fetch_sprites.slice_manifest(manifest, {"demo": pack}, out)
+    assert (out / "existing.png").exists() and not (out / "a.png").exists()
+
+
+def test_legacy_sprites_are_kept(tmp_path):
+    pack = tmp_path / "packs" / "demo"
+    pack.mkdir(parents=True)
+    make_sheet(pack / "sheet.png", 16, 2, 2)
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "admin-block.png").write_bytes(b"x")  # referenced by spaces created from the old map
+    fetch_sprites.slice_manifest({"a": {"pack": "demo", "sheet": "sheet.png", "tile": 16, "x": 0, "y": 0, "scale": 2}}, {"demo": pack}, out)
+    assert (out / "admin-block.png").exists()

@@ -15,5 +15,12 @@ Daniel Eddeland, bluecarrot16 and caeles; the full per-tile credit list is in
 the pack's `credits.txt`. Tiles derived from it (`wall-*`, `wallbase-*`,
 `window-*`, `door`, `flag`, `gate-pillar`) are therefore CC-BY-SA 3.0.
 
+`overview.png`, `gec-bilaspur-thumb.png` and `tools/campus-map/preview.png` composite
+those tiles and are therefore CC-BY-SA 3.0 derivatives as well.
+
+The remaining hand-drawn sprites (`admin-block.png`, `dept-*.png`, … — see `LEGACY` in
+`tools/campus-map/fetch_sprites.py`) are this project's own work and stay for spaces
+created from the previous map.
+
 Map geometry: © OpenStreetMap contributors, ODbL 1.0
 (https://www.openstreetmap.org/copyright).

@@ -27,7 +27,7 @@ def test_building_ring_and_roof():
     lay = layout.build([building("CS/IT Block", 5, 5, 11, 11)], 20, 20, random.Random(1))
     # footprint 6x6 at 5..10: 20 ring cells + 16 roof cells
     ring = [p for p in lay.placements if p.key.startswith(("wall-", "wallbase-", "window-"))]
-    roof = placed(lay, "roof-a") + placed(lay, "roof-b") + placed(lay, "roof-c") + placed(lay, "roof-d")
+    roof = [p for p in lay.placements if p.key.startswith("roof-")]
     assert len(ring) + 2 == 20  # two bottom-edge cells are covered by the door instead
     assert len(roof) == 16
     assert all(lay.elements[p.key].layer == "wall" and lay.elements[p.key].static for p in ring)
@@ -124,3 +124,67 @@ def test_first_hostel_gets_hostels_sign():
     feats = [building("Amarkantak Hostel", 5, 5, 11, 11), road_h(13.0, 0, 20)]
     lay = layout.build(feats, 20, 20, random.Random(1))
     assert len(placed(lay, "sign-hostels")) == 1
+
+
+def test_roads_are_axis_aligned_after_paint():
+    feats = [Feature(kind="road", name=None, points=[(2, 2), (18, 18)], osm_id=7, width=2)]
+    grid = layout.paint(feats, 20, 20)
+    cells = set(grid.find("road"))
+    # an L: a horizontal run along y≈2 and a vertical run along x≈18, no diagonal stair cells
+    assert (10, 1) in cells or (10, 2) in cells
+    assert (17, 10) in cells or (18, 10) in cells
+    assert (10, 10) not in cells
+
+
+def test_three_wide_road_dashes_only_on_centre_row():
+    lay = layout.build([road_h(10.5, 2, 18, width=3)], 20, 20, random.Random(1))
+    assert {y for _, y in placed(lay, "road-h")} == {10}
+    assert {y for _, y in placed(lay, "road-plain")} >= {9, 11}
+
+
+def test_two_wide_road_has_no_dashes():
+    lay = layout.build([road_h(10.0, 2, 18, width=2)], 20, 20, random.Random(1))
+    assert placed(lay, "road-h") == [] and len(placed(lay, "road-plain")) > 0
+
+
+def test_sidewalk_borders_roads():
+    lay = layout.build([road_h(10.5, 2, 18, width=3)], 20, 20, random.Random(1))
+    sw = set(placed(lay, "sidewalk"))
+    assert (10, 8) in sw and (10, 12) in sw and (10, 7) not in sw
+    assert lay.elements["sidewalk"].layer == "floor"
+
+
+def test_lamps_are_sparse():
+    lay = layout.build([road_h(10.5, 0, 60, width=3)], 60, 20, random.Random(1))
+    assert 0 < len(placed(lay, "lamp")) <= 12
+
+
+def test_roof_uses_edge_and_corner_tiles():
+    lay = layout.build([building("Hall", 2, 2, 10, 10)], 20, 20, random.Random(1))
+    keys = {p.key for p in lay.placements if p.key.startswith("roof-")}
+    assert {"roof-a-tl", "roof-a-t", "roof-a-tr", "roof-a-l", "roof-a-r", "roof-a-bl", "roof-a-b", "roof-a-br", "roof-a"} <= keys
+    assert (3, 3) in placed(lay, "roof-a-tl") and (8, 8) in placed(lay, "roof-a-br") and (5, 5) in placed(lay, "roof-a")
+
+
+def test_no_grass_placements_renderer_paints_the_base():
+    lay = layout.build([road_h(10.5, 2, 18, width=3)], 20, 20, random.Random(1))
+    assert placed(lay, "grass") == [] and placed(lay, "grass-tuft") == []
+
+
+def test_gate_pillars_never_block_road():
+    # a 3-wide road whose lowest row is narrower than the rows above it
+    feats = [road_h(15.5, 4, 16, width=3), Feature(kind="road", name=None, points=[(10, 15.5), (10, 19)], osm_id=8, width=2)]
+    lay = layout.build(feats, 20, 20, random.Random(1))
+    grid = layout.paint(feats, 20, 20)
+    roads = set(grid.find("road"))
+    for (x, y) in placed(lay, "gate-pillar"):
+        assert (x, y + 1) not in roads
+
+
+def test_touching_buildings_pass_validate(tmp_path):
+    from campusmap import emit
+    feats = [building("A", 2, 2, 8, 8, osm_id=1), building("B", 8, 2, 14, 8, osm_id=2), road_h(12.0, 0, 20)]
+    lay = layout.build(feats, 20, 20, random.Random(1))
+    for e in lay.elements.values():
+        (tmp_path / e.image_url.rsplit("/", 1)[-1]).write_bytes(b"")
+    assert emit.validate(lay, tmp_path) == []
