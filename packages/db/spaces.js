@@ -19,6 +19,7 @@ async function createSpaceFromMap(tx, mapId, { name, creatorId, visibility, pare
             thumbnail: map.thumbnail,
             spawnX: map.spawnX,
             spawnY: map.spawnY,
+            mapVersion: map.version,
             creatorId,
             visibility,
             parentId,

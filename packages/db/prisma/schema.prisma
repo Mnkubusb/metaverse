@@ -55,6 +55,8 @@ model Space {
   // Building interiors are child spaces of the campus space they belong to.
   // Membership and visibility are checked on the root; children are not listed.
   parentId    String?
+  // Map.version this space was built from, so the seed can rebuild it when the map changes
+  mapVersion  String?
   parent      Space?          @relation("SpaceChildren", fields: [parentId], references: [id], onDelete: Cascade)
   children    Space[]         @relation("SpaceChildren")
   portals     SpacePortal[]   @relation("PortalFrom")
@@ -151,6 +153,8 @@ model Map {
   thumbnail   String
   spawnX      Int?
   spawnY      Int?
+  // Content hash of the generated map file; spaces record the version they were built from
+  version     String?
   mapElements mapElements[]
   portals     MapPortal[]   @relation("MapPortalFrom")
   portalsIn   MapPortal[]   @relation("MapPortalTo")

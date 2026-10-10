@@ -194,3 +194,29 @@ def test_forest_uses_dense_canopy_blocks():
                 assert (p.x + dx, p.y + dy) not in covered  # blocks never overlap
                 covered.add((p.x + dx, p.y + dy))
                 assert not (15 <= p.y + dy <= 25)             # margin around the road stays open
+
+
+def test_gate_and_spawn_sit_on_the_road_nearest_the_main_building():
+    feats = [
+        building("Main Building", 10, 4, 22, 12),
+        road_h(16.5, -2, 42, width=3),   # passes right below the Main Building door
+        road_h(36.5, -2, 42, width=3),   # a road at the very south, which must NOT win
+    ]
+    lay = layout.build(feats, 40, 40, random.Random(1))
+    name, dx, dy = next(d for d in lay.doors if d[0] == "Main Building")
+    sx, sy = lay.spawn
+    assert abs(sx - (dx + 1)) <= 4 and 13 <= sy <= 18, lay.spawn
+    arch = next(p for p in lay.placements if p.key == "gate-arch")
+    assert abs(arch.y - sy) <= 5
+
+
+def test_gate_props_stand_on_grass_or_sidewalk_only():
+    parking = Feature(kind="asphalt", name=None, points=rect(2, 10, 20, 14), osm_id=3, sub="parking")
+    feats = [building("Main Building", 10, 2, 22, 8), road_h(15.5, -2, 42, width=3), parking]
+    lay = layout.build(feats, 40, 30, random.Random(1))
+    grid = layout.paint(feats, 40, 30)
+    for p in lay.placements:
+        if p.key in ("gate-pillar", "flag", "sign-welcome", "notice-board"):
+            e = lay.elements[p.key]
+            for dx in range(e.width):
+                assert grid.get(p.x + dx, p.y + e.height - 1) in ("grass", "sidewalk"), (p.key, p.x, p.y)

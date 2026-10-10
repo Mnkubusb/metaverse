@@ -5,8 +5,8 @@
   "width": 176,
   "height": 171,
   "thumbnail": "/campus/gec-bilaspur-thumb.png",
-  "spawnX": 79,
-  "spawnY": 169
+  "spawnX": 76,
+  "spawnY": 99
  },
  "elements": [
   {
@@ -2396,7 +2396,7 @@
   {
    "id": "campus-gate-arch",
    "imageUrl": "/campus/gate-arch.png",
-   "width": 7,
+   "width": 5,
    "height": 2,
    "static": false,
    "layer": "topObjects"
@@ -56180,28 +56180,28 @@
   },
   {
    "elementId": "campus-gate-pillar",
-   "x": 82,
-   "y": 168
+   "x": 78,
+   "y": 98
   },
   {
    "elementId": "campus-flag",
-   "x": 75,
-   "y": 168
+   "x": 73,
+   "y": 98
   },
   {
    "elementId": "campus-sign-welcome",
-   "x": 71,
-   "y": 168
+   "x": 69,
+   "y": 98
   },
   {
    "elementId": "campus-notice-board",
-   "x": 84,
-   "y": 168
+   "x": 80,
+   "y": 98
   },
   {
    "elementId": "campus-gate-arch",
-   "x": 76,
-   "y": 166
+   "x": 74,
+   "y": 96
   }
  ],
  "interiors": [

@@ -5,6 +5,11 @@ const path = require("path");
 const client = require("../client.js");
 const { attachPortals } = require("../spaces.js");
 const campus = require(path.join(__dirname, "../prisma/maps/gec-bilaspur.json"));
+// Any change to the generated map file is a new version; spaces built from an older
+// version are rebuilt by migrateCampusSpaces.
+const CAMPUS_VERSION = require("crypto").createHash("sha1")
+    .update(require("fs").readFileSync(path.join(__dirname, "../prisma/maps/gec-bilaspur.json")))
+    .digest("hex").slice(0, 12);
 const avatars = require(path.join(__dirname, "../prisma/avatars.json"));
 
 async function seedLegacyTiles() {
@@ -27,6 +32,7 @@ async function seedCampus() {
     }
 
     const { id, ...mapData } = campus.map;
+    mapData.version = CAMPUS_VERSION;
     await client.$transaction([
         client.map.upsert({ where: { id }, create: { id, ...mapData }, update: mapData }),
         client.mapElements.deleteMany({ where: { mapId: id } }),
@@ -68,12 +74,23 @@ async function migrateCampusSpaces() {
         ...campus.elements.map((e) => e.id),
         ...(campus.interiors ?? []).flatMap((i) => i.elements.map((e) => e.id)),
     ]);
-    // root campus spaces only: interiors are child spaces and are rebuilt with their parent
-    const stale = await client.spaceElements.findMany({
+    // root campus spaces only: interiors are child spaces and are rebuilt with their parent.
+    // Stale = built from another map version, or (pre-versioning) referencing retired elements.
+    const byVersion = await client.space.findMany({
+        where: { parentId: null, mapVersion: { not: CAMPUS_VERSION }, elements: { some: { elementId: "campus-gate-arch" } } },
+        select: { id: true },
+    });
+    const byElements = await client.spaceElements.findMany({
         where: { elementId: { startsWith: "campus-", notIn: [...current] }, space: { parentId: null } },
         select: { spaceId: true },
         distinct: ["spaceId"],
     });
+    const unversioned = await client.space.findMany({
+        where: { parentId: null, mapVersion: null, elements: { some: { elementId: "campus-gate-arch" } } },
+        select: { id: true },
+    });
+    const stale = [...new Set([...byVersion.map((s) => s.id), ...byElements.map((s) => s.spaceId), ...unversioned.map((s) => s.id)])]
+        .map((spaceId) => ({ spaceId }));
     for (const { spaceId } of stale) {
         await client.$transaction([
             client.spaceElements.deleteMany({ where: { spaceId } }),
@@ -83,7 +100,7 @@ async function migrateCampusSpaces() {
             client.space.update({
                 where: { id: spaceId },
                 data: { width: campus.map.width, height: campus.map.height, thumbnail: campus.map.thumbnail,
-                        spawnX: campus.map.spawnX, spawnY: campus.map.spawnY },
+                        spawnX: campus.map.spawnX, spawnY: campus.map.spawnY, mapVersion: CAMPUS_VERSION },
             }),
         ]);
     }
@@ -96,7 +113,7 @@ async function migrateCampusSpaces() {
         select: { parentId: true },
         distinct: ["parentId"],
     });
-    const rebuilt = stale.map((s) => s.id);
+    const rebuilt = stale.map((s) => s.spaceId);
     const campusSpaces = await client.space.findMany({
         where: {
             parentId: null,

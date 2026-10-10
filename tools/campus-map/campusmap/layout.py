@@ -356,26 +356,38 @@ def place_props(lay, grid, features, rng):
 # ----------------------------------------------------------------------------- gate + spawn
 
 def main_gate(lay, grid):
-    """The southernmost road run nearest the map's centre column is the gate:
-    pillars, flag, arch, and the spawn one tile inside it."""
+    """The gate stands on the road in front of the Main Building (the real entrance
+    plaza); without one it falls back to the southernmost road run nearest the centre.
+    Pillars, flag, arch, and the spawn on that road."""
     roads = grid.find("road")
-    y = max(cy for _, cy in roads)
-    xs = sorted(x for x, cy in roads if cy == y)
+    main = next(((dx, dy) for name, dx, dy in lay.doors if name == "Main Building"), None)
+    if main:
+        tx, ty = main[0] + 1, main[1] + 3
+        near = min(roads, key=lambda c: (c[0] - tx) ** 2 + (c[1] - ty) ** 2)
+        y = near[1]
+        xs = sorted(x for x, cy in roads if cy == y)
+        centre_x = near[0]
+    else:
+        y = max(cy for _, cy in roads)
+        xs = sorted(x for x, cy in roads if cy == y)
+        centre_x = grid.width / 2
     runs = []
     for x in xs:
         if runs and runs[-1][1] == x - 1:
             runs[-1][1] = x
         else:
             runs.append([x, x])
-    x0, x1 = min(runs, key=lambda r: abs((r[0] + r[1]) / 2 - grid.width / 2))
-    w = x1 - x0 + 3
+    x0, x1 = min(runs, key=lambda r: abs((r[0] + r[1]) / 2 - centre_x))
+    # pillars flank the whole run; the arch is at most 7 wide, centred on the target
+    w = min(x1 - x0 + 3, 7)
+    ax = max(x0 - 1, min(int(centre_x) - w // 2, x1 + 2 - w))
 
     def put_if_inside(key, x, py, **kw):
         """Place a gate prop when it fits on the map and does not stand on the road."""
         kw_w, kw_h = (kw["w"], kw["h"]) if "w" in kw else SPRITE_SIZES[key]
         if not (0 <= x and x + kw_w <= grid.width and 0 <= py and py + kw_h <= grid.height):
             return
-        if key not in TOP and any(grid.get(x + dx, py + kw_h - 1) == "road" for dx in range(kw_w)):
+        if key not in TOP and any(grid.get(x + dx, py + kw_h - 1) not in ("grass", "sidewalk") for dx in range(kw_w)):
             return
         lay.put(key, x, py, **kw)
 
@@ -384,7 +396,7 @@ def main_gate(lay, grid):
     put_if_inside("flag", x0 - 2, y - 2)
     put_if_inside("sign-welcome", x0 - 6, y - 2)
     put_if_inside("notice-board", x1 + 3, y - 2)
-    put_if_inside("gate-arch", x0 - 1, y - 4, w=w, h=2, image_url="/campus/gate-arch.png")
+    put_if_inside("gate-arch", ax, y - 4, w=w, h=2, image_url="/campus/gate-arch.png")
     if "gate-arch" in lay.elements:
         lay.signs["gate-arch"] = "GEC BILASPUR"
     lay.spawn = ((x0 + x1) // 2, y - 1)
