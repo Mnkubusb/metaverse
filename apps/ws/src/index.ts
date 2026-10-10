@@ -26,7 +26,8 @@ wss.on('connection', function connection(ws) {
     })
 });
 
-const port = Number(process.env.PORT) || 3001;
+// WS_PORT locally (the shared .env sets PORT for the http server); hosts like Render inject PORT
+const port = Number(process.env.WS_PORT ?? process.env.PORT) || 3001;
 server.listen(port, () => {
     console.log(`WebSocket server listening on port ${port}`);
 });

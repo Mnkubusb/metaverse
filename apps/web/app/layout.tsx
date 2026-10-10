@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import { Atkinson_Hyperlegible, Jersey_15 } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "../contexts/authContext";
 import { Toaster } from "sonner";
@@ -13,9 +14,20 @@ const geistMono = localFont({
   variable: "--font-geist-mono",
 });
 
+const pixelify = Jersey_15({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-pixelify",
+});
+const atkinson = Atkinson_Hyperlegible({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-atkinson",
+});
+
 export const metadata: Metadata = {
-  title: "VirtuSpace",
-  description: "A 2D virtual campus: walk around GEC Bilaspur, chat and talk to people near you.",
+  title: "GEC Bilaspur Virtual Campus",
+  description: "Walk the GEC Bilaspur campus as a pixel character and talk to whoever you walk up to.",
 };
 
 // no pinch-zoom: the game uses touch for the joystick, and zooming breaks its layout
@@ -34,7 +46,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} ${pixelify.variable} ${atkinson.variable}`}>
         <Toaster />
         <AuthProvider>
           {children}

@@ -3,13 +3,15 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/authContext';
-import { toast } from 'sonner';
+import AuthShell, { Field, FormError, SubmitButton } from '@/components/auth/AuthShell';
 
 const Signup = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [invalid, setInvalid] = useState<'username' | 'password' | 'confirmPassword' | null>(null);
+  const [busy, setBusy] = useState(false);
   const { signup, user, loading } = useAuth();
   const router = useRouter();
   // carries ?next= between login and signup; read after mount to keep server and client HTML identical
@@ -23,135 +25,93 @@ const Signup = () => {
     }
   }, [user, loading, router]);
 
+  const fail = (field: typeof invalid, message: string) => {
+    setInvalid(field);
+    setError(message);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-
-    if (!username || !password) {
-      setError('Username and password are required');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
+    fail(null, '');
 
     if (!/^[a-zA-Z0-9_.-]{3,32}$/.test(username)) {
-      setError('Usernames are 3–32 characters: letters, numbers, dots, dashes and underscores');
+      fail('username', 'Usernames are 3–32 characters: letters, numbers, dots, dashes and underscores.');
       return;
     }
 
     if (password.length < 8 || password.length > 72) {
-      setError('Password must be 8–72 characters long');
+      fail('password', 'Passwords are 8–72 characters long.');
       return;
     }
 
+    if (password !== confirmPassword) {
+      fail('confirmPassword', 'The two passwords don’t match. Type the same password in both boxes.');
+      return;
+    }
+
+    setBusy(true);
     const result = await signup(username, password);
+    setBusy(false);
 
     if (result.success) {
-      toast.success('Signup successful');
       // keep ?next= (e.g. an invite link) so login can return there
       const next = new URLSearchParams(window.location.search).get('next');
       router.push(`/login?registered=true${next ? `&next=${encodeURIComponent(next)}` : ''}`);
     } else {
-      setError(result.error || 'Failed to sign up');
+      fail(null, result.error || 'Couldn’t create the account. Try a different username.');
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-100">
-      <div className="bg-white p-8 rounded shadow-md w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-6 text-center">Sign Up</h1>
+    <AuthShell title="Create account">
+      <p className="mt-2 text-asphalt-soft">You’ll pick your character after logging in.</p>
 
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-          </div>
-        )}
+      <form onSubmit={handleSubmit} noValidate className="mt-8 flex flex-col gap-5">
+        {error && <FormError>{error}</FormError>}
+        <Field
+          id="username"
+          label="Username"
+          hint="3–32 characters: letters, numbers, dots, dashes and underscores."
+          type="text"
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          aria-invalid={invalid === 'username'}
+          required
+        />
+        <Field
+          id="password"
+          label="Password"
+          hint="At least 8 characters."
+          type="password"
+          autoComplete="new-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          aria-invalid={invalid === 'password'}
+          required
+        />
+        <Field
+          id="confirmPassword"
+          label="Confirm password"
+          type="password"
+          autoComplete="new-password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          aria-invalid={invalid === 'confirmPassword'}
+          required
+        />
+        <SubmitButton busy={busy} busyLabel="Creating account…">Create account</SubmitButton>
+      </form>
 
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-gray-700 mb-2" htmlFor="username">
-              Username
-            </label>
-            <input
-              type="text"
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full border rounded px-3 py-2"
-              autoComplete="username"
-              required
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              3–32 characters: letters, numbers, dots, dashes and underscores
-            </p>
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-gray-700 mb-2" htmlFor="password">
-              Password
-            </label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full border rounded px-3 py-2"
-              autoComplete="new-password"
-              required
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Password must be at least 8 characters long
-            </p>
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-gray-700 mb-2" htmlFor="confirmPassword">
-              Confirm Password
-            </label>
-            <input
-              type="password"
-              id="confirmPassword"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full border rounded px-3 py-2"
-              autoComplete="new-password"
-              required
-            />
-          </div>
-
-
-          <button
-            type="submit"
-            className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
-          >
-            Sign Up
-          </button>
-        </form>
-
-        <div className="mt-4 text-center">
-          <p>
-            Already have an account?{' '}
-            <Link href={`/login${search}`} className="text-blue-500 hover:underline">
-              Sign In
-            </Link>
-          </p>
-        </div>
-      </div>
-    </div>
+      <p className="mt-8 text-asphalt-soft">
+        Already have an account?{' '}
+        <Link href={`/login${search}`} className="font-bold text-sign underline decoration-2 underline-offset-4 hover:text-sign-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sign">
+          Log in
+        </Link>
+      </p>
+    </AuthShell>
   );
 };
 

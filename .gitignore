@@ -37,3 +37,15 @@ yarn-error.log*
 .DS_Store
 *.pem
 __pycache__/
+
+# campus map sprite packs (downloaded by tools/campus-map/fetch_sprites.py)
+tools/campus-map/packs/
+# python
+__pycache__/
+.pytest_cache/
+
+# local tool state / screenshots
+.serena/
+.playwright-mcp/
+/home.png
+/office.png

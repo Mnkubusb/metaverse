@@ -48,6 +48,8 @@ model Space {
   // Extra areas (building interiors): [{ id, name, width, height, spawnX, spawnY, ground }].
   // The outdoor map itself is the "main" area with the space's width/height.
   areas       Json            @default("[]")
+  // Map.version this space was built from, so the seed can rebuild it when the map changes
+  mapVersion  String?
   createdAt   DateTime        @default(now())
   creatorId   String
   creator     User            @relation(fields: [creatorId], references: [id])
@@ -136,6 +138,8 @@ model Map {
   spawnX      Int?
   spawnY      Int?
   areas       Json          @default("[]")
+  // Content hash of the generated map file; spaces record the version they were built from
+  version     String?
   mapElements mapElements[]
 }
 

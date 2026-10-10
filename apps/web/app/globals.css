@@ -8,6 +8,21 @@
   --font-geist-mono: var(--font-mono);
 }
 
+/* Campus palette, lifted from the map art: signboard green, road asphalt,
+   footpath sandstone, plaza brick. Used by the landing and auth pages. */
+@theme inline {
+  --color-sign: #1e5b43;
+  --color-sign-deep: #164634;
+  --color-plate: #f3f6f0;
+  --color-asphalt: #2e3238;
+  --color-asphalt-soft: #5b616b;
+  --color-sandstone: #d8c697;
+  --color-sandstone-soft: #efe7d2;
+  --color-brick: #a5412a;
+  --font-pixel: var(--font-pixelify);
+  --font-body: var(--font-atkinson);
+}
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -144,3 +159,58 @@
 @media (prefers-reduced-motion: reduce) {
   .avatar-sprite[data-walking="true"] { animation: none; }
 }
+
+/* Campus map (components/campus/CampusMap.tsx). The map is 76x54 tiles. */
+.campus-map {
+  aspect-ratio: 76 / 54;
+}
+/* Hero: at least 125% of the viewport in both directions, so any translate
+   within 0..-20% of its own size still covers the frame. */
+.campus-map--drift {
+  width: max(125vw, calc(125svh * 76 / 54));
+  left: 0;
+  top: 0;
+  transform: translate(-9%, -10%);
+  animation: campus-drift 80s ease-in-out infinite alternate;
+}
+@keyframes campus-drift {
+  0% { transform: translate(-9%, -10%); }
+  50% { transform: translate(-17%, -6%); }
+  100% { transform: translate(-4%, -17%); }
+}
+/* Bottom edge of the map (the main gate), centred on column --fx; --tile sets the zoom. */
+.campus-map--gate {
+  --tile: 30px;
+  width: calc(var(--tile) * 76);
+  left: calc(50% - var(--fx) * var(--tile));
+  bottom: 0;
+}
+@media (max-width: 767px) {
+  .campus-map--gate { --tile: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .campus-map--drift { animation: none; }
+}
+
+/* Signboard plate, the same green sign every building on the map carries. */
+.sign-plate {
+  position: relative;
+  background: var(--color-sign);
+  color: var(--color-plate);
+  border: 3px solid var(--color-sign-deep);
+  box-shadow: inset 0 0 0 2px #2b7458, 0 4px 0 #0f3226;
+  border-radius: 4px;
+}
+.sign-plate::before,
+.sign-plate::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #a9b8b0;
+  box-shadow: inset -1px -1px 0 #6d7c74;
+}
+.sign-plate::before { left: 8px; }
+.sign-plate::after { right: 8px; }
