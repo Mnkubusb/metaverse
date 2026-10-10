@@ -38,20 +38,35 @@ def display_name(name):
 
 
 class Projector:
-    """Equirectangular projection; origin = bbox NW corner + MARGIN tiles."""
+    """Equirectangular projection; origin = bbox NW corner + MARGIN tiles.
+    `angle` (degrees, counter-clockwise on screen) rotates the whole map about the bbox
+    centre, e.g. 45 turns a NE-SW road into a vertical one; the map grows to fit."""
 
-    def __init__(self, bbox=BBOX):
+    def __init__(self, bbox=BBOX, angle=0.0):
         self.w, self.s, self.e, self.n = bbox
         self.cos = math.cos(math.radians((self.s + self.n) / 2))
         inner_w = (self.e - self.w) * M_PER_DEG * self.cos / METERS_PER_TILE
         inner_h = (self.n - self.s) * M_PER_DEG / METERS_PER_TILE
-        self.width = math.ceil(inner_w) + 2 * MARGIN
-        self.height = math.ceil(inner_h) + 2 * MARGIN
+        self.angle = math.radians(angle)
+        self.cx, self.cy = inner_w / 2, inner_h / 2
+        corners = [self._rotate(x, y) for x in (0, inner_w) for y in (0, inner_h)]
+        self.x0 = min(c[0] for c in corners)
+        self.y0 = min(c[1] for c in corners)
+        self.width = math.ceil(max(c[0] for c in corners) - self.x0) + 2 * MARGIN
+        self.height = math.ceil(max(c[1] for c in corners) - self.y0) + 2 * MARGIN
+
+    def _rotate(self, x, y):
+        if not self.angle:
+            return x, y
+        dx, dy = x - self.cx, y - self.cy
+        c, s = math.cos(self.angle), math.sin(self.angle)
+        return self.cx + dx * c + dy * s, self.cy - dx * s + dy * c
 
     def to_tile(self, lat, lon):
-        x = (lon - self.w) * M_PER_DEG * self.cos / METERS_PER_TILE + MARGIN
-        y = (self.n - lat) * M_PER_DEG / METERS_PER_TILE + MARGIN
-        return x, y
+        x = (lon - self.w) * M_PER_DEG * self.cos / METERS_PER_TILE
+        y = (self.n - lat) * M_PER_DEG / METERS_PER_TILE
+        rx, ry = self._rotate(x, y)
+        return rx - self.x0 + MARGIN, ry - self.y0 + MARGIN
 
 
 @dataclass

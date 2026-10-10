@@ -81,3 +81,16 @@ def test_display_name_alias_and_passthrough():
     assert geo.display_name("Amarkantak Boys Hostel GEC") == "Amarkantak Hostel"
     assert geo.display_name("Unknown Hall") == "Unknown Hall"
     assert geo.display_name(None) is None
+
+
+def test_projector_rotation_turns_a_diagonal_into_a_vertical():
+    import math as m
+    p0 = geo.Projector((82.0, 22.0, 82.01, 22.01))
+    p45 = geo.Projector((82.0, 22.0, 82.01, 22.01), angle=45)
+    # two points on a NE-SW diagonal in the unrotated projection
+    a, b = (22.002, 82.002), (22.008, 82.008 / 1 if False else 82.002 + 0.006 / p0.cos)
+    ax, ay = p0.to_tile(*a); bx, by = p0.to_tile(*b)
+    assert abs((bx - ax) + (by - ay)) < 0.5            # 45° in tile space (y grows down)
+    rx, ry = p45.to_tile(*a); sx, sy = p45.to_tile(*b)
+    assert abs(sx - rx) < 0.5 and sy < ry               # now vertical, b above a
+    assert p45.width > p0.width and p45.height > p0.height  # rotated bbox needs a bigger map
