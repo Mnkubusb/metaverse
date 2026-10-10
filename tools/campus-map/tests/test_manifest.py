@@ -9,7 +9,7 @@ HERE = Path(__file__).resolve().parents[1]
 
 REQUIRED = {
     "grass", "grass-tuft", "lawn", "flowerbed", "court", "paver", "asphalt",
-    "road-h", "road-v", "road-x", "road-plain", "mark-p", "mark-bike",
+    "mark-p", "mark-bike",
     "roof-a", "roof-b", "roof-c", "roof-d",
     "wall-a", "wall-b", "wall-c", "wall-d",
     "wallbase-a", "wallbase-b", "wallbase-c", "wallbase-d",
@@ -44,5 +44,5 @@ def test_sprite_sizes_match_manifest():
 def test_generated_map_fits_payload_budget():
     import json
     data = json.loads((HERE.parents[1] / "packages/db/prisma/maps/gec-bilaspur.json").read_text())
-    assert len(data["placements"]) < 10000
+    assert len(data["placements"]) < 15000
     assert not any(p["elementId"] in ("campus-grass", "campus-grass-tuft") for p in data["placements"])

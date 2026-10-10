@@ -71,3 +71,13 @@ def test_interior_and_portal_json():
     pt = interiors.Portal("gec-bilaspur-campus", 1, 2, 2, 2, "gec-bilaspur-canteen", 5, 7)
     assert emit.portal_to_json(pt) == {"mapId": "gec-bilaspur-campus", "x": 1, "y": 2, "width": 2, "height": 2,
                                        "targetMapId": "gec-bilaspur-canteen", "targetX": 5, "targetY": 7}
+
+
+def test_render_forest_blocks_writes_three_variants(tmp_path):
+    import random
+    Image.new("RGBA", (32, 64), (0, 120, 0, 255)).save(tmp_path / "tree-a.png")
+    Image.new("RGBA", (32, 64), (0, 90, 0, 255)).save(tmp_path / "tree-b.png")
+    names = emit.render_forest_blocks(tmp_path, random.Random(1))
+    assert names == ["forest-a", "forest-b", "forest-c"]
+    im = Image.open(tmp_path / "forest-a.png")
+    assert im.size == (96, 96) and im.getpixel((48, 60))[3] == 255

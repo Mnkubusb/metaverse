@@ -2,8 +2,9 @@
 import re
 from dataclasses import dataclass, field
 
-from .autotile import ring_variant, road_variant
-from .raster import Grid, bbox_of, fill_polygon, orthogonalize, stroke_polyline
+from .autotile import ring_variant
+from . import roads
+from .raster import Grid, bbox_of, fill_polygon
 
 # w, h in tiles for every sliced sprite (see tools/campus-map/tiles.toml)
 SPRITE_SIZES = {
@@ -20,6 +21,7 @@ SPRITE_SIZES = {
     "car-h-green": (2, 1), "car-h-gray": (2, 1), "car-h-orange": (2, 1),
     "car-v-green": (2, 2), "car-v-gray": (2, 2), "car-v-orange": (2, 2),
     "flag": (1, 2), "gate-pillar": (1, 2), "gate-arch": (5, 2),
+    "forest-a": (3, 3), "forest-b": (3, 3), "forest-c": (3, 3),  # canopy blocks rendered by emit
     # hand-made boards kept from the previous map; the notices API finds them by element id
     "notice-board": (2, 2), "sign-welcome": (3, 2), "sign-hostels": (3, 2),
 }
@@ -33,6 +35,7 @@ STYLES = ["a", "b", "c", "d"]
 SIGN_W, SIGN_H = 3, 1
 TREE_SPACING = 6
 LAMP_SPACING = 12
+FOREST_MARGIN = 3   # tiles of clear ground around roads, buildings, lawns
 DOOR_APPROACH = 3  # tiles in front of a door kept free of props
 CAR_KEYS = ["car-h-green", "car-h-gray", "car-h-orange"]
 CAR_V_KEYS = ["car-v-green", "car-v-gray", "car-v-orange"]
@@ -65,12 +68,13 @@ class Layout:
     doors: list = field(default_factory=list)
     signs: dict = field(default_factory=dict)
     footprints: dict = field(default_factory=dict)  # building name -> (w, h) of its bbox, for interiors
+    road_tiles: dict = field(default_factory=dict)  # pixel-hash -> PNG bytes of the rendered road tiles
 
     def element(self, key, w=None, h=None, image_url=None):
         if key not in self.elements:
             w, h = (w, h) if w else SPRITE_SIZES[key]
-            layer = "floor" if key in FLOOR else "topObjects" if key in TOP else \
-                "wall" if key.startswith(("wall-", "wallbase-", "window-", "roof-")) else "objects"
+            layer = "floor" if key in FLOOR or key.startswith("road:") else "topObjects" if key in TOP else \
+                "wall" if key.startswith(("wall-", "wallbase-", "window-", "roof-", "forest-")) else "objects"
             static = key not in NON_STATIC_OBJECTS and layer not in ("floor", "topObjects")
             self.elements[key] = ElementDef(key, image_url or f"/campus/{key}.png", w, h, static, layer)
         return self.elements[key]
@@ -89,25 +93,20 @@ def slug(name):
 def paint(features, width, height):
     """Rasterize features into a Grid. Later kinds win: ground < road < building."""
     grid = Grid(width, height)
-    grid.centre = set()  # centre-line cells of roads wide enough for lane dashes
-    centre = Grid(width, height, fill=None)
     order = {"lawn": 0, "court": 0, "paver": 0, "asphalt": 0, "road": 1, "building": 2}
+    grid.road_image = roads.render(features, width, height)
     for f in sorted(features, key=lambda f: order[f.kind]):
         if f.kind == "road":
-            pts = orthogonalize(f.points)
-            stroke_polyline(grid, pts, f.width, "road")
-            if f.width >= 3:
-                stroke_polyline(centre, pts, 1, "c")
+            continue  # painted at pixel level below so diagonals stay diagonal
         elif f.kind == "building":
             fill_polygon(grid, f.points, f"building:{f.osm_id}")
         else:
             fill_polygon(grid, f.points, f.kind)
-    grid.centre = {(x, y) for (x, y) in centre.find("c") if grid.get(x, y) == "road"}
-    # sidewalk: grass directly beside a road
-    for (x, y) in grid.find("road"):
-        for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
-            if grid.get(nx, ny) == "grass":
-                grid.set(nx, ny, "sidewalk")
+    roads.classify(grid.road_image, grid)
+    # buildings win over roads where OSM data overlaps
+    for f in features:
+        if f.kind == "building":
+            fill_polygon(grid, f.points, f"building:{f.osm_id}")
     return grid
 
 
@@ -243,19 +242,20 @@ def free(grid, lay, x, y, w, h, keep_clear, ground=("grass", "lawn")):
 
 
 def place_ground(lay, grid, rng):
-    same_centre = lambda a, b: (a, b) in grid.centre  # noqa: E731
+    tiles, cells = roads.slice_tiles(grid.road_image)
+    lay.road_tiles = tiles
     for y in range(grid.height):
         for x in range(grid.width):
             c = grid.cells[y][x]
-            if c == "grass":
-                continue  # the renderer paints the grass base itself (spaceGrid.tsx GROUND_TILES)
-            elif c == "road":
-                lay.put(road_variant(same_centre, x, y) if (x, y) in grid.centre else "road-plain", x, y)
-            elif c == "lawn":
+            if c == "lawn":
                 lay.put("flowerbed" if rng.random() < 0.08 else "lawn", x, y)
-            elif c in ("court", "paver", "asphalt", "sidewalk"):
+            elif c in ("court", "paver", "asphalt"):
                 lay.put(c, x, y)
+            # grass: the renderer paints the base itself (spaceGrid.tsx GROUND_TILES)
             # building cells get no floor: the wall/roof covers them
+    for (x, y), key in sorted(cells.items()):
+        if grid.get(x, y) in ("road", "sidewalk", "grass"):
+            lay.put(f"road:{key}", x, y, w=1, h=1, image_url=f"/campus/road-{key}.png")
 
 
 def place_props(lay, grid, features, rng):
@@ -313,6 +313,29 @@ def place_props(lay, grid, features, rng):
         if grid.get(x0, y0) == "asphalt":
             lay.placements = [p for p in lay.placements if not (p.key == "asphalt" and (p.x, p.y) == (x0, y0))]
             lay.put(mark, x0, y0)
+
+    # forest: every grass cell at least FOREST_MARGIN tiles from anything else gets dense trees
+    open_cells = {(x, y) for y in range(grid.height) for x in range(grid.width) if grid.cells[y][x] != "grass"}
+    near = set(open_cells)
+    frontier = set(open_cells)
+    for _ in range(FOREST_MARGIN):
+        frontier = {(x + dx, y + dy) for (x, y) in frontier for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
+                    if grid.inside(x + dx, y + dy)} - near
+        near |= frontier
+    forest = {(x, y) for y in range(grid.height) for x in range(grid.width)
+              if grid.cells[y][x] == "grass" and (x, y) not in near}
+    # dense canopy blocks wherever a whole 3x3 is forest, single trees on the fringes
+    for y in range(0, grid.height - 2, 3):
+        for x in range(0, grid.width - 2, 3):
+            cells = [(x + dx, y + dy) for dx in range(3) for dy in range(3)]
+            if all(c in forest and c not in occupied for c in cells):
+                take(rng.choice(["forest-a", "forest-b", "forest-c"]), x, y)
+    for (tx, ty) in sorted(forest):
+        if (tx, ty) in occupied or (tx + ty) % 2:
+            continue
+        key = "tree-a" if rng.random() < 0.5 else "tree-b"
+        if can(key, tx, ty - 1):
+            take(key, tx, ty - 1)
 
     # bins next to doors
     for (_, dx, dy) in lay.doors:

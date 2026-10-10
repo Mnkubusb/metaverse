@@ -59,37 +59,9 @@ x = 10
 y = 20
 scale = 2
 
-[road-plain]
-pack = "roguelike-modern-city"
-sheet = "Tilemap/tilemap_packed.png"
-tile = 16
-x = 10
-y = 20
-scale = 2
 
-[road-h]
-pack = "roguelike-modern-city"
-sheet = "Tilemap/tilemap_packed.png"
-tile = 16
-x = 9
-y = 19
-scale = 2
 
-[road-v]
-pack = "roguelike-modern-city"
-sheet = "Tilemap/tilemap_packed.png"
-tile = 16
-x = 9
-y = 20
-scale = 2
 
-[road-x]
-pack = "roguelike-modern-city"
-sheet = "Tilemap/tilemap_packed.png"
-tile = 16
-x = 12
-y = 19
-scale = 2
 
 [mark-p]
 pack = "roguelike-modern-city"
@@ -373,14 +345,6 @@ x = 23
 y = 7
 h = 2
 
-# ---- sidewalk (Kenney city grey pavement)
-[sidewalk]
-pack = "roguelike-modern-city"
-sheet = "Tilemap/tilemap_packed.png"
-tile = 16
-x = 1
-y = 20
-scale = 2
 
 # ---- roof edges / corners (Kenney city 4x4 roof blocks; a=tan col 24, b=red col 0, c=grey col 8, d=light col 16)
 [roof-a-tl]

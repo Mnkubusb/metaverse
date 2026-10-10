@@ -48,6 +48,12 @@ def main():
     features = geo.load_features(json.loads(OSM.read_text()), proj)
     lay = layout.build(features, proj.width, proj.height, random.Random(42))
 
+    emit.render_forest_blocks(PUBLIC, random.Random(3))
+    for old in PUBLIC.glob("road-*.png"):
+        old.unlink()
+    for key, png in lay.road_tiles.items():
+        (PUBLIC / f"road-{key}.png").write_bytes(png)
+
     for key, text in lay.signs.items():
         e = lay.elements[key]
         im = emit.render_arch(text, e.width, e.height) if key == "gate-arch" else emit.render_sign(text, e.width, e.height)

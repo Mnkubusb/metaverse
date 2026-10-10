@@ -83,3 +83,15 @@ def test_orthogonalize_bounds_deviation_on_long_diagonals():
     assert len(pts) > 3
     for (x, y) in pts:
         assert _dist_to_segment(x, y, 0, 0, 48, 48) <= 12
+
+
+def test_snap45_splits_into_diagonal_and_straight_legs_through_tile_centres():
+    from campusmap.raster import snap45
+    pts = snap45([(0.2, 0.1), (10.4, 7.3)])
+    assert pts == [(0.5, 0.5), (7.5, 7.5), (10.5, 7.5)]
+
+
+def test_snap45_keeps_pure_diagonals_and_straights():
+    from campusmap.raster import snap45
+    assert snap45([(0, 0), (5, 5)]) == [(0.5, 0.5), (5.5, 5.5)]
+    assert snap45([(0, 3), (9, 3)]) == [(0.5, 3.5), (9.5, 3.5)]

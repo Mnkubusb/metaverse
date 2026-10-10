@@ -144,3 +144,25 @@ def interior_to_json(m):
 def portal_to_json(pt):
     return {"mapId": pt.map_id, "x": pt.x, "y": pt.y, "width": pt.width, "height": pt.height,
             "targetMapId": pt.target_map_id, "targetX": pt.target_x, "targetY": pt.target_y}
+
+
+FOREST_VARIANTS = ["forest-a", "forest-b", "forest-c"]
+
+
+def render_forest_blocks(public_campus_dir, rng, trees_per_block=9):
+    """3x3-tile canopy sprites composited from the roadside tree sprites; written next to
+    the sliced tiles so the map can cover large forest areas with few placements."""
+    trees = [Image.open(public_campus_dir / f"{n}.png").convert("RGBA") for n in ("tree-a", "tree-b")]
+    names = []
+    for name in FOREST_VARIANTS:
+        im = Image.new("RGBA", (3 * T, 3 * T), (0, 0, 0, 0))
+        spots = [(cx, cy) for cy in range(3) for cx in range(3)]
+        rng.shuffle(spots)
+        for cx, cy in sorted(spots[:trees_per_block], key=lambda s: s[1]):  # back rows first
+            tree = rng.choice(trees)
+            x = cx * T + rng.randint(-6, 6)
+            y = cy * T - T + rng.randint(-4, 4)  # trees are 2 tall; their bottom row is the cell
+            im.alpha_composite(tree, (max(0, min(3 * T - tree.width, x)), max(0, min(3 * T - tree.height, y))))
+        im.save(public_campus_dir / f"{name}.png", optimize=True)
+        names.append(name)
+    return names

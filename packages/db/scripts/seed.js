@@ -64,9 +64,13 @@ async function seedCampus() {
 // longer uses is rebuilt from the current map: elements replaced, size and spawn
 // updated. Notes pinned on its old boards are lost (they cascade with the board rows).
 async function migrateCampusSpaces() {
-    const current = new Set(campus.elements.map((e) => e.id));
+    const current = new Set([
+        ...campus.elements.map((e) => e.id),
+        ...(campus.interiors ?? []).flatMap((i) => i.elements.map((e) => e.id)),
+    ]);
+    // root campus spaces only: interiors are child spaces and are rebuilt with their parent
     const stale = await client.spaceElements.findMany({
-        where: { elementId: { startsWith: "campus-", notIn: [...current] } },
+        where: { elementId: { startsWith: "campus-", notIn: [...current] }, space: { parentId: null } },
         select: { spaceId: true },
         distinct: ["spaceId"],
     });
@@ -85,9 +89,20 @@ async function migrateCampusSpaces() {
     }
     if (stale.length) console.log(`Rebuilt ${stale.length} space(s) from the current campus map`);
 
-    // campus spaces without interiors yet (made before portals, or just rebuilt) get them now
+    // campus spaces without interiors (made before portals), just rebuilt, or whose interiors
+    // are broken (a child that contains campus content) get their interiors (re)attached
+    const broken = await client.space.findMany({
+        where: { parentId: { not: null }, elements: { some: { elementId: "campus-gate-arch" } } },
+        select: { parentId: true },
+        distinct: ["parentId"],
+    });
+    const rebuilt = stale.map((s) => s.id);
     const campusSpaces = await client.space.findMany({
-        where: { parentId: null, elements: { some: { elementId: "campus-gate-arch" } }, portals: { none: {} } },
+        where: {
+            parentId: null,
+            elements: { some: { elementId: "campus-gate-arch" } },
+            OR: [{ portals: { none: {} } }, { id: { in: [...rebuilt, ...broken.map((b) => b.parentId)] } }],
+        },
         select: { id: true },
     });
     for (const { id: spaceId } of campusSpaces) {

@@ -107,3 +107,26 @@ def orthogonalize(points, tol=2.0, step=STEP):
             out.append(corner)
             out.append((qx, qy))
     return out
+
+
+def _centre(v):
+    return math.floor(v) + 0.5
+
+
+def snap45(points, tol=2.0):
+    """Route a polyline as 45°/90° legs through tile centres: each simplified segment
+    becomes a diagonal leg (as long as the shorter axis allows) then a straight leg.
+    Diagonals at exactly 45° through tile centres repeat the same tile pattern, so the
+    rendered road slices into a handful of distinct tiles."""
+    pts = [(_centre(x), _centre(y)) for x, y in _simplify(list(points), tol)]
+    out = [pts[0]]
+    for (ax, ay), (bx, by) in zip(pts, pts[1:]):
+        dx, dy = bx - ax, by - ay
+        d = min(abs(dx), abs(dy))
+        if d > 0 and (abs(dx) != abs(dy)):
+            mid = (ax + math.copysign(d, dx), ay + math.copysign(d, dy))
+            if mid != out[-1]:
+                out.append(mid)
+        if (bx, by) != out[-1]:
+            out.append((bx, by))
+    return out

@@ -87,14 +87,6 @@ def test_unnamed_building_has_no_sign_or_door():
     assert lay.doors == [] and not any(p.key.startswith("sign:") for p in lay.placements)
 
 
-def test_road_cells_become_floor_and_spawn_is_on_road():
-    feats = [road_h(10.5, 0, 20, width=3)]  # centred on a tile centre so width 3 covers rows 9..11
-    lay = layout.build(feats, 20, 20, random.Random(1))
-    roads = placed(lay, "road-h") + placed(lay, "road-plain") + placed(lay, "road-v") + placed(lay, "road-x")
-    assert len(roads) == 60
-    assert lay.spawn in set(roads)
-    assert lay.elements["road-plain"].layer == "floor"
-
 
 def test_parking_gets_cars_and_bikes():
     car_park = Feature(kind="asphalt", name=None, points=rect(2, 2, 10, 6), osm_id=3, sub="parking")
@@ -126,32 +118,8 @@ def test_first_hostel_gets_hostels_sign():
     assert len(placed(lay, "sign-hostels")) == 1
 
 
-def test_roads_are_axis_aligned_after_paint():
-    feats = [Feature(kind="road", name=None, points=[(2, 2), (18, 18)], osm_id=7, width=2)]
-    grid = layout.paint(feats, 20, 20)
-    cells = set(grid.find("road"))
-    # an L: a horizontal run along y≈2 and a vertical run along x≈18, no diagonal stair cells
-    assert (10, 1) in cells or (10, 2) in cells
-    assert (17, 10) in cells or (18, 10) in cells
-    assert (10, 10) not in cells
 
 
-def test_three_wide_road_dashes_only_on_centre_row():
-    lay = layout.build([road_h(10.5, 2, 18, width=3)], 20, 20, random.Random(1))
-    assert {y for _, y in placed(lay, "road-h")} == {10}
-    assert {y for _, y in placed(lay, "road-plain")} >= {9, 11}
-
-
-def test_two_wide_road_has_no_dashes():
-    lay = layout.build([road_h(10.0, 2, 18, width=2)], 20, 20, random.Random(1))
-    assert placed(lay, "road-h") == [] and len(placed(lay, "road-plain")) > 0
-
-
-def test_sidewalk_borders_roads():
-    lay = layout.build([road_h(10.5, 2, 18, width=3)], 20, 20, random.Random(1))
-    sw = set(placed(lay, "sidewalk"))
-    assert (10, 8) in sw and (10, 12) in sw and (10, 7) not in sw
-    assert lay.elements["sidewalk"].layer == "floor"
 
 
 def test_lamps_are_sparse():
@@ -188,3 +156,41 @@ def test_touching_buildings_pass_validate(tmp_path):
     for e in lay.elements.values():
         (tmp_path / e.image_url.rsplit("/", 1)[-1]).write_bytes(b"")
     assert emit.validate(lay, tmp_path) == []
+
+
+def test_roads_are_rendered_tiles_not_autotiled():
+    feats = [Feature(kind="road", name=None, points=[(2, 2), (18, 18)], osm_id=7, width=3)]
+    lay = layout.build(feats, 20, 20, random.Random(1))
+    keys = {p.key for p in lay.placements}
+    assert any(k.startswith("road:") for k in keys)
+    assert not any(k in keys for k in ("road-h", "road-v", "road-x", "road-plain", "sidewalk"))
+    rk = next(k for k in keys if k.startswith("road:"))
+    assert lay.elements[rk].layer == "floor" and lay.elements[rk].image_url.startswith("/campus/road-")
+    assert lay.road_tiles  # hash -> png bytes, written by generate.py
+
+
+def test_forest_fills_grass_away_from_roads_and_buildings():
+    feats = [road_h(20.5, -2, 42, width=3), building("Hall", 10, 5, 20, 12)]  # road runs off both edges
+    lay = layout.build(feats, 40, 40, random.Random(1))
+    trees = [(p.x, p.y) for p in lay.placements if p.key in ("tree-a", "tree-b")]
+    assert len(trees) > 60  # the open south half is forest
+    # no tree stands on the road or its sidewalk, nor on the building's surroundings (tree bottom row = y + 1)
+    for (x, y) in trees:
+        assert not (18 <= y + 1 <= 22), (x, y)
+        assert not (9 <= x <= 20 and 4 <= y + 1 <= 12), (x, y)  # not touching the building
+
+
+def test_forest_uses_dense_canopy_blocks():
+    feats = [road_h(20.5, -2, 42, width=3)]
+    lay = layout.build(feats, 40, 40, random.Random(1))
+    blocks = [p for p in lay.placements if p.key.startswith("forest-")]
+    assert len(blocks) > 40
+    e = lay.elements[blocks[0].key]
+    assert (e.width, e.height, e.layer, e.static) == (3, 3, "wall", True)
+    covered = set()
+    for p in blocks:
+        for dx in range(3):
+            for dy in range(3):
+                assert (p.x + dx, p.y + dy) not in covered  # blocks never overlap
+                covered.add((p.x + dx, p.y + dy))
+                assert not (15 <= p.y + dy <= 25)             # margin around the road stays open
