@@ -78,21 +78,21 @@ function PickerForm({ currentUrl: savedUrl, onSaved }: { currentUrl: string | nu
 
       {state === 'loading' && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-hidden>
-          {Array.from({ length: 8 }, (_, i) => <div key={i} className="h-[132px] animate-pulse rounded-xl bg-gray-100" />)}
+          {Array.from({ length: 8 }, (_, i) => <div key={i} className="h-[132px] animate-pulse rounded-xl bg-muted" />)}
         </div>
       )}
 
       {state === 'error' && (
-        <div className="flex flex-col items-start gap-2 rounded-xl border-2 border-dashed border-gray-200 p-4 text-sm text-gray-600">
+        <div className="flex flex-col items-start gap-2 rounded-xl border-2 border-dashed border-border p-4 text-sm text-muted-foreground">
           <p>Couldn&apos;t load avatars.</p>
-          <button type="button" onClick={load} className="inline-flex items-center gap-1.5 font-semibold text-blue-600 hover:underline">
+          <button type="button" onClick={load} className="inline-flex items-center gap-1.5 font-semibold text-sign hover:underline">
             <RotateCcw className="size-3.5" /> Try again
           </button>
         </div>
       )}
 
       {state === 'ready' && avatars.length === 0 && (
-        <p className="rounded-xl bg-gray-50 p-4 text-sm text-gray-600">No avatars yet. An admin can add them, or run <code>pnpm db:seed</code>.</p>
+        <p className="rounded-xl bg-muted/50 p-4 text-sm text-muted-foreground">No avatars yet. An admin can add them, or run <code>pnpm db:seed</code>.</p>
       )}
 
       {state === 'ready' && avatars.length > 0 && (
@@ -109,17 +109,17 @@ function PickerForm({ currentUrl: savedUrl, onSaved }: { currentUrl: string | nu
                   onMouseLeave={() => setHovered(null)}
                   className={cn(
                     'relative flex cursor-pointer flex-col items-center gap-1 rounded-xl border-2 bg-gradient-to-b from-emerald-50 to-white px-2 pb-2.5 pt-2 transition',
-                    'hover:border-blue-300 hover:shadow-md has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-blue-200',
-                    isSelected ? 'border-blue-500 shadow-md' : 'border-gray-200',
+                    'hover:border-sign/40 hover:shadow-md has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-sign/25',
+                    isSelected ? 'border-sign shadow-md' : 'border-border',
                   )}
                 >
                   <input type="radio" name={`${ids}-avatar`} value={a.id} checked={isSelected}
                     onChange={() => setChoice(a.id)} className="sr-only" />
                   <AvatarSprite url={a.imageUrl} walking={isSelected || hovered === a.id} />
-                  <span className="text-sm font-semibold text-gray-900">{a.name}</span>
+                  <span className="text-sm font-semibold text-foreground">{a.name}</span>
                   {isCurrent && <span className="text-[11px] font-medium text-emerald-700">Current</span>}
                   {isSelected && (
-                    <span aria-hidden className="absolute right-2 top-2 flex size-5 items-center justify-center rounded-full bg-blue-600 text-white">
+                    <span aria-hidden className="absolute right-2 top-2 flex size-5 items-center justify-center rounded-full bg-sign text-white">
                       <Check className="size-3" strokeWidth={3} />
                     </span>
                   )}
@@ -130,18 +130,18 @@ function PickerForm({ currentUrl: savedUrl, onSaved }: { currentUrl: string | nu
         </fieldset>
       )}
 
-      {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {error && <p role="alert" className="rounded-lg border border-brick/25 bg-brick/8 px-3 py-2 text-sm text-brick">{error}</p>}
 
       <DialogFooter className="gap-2">
         <DialogClose asChild>
-          <button type="button" className="h-10 rounded-lg px-4 text-sm font-semibold text-gray-700 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gray-200">
+          <button type="button" className="h-10 rounded-lg px-4 text-sm font-semibold text-foreground/80 hover:bg-muted focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/25">
             Cancel
           </button>
         </DialogClose>
         <button
           type="submit"
           disabled={!selected || unchanged || saving}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-sign px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-sign-deep focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sign/25 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {saving && <Loader2 className="size-4 animate-spin" />}
           {saving ? 'Saving…' : unchanged ? 'Current avatar' : `Wear ${selected?.name ?? 'avatar'}`}

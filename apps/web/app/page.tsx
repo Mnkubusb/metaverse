@@ -33,13 +33,14 @@ function FeatureArt({ art }: { art: (typeof FEATURES)[number]['art'] }) {
   if (art === 'pair') {
     // two students facing each other, frames from the right- and left-walk cycles
     return (
-      <div className="flex items-end gap-1">
-        <div className="size-12 bg-no-repeat [image-rendering:pixelated]" style={{ backgroundImage: 'url(/avatars/cse-blue.png)', backgroundSize: '500% 500%', backgroundPosition: '25% 25%' }} />
-        <div className="size-12 bg-no-repeat [image-rendering:pixelated]" style={{ backgroundImage: 'url(/avatars/rose.png)', backgroundSize: '500% 500%', backgroundPosition: '50% 50%' }} />
+      // drawn 1:1 (80 px frames), overlapped so the two characters stand a step apart
+      <div className="flex items-end">
+        <div className="size-20 shrink-0 bg-no-repeat [image-rendering:pixelated]" style={{ backgroundImage: 'url(/avatars/cse-blue.png)', backgroundSize: '500% 500%', backgroundPosition: '25% 25%' }} />
+        <div className="-ml-12 size-20 shrink-0 bg-no-repeat [image-rendering:pixelated]" style={{ backgroundImage: 'url(/avatars/rose.png)', backgroundSize: '500% 500%', backgroundPosition: '50% 50%' }} />
       </div>
     );
   }
-  return <img src={art} alt="" className="max-h-14 max-w-[88px] [image-rendering:pixelated]" />;
+  return <img src={art} alt="" className="[image-rendering:pixelated]" />;
 }
 
 export default function Home() {
@@ -100,7 +101,7 @@ export default function Home() {
         <ul className="mt-10 grid gap-x-12 gap-y-10 md:grid-cols-2">
           {FEATURES.map((f) => (
             <li key={f.title} className="flex gap-5 border-t-2 border-sandstone pt-6">
-              <div className="flex h-20 w-24 shrink-0 items-center justify-center rounded-md bg-sandstone-soft">
+              <div className="flex h-24 w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#84c669] shadow-[inset_0_-3px_0_rgb(0_0_0/0.08)]">
                 <FeatureArt art={f.art} />
               </div>
               <div>

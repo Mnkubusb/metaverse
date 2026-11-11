@@ -61,26 +61,28 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* App surfaces take the campus palette: plate-white paper, asphalt ink, signboard green
+   as the one action colour, brick for destructive. */
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --background: #f3f6f0;
+  --foreground: #23272c;
+  --card: #ffffff;
+  --card-foreground: #23272c;
+  --popover: #ffffff;
+  --popover-foreground: #23272c;
+  --primary: #1e5b43;
+  --primary-foreground: #f3f6f0;
+  --secondary: #e7ece2;
+  --secondary-foreground: #23272c;
+  --muted: #e7ece2;
+  --muted-foreground: #565d66;
+  --accent: #e2eadc;
+  --accent-foreground: #164634;
+  --destructive: #a5412a;
+  --border: #d9e0d3;
+  --input: #cfd7c8;
+  --ring: #2b7458;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -135,8 +137,35 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-body antialiased;
   }
+  ::selection {
+    background: var(--color-sign);
+    color: var(--color-plate);
+  }
+  :focus-visible {
+    outline-color: var(--ring);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #b8c2b1 transparent;
+  }
+}
+
+/* In-game HUD surface: dark signboard-green glass over the map. The blur is functional,
+   it keeps text legible over busy tiles. */
+@utility hud {
+  background: rgb(14 24 19 / 0.8);
+  color: #f3f6f0;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 8px 20px -8px rgb(0 0 0 / 0.55);
+  backdrop-filter: blur(10px) saturate(1.2);
+  scrollbar-color: rgb(255 255 255 / 0.25) transparent;
+}
+@utility hud-btn {
+  transition: background-color 150ms cubic-bezier(0.2, 0.8, 0.2, 1), transform 120ms ease-out;
+  &:hover { background: rgb(255 255 255 / 0.1); }
+  &:active { transform: translateY(1px); }
+  &:focus-visible { outline: 2px solid #6ee7b7; outline-offset: 1px; }
 }
 
 
@@ -160,34 +189,34 @@
   .avatar-sprite[data-walking="true"] { animation: none; }
 }
 
-/* Campus map (components/campus/CampusMap.tsx). The map is 76x54 tiles. */
+/* Campus map (components/campus/CampusMap.tsx). The map is 176x171 tiles; keep in sync
+   with MAP_W / MAP_H there. */
 .campus-map {
-  aspect-ratio: 76 / 54;
+  aspect-ratio: 176 / 171;
 }
-/* Hero: at least 125% of the viewport in both directions, so any translate
-   within 0..-20% of its own size still covers the frame. */
+/* Hero: drawn 1:1 (32 px tiles, whole device pixels on every screen) and drifting over
+   the campus core: the academic blocks, the sports ground and the main gate. */
 .campus-map--drift {
-  width: max(125vw, calc(125svh * 76 / 54));
-  left: 0;
-  top: 0;
-  transform: translate(-9%, -10%);
-  animation: campus-drift 80s ease-in-out infinite alternate;
+  --tile: 32px;
+  width: calc(var(--tile) * 176);
+  left: 50%;
+  top: 50%;
+  transform: translate(calc(var(--tile) * -64), calc(var(--tile) * -72));
+  animation: campus-drift 90s ease-in-out infinite alternate;
 }
 @keyframes campus-drift {
-  0% { transform: translate(-9%, -10%); }
-  50% { transform: translate(-17%, -6%); }
-  100% { transform: translate(-4%, -17%); }
+  0% { transform: translate(calc(var(--tile) * -64), calc(var(--tile) * -72)); }
+  50% { transform: translate(calc(var(--tile) * -84), calc(var(--tile) * -64)); }
+  100% { transform: translate(calc(var(--tile) * -76), calc(var(--tile) * -94)); }
 }
-/* Bottom edge of the map (the main gate), centred on column --fx; --tile sets the zoom. */
+/* A fixed view centred on tile (--fx, --fy); --tile sets the zoom. */
 .campus-map--gate {
-  --tile: 30px;
-  width: calc(var(--tile) * 76);
+  --tile: 32px;
+  width: calc(var(--tile) * 176);
   left: calc(50% - var(--fx) * var(--tile));
-  bottom: 0;
+  top: calc(50% - var(--fy) * var(--tile));
 }
-@media (max-width: 767px) {
-  .campus-map--gate { --tile: 18px; }
-}
+
 @media (prefers-reduced-motion: reduce) {
   .campus-map--drift { animation: none; }
 }

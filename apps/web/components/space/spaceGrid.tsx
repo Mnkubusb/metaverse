@@ -77,7 +77,22 @@ function groundTile(x: number, y: number) {
 const FRAME = 80;
 const SHEET_COLS = 5;
 const DIR_BASE: Record<Direction, number> = { down: 0, right: 6, left: 12, up: 18 };
-const AVATAR_SIZE = 64;
+// Drawn 1:1. The sheets are pixel art at native size; scaling 80px frames down to 64
+// dropped every fifth row and column of pixels, which made avatars shimmer as they walked.
+const AVATAR_SIZE = FRAME;
+const FEET_Y = 64;  // the character's feet sit this far down a frame
+const HEAD_Y = 14;  // top of the hair
+const AVATAR_TOP = FEET_Y - HEAD_Y + 2; // px from the tile's bottom edge to just above the head
+
+// Canvas text uses the app's body face (Atkinson Hyperlegible) once it has loaded.
+const FALLBACK_FONT = 'ui-sans-serif, system-ui, sans-serif';
+let canvasFont = FALLBACK_FONT;
+function resolveCanvasFont() {
+  if (typeof document === 'undefined') return;
+  const family = getComputedStyle(document.body).getPropertyValue('--font-atkinson').trim();
+  if (family) canvasFont = `${family}, ${FALLBACK_FONT}`;
+}
+const NAME_FONT = () => `700 11px ${canvasFont}`;
 
 const KEY_DIRS: Record<string, Direction> = {
   w: "up", arrowup: "up",
@@ -102,6 +117,37 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 const ready = (img: HTMLImageElement | undefined): img is HTMLImageElement =>
   !!img && img.complete && img.naturalWidth > 0;
 
+// Large, soft patches of shade and sunlight over the grass so the repeating tiles read as
+// ground. Same lattice and hash as ground_tint() in tools/campus-map/campusmap/textures.py,
+// which bakes it into the landing-page overview.
+const TINT_CELL = 6; // tiles between lattice points
+function tintHash(ix: number, iy: number) {
+  let n = (Math.imul(ix, 374761393) + Math.imul(iy, 668265263)) >>> 0;
+  n = Math.imul(n ^ (n >>> 13), 1274126177) >>> 0;
+  return ((n ^ (n >>> 16)) & 0xffff) / 0xffff;
+}
+function drawGroundTint(ctx: CanvasRenderingContext2D, width: number, height: number) {
+  const cols = Math.floor(width / TINT_CELL) + 2, rows = Math.floor(height / TINT_CELL) + 2;
+  const small = document.createElement("canvas");
+  small.width = cols;
+  small.height = rows;
+  const s = small.getContext("2d")!;
+  const data = s.createImageData(cols, rows);
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const v = tintHash(x, y), i = (y * cols + x) * 4;
+      const [r, g, b, a] = v < 0.5 ? [34, 74, 40, (0.5 - v) * 2 * 46] : [226, 236, 140, (v - 0.5) * 2 * 34];
+      data.data.set([r, g, b, Math.round(a)], i);
+    }
+  }
+  s.putImageData(data, 0, 0);
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(small, 0, 0, cols * TINT_CELL * TILE, rows * TINT_CELL * TILE);
+  ctx.restore();
+}
+
 // Floor and wall layers never change while you're in a space, so they're drawn once
 // onto an offscreen canvas and blitted every frame.
 async function renderBackground(width: number, height: number, elements: spaceElement[], ground: 'grass' | 'dark') {
@@ -119,6 +165,7 @@ async function renderBackground(width: number, height: number, elements: spaceEl
         if (ready(tile)) ctx.drawImage(tile, x * TILE, y * TILE, TILE, TILE);
       }
     }
+    drawGroundTint(ctx, width, height);
   } else {
     ctx.fillStyle = "#18161c";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -440,43 +487,76 @@ const SpaceGrid = ({ id }: { id: string }) => {
       const img = imageCache.get(a.avatar) ?? imageCache.get(DEFAULT_AVATAR);
       if (!imageCache.has(a.avatar)) loadImage(a.avatar);
       const { x: ax, y: ay } = drawPos(a);
-      const px = ax * TILE, py = ay * TILE;
+      // whole pixels only, so the 1:1 sprite never lands between pixels mid-step
+      const px = Math.round(ax * TILE), py = Math.round(ay * TILE);
+      const cx = px + TILE / 2, feet = py + TILE - 2;
+      const moving = now < a.movingUntil;
       if (!a.seat) {
-        ctx.fillStyle = "rgba(0,0,0,0.22)";
+        // contact shadow: a soft core with a fainter rim, squashed slightly while stepping
+        const squash = moving ? 0.9 + 0.1 * Math.abs(Math.sin(now / 100 * Math.PI / 3)) : 1;
+        ctx.fillStyle = "rgba(18,32,20,0.16)";
         ctx.beginPath();
-        ctx.ellipse(px + TILE / 2, py + TILE - 3, 10, 4, 0, 0, Math.PI * 2);
+        ctx.ellipse(cx + 1, feet - 1, 13 * squash, 5, 0, 0, Math.PI * 2);
         ctx.fill();
+        ctx.fillStyle = "rgba(18,32,20,0.22)";
+        ctx.beginPath();
+        ctx.ellipse(cx + 1, feet - 1, 8 * squash, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+        if (a.self) {
+          // a thin ring at your own feet, so you can find yourself in a crowd
+          ctx.strokeStyle = "rgba(110,231,183,0.85)";
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.ellipse(cx, feet - 1, 15, 6, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
       }
       if (!ready(img)) return;
+      const left = cx - AVATAR_SIZE / 2;
       if (a.seat) {
         // seated: facing the camera, lower legs hidden behind the bench (crop the frame at the knees)
-        const scale = AVATAR_SIZE / FRAME, cropH = 52;
-        ctx.drawImage(img, 0, 0, FRAME, cropH,
-          px + TILE / 2 - AVATAR_SIZE / 2, py + TILE - 2 - 64 * scale, AVATAR_SIZE, cropH * scale);
+        const cropH = 52;
+        ctx.drawImage(img, 0, 0, FRAME, cropH, left, feet - FEET_Y, AVATAR_SIZE, cropH);
         return;
       }
-      const moving = now < a.movingUntil;
       const frame = DIR_BASE[a.dir] + (moving ? Math.floor(now / 100) % 6 : 0);
       const sx = (frame % SHEET_COLS) * FRAME, sy = Math.floor(frame / SHEET_COLS) * FRAME;
-      // the character's feet sit ~64px down an 80px frame; anchor them to the tile's bottom
-      const scale = AVATAR_SIZE / FRAME;
-      ctx.drawImage(img, sx, sy, FRAME, FRAME,
-        px + TILE / 2 - AVATAR_SIZE / 2, py + TILE - 2 - 64 * scale, AVATAR_SIZE, AVATAR_SIZE);
+      // standing still: a slow one-pixel breath so idle players don't look frozen
+      const breathe = !moving && Math.floor((now + a.name.length * 397) / 700) % 2 === 1 ? 1 : 0;
+      ctx.drawImage(img, sx, sy, FRAME, FRAME, left, feet - FEET_Y + breathe, AVATAR_SIZE, AVATAR_SIZE);
     };
 
     const drawName = (ctx: CanvasRenderingContext2D, a: Actor) => {
       const { x: ax, y: ay } = drawPos(a);
-      const px = ax * TILE + TILE / 2, py = ay * TILE - 22;
-      ctx.font = "bold 11px ui-sans-serif, system-ui, sans-serif";
-      const w = ctx.measureText(a.name).width + 10;
-      ctx.fillStyle = a.self ? "rgba(30,98,72,0.9)" : "rgba(20,20,28,0.75)";
+      const px = Math.round(ax * TILE + TILE / 2), py = Math.round(ay * TILE) + TILE - AVATAR_TOP - 10;
+      ctx.font = NAME_FONT();
+      const w = Math.ceil(ctx.measureText(a.name).width) + (a.self ? 20 : 12);
+      const h = 17, x = px - w / 2, y = py - h / 2;
+      // plate with a soft drop shadow, like the signboards on the map
+      ctx.save();
+      ctx.shadowColor = "rgba(0,0,0,0.35)";
+      ctx.shadowOffsetY = 1;
+      ctx.shadowBlur = 3;
+      ctx.fillStyle = a.self ? "rgba(22,70,52,0.94)" : "rgba(24,26,32,0.82)";
       ctx.beginPath();
-      ctx.roundRect(px - w / 2, py - 9, w, 16, 8);
+      ctx.roundRect(x, y, w, h, 5);
       ctx.fill();
-      ctx.fillStyle = "#fff";
+      ctx.restore();
+      ctx.strokeStyle = a.self ? "rgba(110,231,183,0.55)" : "rgba(255,255,255,0.14)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(x + 0.5, y + 0.5, w - 1, h - 1, 4.5);
+      ctx.stroke();
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(a.name, px, py);
+      if (a.self) {
+        ctx.fillStyle = "#6ee7b7";
+        ctx.beginPath();
+        ctx.arc(x + 8, py, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = "#f5f7f2";
+      ctx.fillText(a.name, px + (a.self ? 4 : 0), py + 0.5);
     };
 
     const wrap = (ctx: CanvasRenderingContext2D, text: string, maxWidth: number, maxLines: number) => {
@@ -506,7 +586,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
 
     // Lays out every live bubble, nudging later ones upward so nearby players' bubbles don't overlap.
     const drawBubbles = (ctx: CanvasRenderingContext2D, speakers: [string, Actor][], now: number) => {
-      ctx.font = "12px ui-sans-serif, system-ui, sans-serif";
+      ctx.font = `400 12.5px ${canvasFont}`;
       const placed: { x: number; y: number; w: number; h: number }[] = [];
       const items = speakers
         .map(([id, a]) => ({ id, a, bubble: bubblesRef.current.get(id) }))
@@ -518,10 +598,10 @@ const SpaceGrid = ({ id }: { id: string }) => {
         .sort((p, q) => q.a.ry - p.a.ry); // nearest to the camera keeps its natural spot
       for (const { a, bubble } of items) {
         const lines = wrap(ctx, bubble.text, 180, 3);
-        const w = Math.max(...lines.map((l) => ctx.measureText(l).width)) + 16;
-        const h = lines.length * 15 + 10;
-        const cx = drawPos(a).x * TILE + TILE / 2;
-        const tip = drawPos(a).y * TILE - 36;
+        const w = Math.ceil(Math.max(...lines.map((l) => ctx.measureText(l).width))) + 20;
+        const h = lines.length * 16 + 12;
+        const cx = Math.round(drawPos(a).x * TILE + TILE / 2);
+        const tip = Math.round(drawPos(a).y * TILE) + TILE - AVATAR_TOP - 26;
         const rect = { x: cx - w / 2, y: tip - h, w, h };
         for (let moved = true; moved;) {
           moved = false;
@@ -534,22 +614,29 @@ const SpaceGrid = ({ id }: { id: string }) => {
         }
         placed.push(rect);
         // fade out over the last half second
-        ctx.globalAlpha = Math.min(1, (bubble.until - now) / 500);
-        ctx.fillStyle = "#ffffff";
-        ctx.strokeStyle = "rgba(20,20,28,0.25)";
+        // fade out over the last half second; rise into place over the first 200ms
+        const age = BUBBLE_MS - (bubble.until - now);
+        ctx.globalAlpha = Math.min(1, (bubble.until - now) / 500, age / 200);
+        const rise = Math.max(0, 1 - age / 200) * 4;
+        const by = rect.y + rise;
+        ctx.save();
+        ctx.shadowColor = "rgba(10,20,14,0.28)";
+        ctx.shadowOffsetY = 2;
+        ctx.shadowBlur = 6;
+        ctx.fillStyle = "#fbfcf8";
         ctx.beginPath();
-        ctx.roundRect(rect.x, rect.y, w, h, 8);
+        ctx.roundRect(rect.x, by, w, h, 10);
         if (rect.y + h === tip) {
-          ctx.moveTo(cx - 5, tip);
-          ctx.lineTo(cx, tip + 6);
-          ctx.lineTo(cx + 5, tip);
+          ctx.moveTo(cx - 6, by + h);
+          ctx.lineTo(cx, by + h + 7);
+          ctx.lineTo(cx + 6, by + h);
         }
         ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = "#1a1d24";
+        ctx.restore();
+        ctx.fillStyle = "#1c2420";
         ctx.textAlign = "center";
         ctx.textBaseline = "top";
-        lines.forEach((l, i) => ctx.fillText(l, cx, rect.y + 5 + i * 15));
+        lines.forEach((l, i) => ctx.fillText(l, cx, by + 6 + i * 16));
         ctx.globalAlpha = 1;
       }
     };
@@ -568,14 +655,17 @@ const SpaceGrid = ({ id }: { id: string }) => {
         ctx.textBaseline = "middle";
         // just past the right end of the name tag
         ctx.save();
-        ctx.font = "bold 11px ui-sans-serif, system-ui, sans-serif";
-        const tagHalf = ctx.measureText(a.name).width / 2 + 5;
+        ctx.font = NAME_FONT();
+        const tagHalf = ctx.measureText(a.name).width / 2 + (a.self ? 10 : 6);
         ctx.restore();
-        ctx.fillText(emote.emoji, drawPos(a).x * TILE + TILE / 2 + tagHalf + 14, drawPos(a).y * TILE - 22 - t * 22);
+        const tagY = drawPos(a).y * TILE + TILE - AVATAR_TOP - 10;
+        ctx.fillText(emote.emoji, drawPos(a).x * TILE + TILE / 2 + tagHalf + 14, tagY - t * 22);
         ctx.globalAlpha = 1;
       }
     };
 
+    let vignette: { w: number; h: number; indoors: boolean; fill: CanvasGradient } | null = null;
+    resolveCanvasFont();
     let lastPlaceCheck = 0;
     let lastMinimap = 0;
     const drawMinimap = (self: Actor) => {
@@ -652,8 +742,15 @@ const SpaceGrid = ({ id }: { id: string }) => {
       // resize to the container
       const parent = canvas.parentElement;
       const cw = parent?.clientWidth ?? window.innerWidth, ch = parent?.clientHeight ?? window.innerHeight;
-      if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
+      // backing store at device resolution: pixel art scales by a whole factor on retina
+      // screens instead of being upscaled by the compositor, and canvas text stays sharp
+      const dpr = Math.min(3, Math.max(1, Math.round((window.devicePixelRatio || 1) * 2) / 2));
+      if (canvas.width !== Math.round(cw * dpr) || canvas.height !== Math.round(ch * dpr)) {
+        canvas.width = Math.round(cw * dpr);
+        canvas.height = Math.round(ch * dpr);
+      }
       const ctx = canvas.getContext("2d")!;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.imageSmoothingEnabled = false;
 
       // Rooms are small, so indoors the view is magnified (whole pixels only) to fill the screen.
@@ -664,13 +761,19 @@ const SpaceGrid = ({ id }: { id: string }) => {
       const camX = worldW <= vw ? (worldW - vw) / 2 : Math.max(0, Math.min(self.rx * TILE + TILE / 2 - vw / 2, worldW - vw));
       const camY = worldH <= vh ? (worldH - vh) / 2 : Math.max(0, Math.min(self.ry * TILE + TILE / 2 - vh / 2, worldH - vh));
 
-      ctx.fillStyle = indoors ? "#18161c" : "#2f3b2a";
+      ctx.fillStyle = indoors ? "#141318" : "#2f3b2a";
       ctx.fillRect(0, 0, cw, ch);
       cameraRef.current = { x: Math.round(camX), y: Math.round(camY), zoom };
       ctx.save();
       ctx.scale(zoom, zoom);
       ctx.translate(-Math.round(camX), -Math.round(camY));
-      if (backgroundRef.current) ctx.drawImage(backgroundRef.current, 0, 0);
+      const bg = backgroundRef.current;
+      if (bg) {
+        // blit only the visible part of the (very large) background
+        const sx = Math.max(0, Math.floor(camX)), sy = Math.max(0, Math.floor(camY));
+        const sw = Math.min(bg.width - sx, Math.ceil(vw) + 2), sh = Math.min(bg.height - sy, Math.ceil(vh) + 2);
+        if (sw > 0 && sh > 0) ctx.drawImage(bg, sx, sy, sw, sh, sx, sy, sw, sh);
+      }
       if (targetRef.current) {
         // a pulsing ring on the tile being walked to
         const t = targetRef.current;
@@ -707,6 +810,16 @@ const SpaceGrid = ({ id }: { id: string }) => {
       drawBubbles(ctx, speakers, now);
       drawEmotes(ctx, speakers, now);
       ctx.restore();
+
+      // a gentle vignette pulls the eye to the middle of the screen, where you are
+      if (!vignette || vignette.w !== cw || vignette.h !== ch || vignette.indoors !== indoors) {
+        const g = ctx.createRadialGradient(cw / 2, ch / 2, Math.min(cw, ch) * 0.35, cw / 2, ch / 2, Math.hypot(cw, ch) / 2);
+        g.addColorStop(0, "rgba(8,14,10,0)");
+        g.addColorStop(1, indoors ? "rgba(8,6,12,0.42)" : "rgba(8,20,12,0.30)");
+        vignette = { w: cw, h: ch, indoors, fill: g };
+      }
+      ctx.fillStyle = vignette.fill;
+      ctx.fillRect(0, 0, cw, ch);
 
       // HUD updates that don't need 60fps
       if (now - lastPlaceCheck > 250) {
@@ -761,34 +874,52 @@ const SpaceGrid = ({ id }: { id: string }) => {
     targetRef.current = { x: end.x, y: end.y, interact: usable, since: performance.now() };
   }, [dims, isWalkable, doorTiles]);
 
-  if (error) return <div className="text-center p-8 text-red-500">{error}</div>;
-  if (!space) return <div className="text-center p-8">Loading space...</div>;
+  if (error) return (
+    <div role="alert" className="flex h-dvh flex-col items-center justify-center gap-3 bg-[#0e1813] p-8 text-center text-plate">
+      <p className="font-pixel text-4xl leading-none">Couldn&apos;t open this space</p>
+      <p className="max-w-[44ch] text-plate/70">It may have been deleted, or the server is unreachable. Check your connection and try again.</p>
+      <Link href="/dashboard" className="mt-2 rounded-lg bg-plate px-4 py-2 font-bold text-sign-deep hover:bg-white">Back to dashboard</Link>
+    </div>
+  );
+  if (!space) return (
+    <div role="status" className="flex h-dvh items-center justify-center bg-[#2f3b2a] font-pixel text-3xl text-plate">Loading space…</div>
+  );
 
   return (
     <div className="relative h-dvh w-full overflow-hidden overscroll-none bg-[#2f3b2a]">
       <div className={cn('absolute z-20 flex max-w-[calc(100%-1.5rem)] flex-wrap items-start gap-2', touch ? 'left-3 top-3' : 'left-4 top-4')}>
         {/* the icon rail is hidden on small screens, so the way out lives here */}
         <Link href="/dashboard" aria-label="Leave space" title="Leave space"
-          className="flex size-10 items-center justify-center rounded-lg bg-black/60 text-white shadow-lg hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 md:hidden">
+          className="flex size-10 items-center justify-center rounded-lg hud text-white hover:bg-[#1d2e26]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/70 md:hidden">
           <ArrowLeft className="size-5" />
         </Link>
-        <div className={cn('max-w-full rounded-lg bg-black/60 text-white shadow-lg', touch ? 'max-w-[11rem] px-3 py-1.5' : 'px-4 py-3')}>
-          <h2 className={cn('flex items-center gap-1.5 truncate font-bold', touch ? 'text-sm' : 'text-lg')}>
-            {meta?.visibility === 'Private' && <Lock className="size-4 opacity-70" aria-label="Private space" />}
-            {meta?.visibility === 'Public' && <Globe className="size-4 opacity-70" aria-label="Public space" />}
-            {meta?.name ?? space.name}
+        <div className={cn('max-w-full rounded-xl hud text-white', touch ? 'max-w-[11rem] px-3 py-1.5' : 'max-w-sm px-4 py-3')}>
+          <h2 className={cn('flex items-center gap-1.5 truncate font-bold', touch ? 'text-sm' : 'text-base')}>
+            {meta?.visibility === 'Private' && <Lock className="size-4 shrink-0 opacity-70" aria-label="Private space" />}
+            {meta?.visibility === 'Public' && <Globe className="size-4 shrink-0 opacity-70" aria-label="Public space" />}
+            <span className="truncate">{meta?.name ?? space.name}</span>
           </h2>
-          <p className={cn('opacity-80', touch ? 'text-xs' : 'text-sm')}>
-            {users.size + 1} online{!touch && ' · WASD or click to move · Enter to chat · 1–6 emotes · E interact · M map'}
+          <p className={cn('flex items-center gap-1.5 text-white/75', touch ? 'text-xs' : 'text-sm')}>
+            <span aria-hidden className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_0_3px_rgb(52_211_153/0.2)]" />
+            <span className="tabular-nums">{users.size + 1}</span> online
           </p>
-          {indoors && <p className="mt-1 text-xs text-emerald-200">{touch ? 'Step on the green mat to go back outside.' : 'Walk onto the green mat at the bottom to go back outside.'}</p>}
+          {!touch && (
+            <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-white/60">
+              {([['WASD', 'walk'], ['Enter', 'chat'], ['1–6', 'emote'], ['E', 'use'], ['M', 'map']] as const).map(([k, label]) => (
+                <span key={k} className="flex items-center gap-1">
+                  <kbd className="rounded bg-white/10 px-1 py-px font-sans text-[10px] font-bold text-white/85 shadow-[inset_0_-1px_0_rgb(255_255_255/0.12)]">{k}</kbd>{label}
+                </span>
+              ))}
+            </p>
+          )}
+          {indoors && <p className="mt-2 text-xs text-emerald-200">{touch ? 'Step on the green mat to go back outside.' : 'Walk onto the green mat at the bottom to go back outside.'}</p>}
         </div>
         <button
           type="button"
           onClick={copyInvite}
           disabled={!shareLink}
           title={shareLink ? 'Copy a link to this space' : 'Only the owner can invite people to a private space'}
-          className="flex h-10 items-center gap-2 rounded-lg bg-black/60 px-3 text-sm font-semibold text-white shadow-lg transition hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-10 items-center gap-2 rounded-lg hud px-3 text-sm font-semibold text-white transition hover:bg-[#1d2e26]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/70 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {copied ? <Check className="size-4 text-emerald-300" /> : <Link2 className="size-4" />}
           <span className={cn(touch && !copied && 'sr-only')}>{copied ? 'Link copied' : 'Invite'}</span>
@@ -800,7 +931,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
             onChange={(v) => setMeta((prev) => prev && { ...prev, ...v })}
             trigger={
               <button type="button" aria-label="Space settings"
-                className="flex h-10 items-center gap-2 rounded-lg bg-black/60 px-3 text-sm font-semibold text-white shadow-lg transition hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60">
+                className="flex h-10 items-center gap-2 rounded-lg hud px-3 text-sm font-semibold text-white transition hover:bg-[#1d2e26]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/70">
                 <Settings className="size-4" /> <span className={cn(touch && 'sr-only')}>Settings</span>
               </button>
             }
@@ -812,10 +943,10 @@ const SpaceGrid = ({ id }: { id: string }) => {
           trigger={
             <button
               type="button"
-              className="flex h-10 items-center gap-1.5 overflow-hidden rounded-lg bg-black/60 pl-1 pr-3 text-sm font-semibold text-white shadow-lg transition hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              className="flex h-10 items-center gap-1.5 overflow-hidden rounded-lg hud pl-1 pr-3 text-sm font-semibold text-white transition hover:bg-[#1d2e26]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/70"
             >
               {/* head-and-shoulders crop of the current avatar */}
-              <span className="relative size-8 overflow-hidden rounded-md bg-emerald-100/90">
+              <span className="relative size-8 overflow-hidden rounded-md bg-[#84c669]">
                 <AvatarSprite url={selfAvatar} className="absolute -left-6 -top-3" />
               </span>
               <span className={cn(touch && 'sr-only')}>Avatar</span>
@@ -824,7 +955,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
         />
       </div>
       {place && (
-        <div aria-live="polite" className={cn('pointer-events-none absolute z-20 flex items-center gap-1.5 truncate rounded-full bg-black/60 font-medium text-white shadow-lg',
+        <div aria-live="polite" className={cn('pointer-events-none absolute z-20 flex items-center gap-1.5 truncate rounded-full hud font-medium text-white',
           touch ? 'right-3 top-[4.25rem] max-w-[55%] px-3 py-1 text-xs' : 'right-4 top-4 max-w-[60%] px-4 py-1.5 text-sm')}>
           {indoors ? <DoorOpen className="size-4 text-emerald-300" /> : <MapPin className="size-4 text-emerald-300" />}
           {indoors ? place : `Near ${place}`}
@@ -837,7 +968,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
           </div>
           <div className="absolute bottom-4 right-3 z-30 flex flex-col items-end gap-2" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
             {showEmotes && (
-              <div role="toolbar" aria-label="Emotes" className="grid grid-cols-3 gap-1 rounded-xl bg-black/75 p-1 shadow-lg backdrop-blur-sm">
+              <div role="toolbar" aria-label="Emotes" className="grid grid-cols-3 gap-1 rounded-xl hud p-1">
                 {EMOTES.map((e) => (
                   <button key={e.id} type="button" onClick={() => { sendEmote(e.id); setShowEmotes(false); }} aria-label={e.label}
                     className="flex size-10 items-center justify-center rounded-lg text-xl active:bg-white/20">
@@ -852,13 +983,13 @@ const SpaceGrid = ({ id }: { id: string }) => {
                 {selfSeat ? 'Stand up' : interaction?.kind === 'board' ? 'Read' : 'Sit'}
               </button>
             )}
-            <div role="toolbar" aria-label="Voice, video, chat and emotes" className="flex gap-1 rounded-xl bg-black/75 p-1.5 shadow-lg backdrop-blur-sm">
+            <div role="toolbar" aria-label="Voice, video, chat and emotes" className="flex gap-1 rounded-xl hud p-1.5">
               <MediaControls micOn={media.micOn} camOn={media.camOn} onMic={media.toggleMic} onCam={media.toggleCam} />
               <button type="button" onClick={() => { setChatOpen(true); setShowEmotes(false); }} aria-label={unread ? `Chat, ${unread} new` : 'Chat'}
                 className="relative flex size-10 items-center justify-center rounded-lg text-white active:bg-white/15">
                 <MessageCircle className="size-5" />
                 {unread > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-blue-500 px-1 text-center text-[10px] font-bold leading-4 tabular-nums">
+                  <span className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-emerald-400 px-1 text-center text-[10px] font-bold leading-4 tabular-nums text-[#06281c]">
                     {unread > 9 ? '9+' : unread}
                   </span>
                 )}
@@ -871,7 +1002,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
           </div>
         </>
       )}
-      <div role="toolbar" aria-label="Voice, video and emotes" className={cn('absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 gap-1 rounded-xl bg-black/75 p-1.5 shadow-lg backdrop-blur-sm', touch && 'hidden')}>
+      <div role="toolbar" aria-label="Voice, video and emotes" className={cn('absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 gap-1 rounded-xl hud p-1.5', touch && 'hidden')}>
         <MediaControls micOn={media.micOn} camOn={media.camOn} onMic={media.toggleMic} onCam={media.toggleCam} />
         {EMOTES.map((e, i) => (
           <button
@@ -880,7 +1011,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
             onClick={() => sendEmote(e.id)}
             title={`${e.label} (${i + 1})`}
             aria-label={`${e.label}, key ${i + 1}`}
-            className="relative flex size-10 items-center justify-center rounded-lg text-xl transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+            className="relative flex size-10 items-center justify-center rounded-lg text-xl transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/70"
           >
             {e.emoji}
             <span className="absolute bottom-0.5 right-1 text-[9px] font-semibold text-white/50">{i + 1}</span>
@@ -892,7 +1023,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
           <canvas
             ref={minimapRef}
             aria-label="Minimap"
-            className="rounded-lg border-2 border-black/40 shadow-xl"
+            className="hud rounded-xl p-0 ring-2 ring-[#0e1813]/70"
             style={{ width: touch ? 140 : MINIMAP_W, height: dims ? Math.round((touch ? 140 : MINIMAP_W) * dims.h / dims.w) : 0 }}
           />
         )}
@@ -900,27 +1031,28 @@ const SpaceGrid = ({ id }: { id: string }) => {
           type="button"
           onClick={() => setShowMinimap((v) => !v)}
           aria-pressed={showMinimap}
-          className="flex h-8 items-center gap-1.5 rounded-lg bg-black/60 px-3 text-xs font-semibold text-white shadow-lg hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          className="flex h-8 items-center gap-1.5 rounded-lg hud px-3 text-xs font-semibold text-white hover:bg-[#1d2e26]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/70"
         >
           <MapIcon className="size-3.5" /> {showMinimap ? 'Hide map' : 'Show map'}{!touch && ' (M)'}
         </button>
         {touch && canFullscreen && (
           <button type="button" onClick={toggleFullscreen} aria-pressed={fullscreen}
-            className="flex h-8 items-center gap-1.5 rounded-lg bg-black/60 px-3 text-xs font-semibold text-white shadow-lg active:bg-black/75">
+            className="flex h-8 items-center gap-1.5 rounded-lg hud px-3 text-xs font-semibold text-white active:bg-[#1d2e26]/90">
             {fullscreen ? <Minimize className="size-3.5" /> : <Expand className="size-3.5" />} {fullscreen ? 'Exit full screen' : 'Full screen'}
           </button>
         )}
       </div>
       {loadingArt && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60 text-white">
-          {indoors ? `Entering ${area!.name}…` : 'Loading map...'}
+        <div role="status" className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-[#0e1813]/85 text-plate backdrop-blur-sm">
+          <span aria-hidden className="avatar-sprite" data-walking="true" style={{ backgroundImage: `url("${selfAvatar}")` }} />
+          <p className="font-pixel text-3xl leading-none">{indoors ? `Entering ${area!.name}…` : 'Walking to campus…'}</p>
         </div>
       )}
       {(selfSeat || interaction) && !touch && (
         <button
           type="button"
           onClick={interact}
-          className="absolute bottom-[7.5rem] left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/70 py-1.5 pl-1.5 pr-4 text-sm font-medium text-white shadow-lg backdrop-blur-sm hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          className="absolute bottom-[7.5rem] left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full hud py-1.5 pl-1.5 pr-4 text-sm font-medium text-white hover:bg-[#1d2e26]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/70"
         >
           <kbd className="flex size-6 items-center justify-center rounded-md bg-white font-mono text-xs font-bold text-gray-900">E</kbd>
           {selfSeat ? 'Stand up' : interaction?.kind === 'board' ? `Read the ${interaction.label}` : 'Sit down'}

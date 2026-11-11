@@ -14,12 +14,12 @@ function Blocked({ icon, title, body }: { icon: React.ReactNode; title: string; 
     return (
         <div className="flex min-h-[70vh] items-center justify-center p-6">
             <div className="grid max-w-md justify-items-center gap-3 text-center">
-                <div className="flex size-14 items-center justify-center rounded-full bg-gray-100 text-gray-500">{icon}</div>
-                <h1 className="text-xl font-bold text-gray-900">{title}</h1>
-                <p className="text-gray-600">{body}</p>
+                <div className="flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground">{icon}</div>
+                <h1 className="text-xl font-bold text-foreground">{title}</h1>
+                <p className="text-muted-foreground">{body}</p>
                 <div className="mt-2 flex gap-2">
-                    <Link href="/explore" className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50">Explore public spaces</Link>
-                    <Link href="/spaces" className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">My spaces</Link>
+                    <Link href="/explore" className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted/50">Explore public spaces</Link>
+                    <Link href="/spaces" className="rounded-lg bg-sign px-4 py-2 text-sm font-semibold text-white hover:bg-sign-deep">My spaces</Link>
                 </div>
             </div>
         </div>
@@ -52,7 +52,7 @@ function SpaceGate({ id }: { id: string }) {
     if (gate === 'checking') {
         return (
             <div className="flex h-64 items-center justify-center">
-                <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-blue-500" />
+                <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-sign" />
             </div>
         );
     }

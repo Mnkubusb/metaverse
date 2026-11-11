@@ -19,14 +19,14 @@ export function VisibilityPicker({ value, onChange, name }: { value: Visibility;
     <div role="radiogroup" className="grid gap-2">
       {VISIBILITY_OPTIONS.map((o) => (
         <label key={o.value} className={cn(
-          'flex cursor-pointer items-start gap-3 rounded-lg border-2 px-3 py-2.5 transition has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-blue-200',
-          value === o.value ? 'border-blue-500 bg-blue-50/60' : 'border-gray-200 hover:border-blue-300',
+          'flex cursor-pointer items-start gap-3 rounded-lg border-2 px-3 py-2.5 transition has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-sign/25',
+          value === o.value ? 'border-sign bg-sign/5' : 'border-border hover:border-sign/40',
         )}>
           <input type="radio" name={name} value={o.value} checked={value === o.value} onChange={() => onChange(o.value)} className="sr-only" />
-          <span className={cn('mt-0.5', value === o.value ? 'text-blue-600' : 'text-gray-500')}>{o.icon}</span>
+          <span className={cn('mt-0.5', value === o.value ? 'text-sign' : 'text-muted-foreground')}>{o.icon}</span>
           <span>
-            <span className="block text-sm font-semibold text-gray-900">{o.label}</span>
-            <span className="block text-xs text-gray-500">{o.hint}</span>
+            <span className="block text-sm font-semibold text-foreground">{o.label}</span>
+            <span className="block text-xs text-muted-foreground">{o.hint}</span>
           </span>
         </label>
       ))}
@@ -125,28 +125,28 @@ function SettingsForm({ spaceId, initial, onChange }: {
       </DialogHeader>
 
       <div className="grid gap-1.5">
-        <label htmlFor={`${ids}-name`} className="text-sm font-semibold text-gray-800">Name</label>
+        <label htmlFor={`${ids}-name`} className="text-sm font-semibold text-foreground">Name</label>
         <input id={`${ids}-name`} value={name} maxLength={100} onChange={(e) => setName(e.target.value)}
-          className="h-10 rounded-lg border border-gray-300 px-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" />
+          className="h-10 rounded-lg border border-input px-3 outline-none focus:border-sign focus:ring-4 focus:ring-sign/15" />
       </div>
 
       <fieldset className="grid gap-2">
-        <legend className="mb-2 text-sm font-semibold text-gray-800">Who can enter</legend>
+        <legend className="mb-2 text-sm font-semibold text-foreground">Who can enter</legend>
         <VisibilityPicker value={visibility} onChange={setVisibility} name={`${ids}-visibility`} />
       </fieldset>
 
       <div className="grid gap-2">
-        <p className="text-sm font-semibold text-gray-800">Invite link</p>
+        <p className="text-sm font-semibold text-foreground">Invite link</p>
         <div className="flex gap-2">
           <input readOnly value={link} aria-label="Invite link" onFocus={(e) => e.currentTarget.select()}
-            className="h-10 min-w-0 flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 font-mono text-xs text-gray-700" />
+            className="h-10 min-w-0 flex-1 rounded-lg border border-border bg-muted/50 px-3 font-mono text-xs text-foreground/80" />
           <button type="button" onClick={copy}
-            className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-gray-200 px-3 text-sm font-semibold text-gray-800 hover:bg-gray-50">
+            className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-border px-3 text-sm font-semibold text-foreground hover:bg-muted/50">
             {copied ? <Check className="size-4 text-emerald-600" /> : <Copy className="size-4" />}{copied ? 'Copied' : 'Copy'}
           </button>
         </div>
         {visibility === 'Private' && (
-          <button type="button" onClick={reset} className="inline-flex w-fit items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900">
+          <button type="button" onClick={reset} className="inline-flex w-fit items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground">
             <RotateCcw className="size-3.5" /> Reset link (the old one stops working)
           </button>
         )}
@@ -156,39 +156,39 @@ function SettingsForm({ spaceId, initial, onChange }: {
       </div>
 
       <div className="grid gap-2">
-        <p className="text-sm font-semibold text-gray-800">Members {members && <span className="font-normal text-gray-500">({members.length})</span>}</p>
-        <ul className="max-h-48 divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200">
-          {members === null && <li className="px-3 py-2 text-sm text-gray-500">Loading…</li>}
+        <p className="text-sm font-semibold text-foreground">Members {members && <span className="font-normal text-muted-foreground">({members.length})</span>}</p>
+        <ul className="max-h-48 divide-y divide-border overflow-y-auto rounded-lg border border-border">
+          {members === null && <li className="px-3 py-2 text-sm text-muted-foreground">Loading…</li>}
           {members?.map((m) => (
             <li key={m.userId} className="flex items-center gap-3 px-3 py-1.5">
               <span className="relative size-8 overflow-hidden rounded bg-emerald-50">
                 <AvatarSprite url={m.avatar ?? '/avatars/classic.png'} className="absolute -left-6 -top-3" />
               </span>
-              <span className="mr-auto text-sm font-medium text-gray-900">{m.username}</span>
+              <span className="mr-auto text-sm font-medium text-foreground">{m.username}</span>
               {m.role === 'Owner'
                 ? <span className="text-xs font-semibold text-emerald-700">Owner</span>
                 : (
                   <button type="button" onClick={() => remove(m)} aria-label={`Remove ${m.username}`}
-                    className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50">
+                    className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-brick hover:bg-brick/8">
                     <UserMinus className="size-3.5" /> Remove
                   </button>
                 )}
             </li>
           ))}
         </ul>
-        <p className="text-xs text-gray-500">Removed members can come back through a public or unlisted link, or a new invite link.</p>
+        <p className="text-xs text-muted-foreground">Removed members can come back through a public or unlisted link, or a new invite link.</p>
       </div>
 
       {message && (
         <p role={message.kind === 'error' ? 'alert' : 'status'} className={cn('rounded-lg px-3 py-2 text-sm',
-          message.kind === 'error' ? 'border border-red-200 bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-800')}>
+          message.kind === 'error' ? 'border border-brick/25 bg-brick/8 text-brick' : 'bg-emerald-50 text-emerald-800')}>
           {message.text}
         </p>
       )}
 
       <DialogFooter>
         <button type="submit" disabled={!dirty || saving}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-sign px-5 text-sm font-semibold text-white shadow-sm hover:bg-sign-deep disabled:cursor-not-allowed disabled:opacity-60">
           {saving && <Loader2 className="size-4 animate-spin" />} Save changes
         </button>
       </DialogFooter>

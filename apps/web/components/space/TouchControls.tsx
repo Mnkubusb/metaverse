@@ -98,7 +98,7 @@ export default function Joystick({ onDirection }: { onDirection: (dir: Direction
       onPointerCancel={release}
       onLostPointerCapture={release}
       style={{ width: size, height: size, touchAction: 'none' }}
-      className="relative select-none rounded-full border-2 border-white/25 bg-black/45 shadow-xl backdrop-blur-sm"
+      className="relative select-none rounded-full border-2 border-white/25 hud"
     >
       {/* direction hints */}
       {(['up', 'down', 'left', 'right'] as const).map((d) => (

@@ -38,7 +38,7 @@ export function MediaControls({ micOn, camOn, onMic, onCam }: {
   onMic: () => void;
   onCam: () => void;
 }) {
-  const btn = 'flex size-10 items-center justify-center rounded-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60';
+  const btn = 'flex size-10 items-center justify-center rounded-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/70';
   return (
     <>
       <button type="button" onClick={onMic} aria-pressed={micOn} aria-label={micOn ? 'Mute microphone' : 'Unmute microphone'}
@@ -78,20 +78,20 @@ export default function MediaDock({ remote, names, localStream, camOn, micOn, ne
           {camOn && (
             <figure className="relative h-[90px] w-[120px] overflow-hidden rounded-lg border-2 border-emerald-400 bg-black shadow-lg">
               <StreamVideo stream={localStream} muted mirrored />
-              <figcaption className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 text-[11px] font-semibold text-white">You</figcaption>
+              <figcaption className="absolute bottom-1 left-1 rounded hud px-1.5 text-[11px] font-semibold text-white">You</figcaption>
             </figure>
           )}
           {videos.map((r) => (
             <figure key={r.userId} className="relative h-[90px] w-[120px] overflow-hidden rounded-lg border-2 border-white/30 bg-black shadow-lg"
               style={{ opacity: 0.45 + 0.55 * r.volume }}>
               <StreamVideo stream={r.stream} muted />
-              <figcaption className="absolute bottom-1 left-1 flex items-center gap-1 rounded bg-black/60 px-1.5 text-[11px] font-semibold text-white">
+              <figcaption className="absolute bottom-1 left-1 flex items-center gap-1 rounded hud px-1.5 text-[11px] font-semibold text-white">
                 {r.hasAudio && <Volume2 className="size-3" />}{names.get(r.userId) ?? 'Player'}
               </figcaption>
             </figure>
           ))}
           {voices.map((r) => (
-            <span key={r.userId} className="flex h-8 items-center gap-1.5 self-end rounded-full bg-black/60 px-3 text-xs font-semibold text-white shadow-lg">
+            <span key={r.userId} className="flex h-8 items-center gap-1.5 self-end rounded-full hud px-3 text-xs font-semibold text-white">
               <Volume2 className="size-3.5 text-emerald-300" /> {names.get(r.userId) ?? 'Player'}
             </span>
           ))}
@@ -100,8 +100,8 @@ export default function MediaDock({ remote, names, localStream, camOn, micOn, ne
 
       {(micOn || camOn || error) && (
         <p role="status" className={cn(
-          'pointer-events-none absolute bottom-[4.5rem] left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium shadow-lg',
-          error ? 'bg-red-600/90 text-white' : 'bg-black/60 text-white/90',
+          'pointer-events-none absolute bottom-[4.5rem] left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium',
+          error ? 'bg-red-600/90 text-white' : 'hud text-white/90',
         )}>
           {error || (nearbyCount === 0
             ? `Walk within ${HEAR_RANGE} tiles of someone to talk`

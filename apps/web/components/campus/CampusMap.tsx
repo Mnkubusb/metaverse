@@ -11,8 +11,9 @@ const MAP_H = 171;
 const SHEET_COLS = 5;
 const DIR_BASE = { down: 0, right: 6, left: 12, up: 18 } as const;
 type Direction = keyof typeof DIR_BASE;
-// Drawn a little larger than in-game (2 tiles) so they read at landing-page zoom.
-const WALKER_TILES = 3;
+// 80 px frames on 32 px tiles: 2.5 tiles draws the sheets 1:1, so the pixel art stays crisp.
+const WALKER_TILES = 2.5;
+const FEET = 0.8; // feet sit 64 px down an 80 px frame
 
 type Walker = {
   avatar: string;
@@ -22,15 +23,16 @@ type Walker = {
   start: number; // seconds into the route, so walkers don't move in lockstep
 };
 
-// Routes follow real footpaths and roads on the map.
+// Routes follow real roads, footpaths and courtyards on the generated map.
 const WALKERS: Walker[] = [
-  { avatar: '/avatars/cse-blue.png', route: [[44, 70.6], [70, 70.6]], speed: 2.1, start: 3 },
-  { avatar: '/avatars/rose.png', route: [[70, 69.6], [53, 69.6]], speed: 1.8, start: 6 },
-  { avatar: '/avatars/forest.png', route: [[43.5, 9], [43.5, 30]], speed: 1.6, start: 0 },
-  { avatar: '/avatars/violet.png', route: [[34.5, 79], [34.5, 99]], speed: 1.9, start: 4 },
-  { avatar: '/avatars/crimson.png', route: [[72.5, 94], [72.5, 76]], speed: 2.3, start: 1 },
-  { avatar: '/avatars/teal.png', route: [[13, 105.6], [21, 105.6]], speed: 2.6, start: 12 },
-  { avatar: '/avatars/classic.png', route: [[71.5, 88], [71.5, 70], [60, 70]], speed: 1.5, start: 2 },
+  { avatar: '/avatars/cse-blue.png', route: [[40, 69.8], [70, 69.8]], speed: 2.1, start: 3 },
+  { avatar: '/avatars/rose.png', route: [[69, 70.8], [44, 70.8]], speed: 1.8, start: 6 },
+  { avatar: '/avatars/forest.png', route: [[71.5, 72], [71.5, 95]], speed: 1.6, start: 0 },
+  { avatar: '/avatars/violet.png', route: [[53.5, 64], [53.5, 108]], speed: 1.9, start: 4 },
+  { avatar: '/avatars/crimson.png', route: [[80, 62.8], [95, 62.8]], speed: 2.3, start: 1 },
+  { avatar: '/avatars/teal.png', route: [[58, 56.8], [70, 56.8]], speed: 2.0, start: 12 },
+  { avatar: '/avatars/classic.png', route: [[79, 84.8], [91, 84.8], [91, 81.8]], speed: 1.5, start: 2 },
+  { avatar: '/avatars/charcoal.png', route: [[51.5, 12], [51.5, 44]], speed: 2.4, start: 7 },
 ];
 
 function routeLength(route: [number, number][]) {
@@ -74,7 +76,7 @@ function Walkers({ still }: { still: boolean }) {
       const el = refs.current[i];
       if (!el) return;
       el.style.left = `${((x - WALKER_TILES / 2) / MAP_W) * 100}%`;
-      el.style.top = `${((y - WALKER_TILES * 0.92) / MAP_H) * 100}%`;
+      el.style.top = `${((y - WALKER_TILES * FEET) / MAP_H) * 100}%`;
       el.style.backgroundPosition = frameStyle(frame);
     };
 
@@ -128,7 +130,7 @@ function Walkers({ still }: { still: boolean }) {
 /**
  * The campus map with students walking it.
  * - `drift`: fills its parent and pans slowly across the campus (the landing hero).
- * - `gate`: a fixed view of the map's bottom edge, centred horizontally on `focus`.
+ * - `gate`: a fixed view centred on the tile `focus`.
  */
 export default function CampusMap({
   mode,
@@ -142,11 +144,11 @@ export default function CampusMap({
   still?: boolean;
 }) {
   const style = mode === 'gate'
-    ? ({ '--fx': focus[0] } as CSSProperties)
+    ? ({ '--fx': focus[0], '--fy': focus[1] } as CSSProperties)
     : undefined;
 
   return (
-    <div aria-hidden className={cn('absolute inset-0 overflow-hidden bg-[#8fd05a]', className)}>
+    <div aria-hidden className={cn('absolute inset-0 overflow-hidden bg-[#84c669]', className)}>
       <div className={cn('campus-map absolute', mode === 'drift' ? 'campus-map--drift' : 'campus-map--gate')} style={style}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={MAP_URL} alt="" draggable={false} className="absolute inset-0 size-full [image-rendering:pixelated] select-none" />

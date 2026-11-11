@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { Eye, EyeOff } from 'lucide-react';
 import CampusMap from '@/components/campus/CampusMap';
 
-// The main gate, where every visitor arrives: the view is centred on its column.
-const GATE: [number, number] = [37.6, 50];
+// The main gate, where every visitor arrives (the arch and spawn point on the generated map).
+const GATE: [number, number] = [76, 96];
 
 export default function AuthShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (

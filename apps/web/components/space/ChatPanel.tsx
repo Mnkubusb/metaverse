@@ -80,9 +80,9 @@ export default function ChatPanel({ compact = false, open: openProp, onOpenChang
     <section
       aria-label="Chat"
       className={cn(
-        'pointer-events-auto absolute z-40 flex flex-col overflow-hidden rounded-xl bg-black/65 text-white shadow-2xl backdrop-blur-sm',
+        'pointer-events-auto absolute z-40 flex flex-col overflow-hidden rounded-xl hud text-white',
         compact
-          ? 'inset-x-3 bottom-3 max-h-[70dvh] bg-black/85'
+          ? 'inset-x-3 bottom-3 max-h-[70dvh] bg-[#0e1813]/95'
           : 'bottom-4 left-4 w-[min(360px,calc(100%-2rem))]',
       )}
     >
@@ -90,12 +90,12 @@ export default function ChatPanel({ compact = false, open: openProp, onOpenChang
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="flex items-center gap-2 px-4 py-2.5 text-left text-sm font-semibold hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+        className="flex items-center gap-2 px-4 py-2.5 text-left text-sm font-semibold hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60"
       >
         <MessageCircle className="size-4" />
         <span className="mr-auto">Chat</span>
         {unread > 0 && (
-          <span className="rounded-full bg-blue-500 px-2 py-0.5 text-xs tabular-nums">{unread} new</span>
+          <span className="rounded-full bg-emerald-400 px-2 py-0.5 text-xs font-bold tabular-nums text-[#06281c]">{unread} new</span>
         )}
         <ChevronDown className={cn('size-4 transition-transform', !open && 'rotate-180')} />
       </button>
@@ -142,13 +142,13 @@ export default function ChatPanel({ compact = false, open: openProp, onOpenChang
               }}
               placeholder={compact ? 'Type a message' : 'Press Enter to chat · Esc to move'}
               autoComplete="off"
-              className="h-9 min-w-0 flex-1 rounded-lg bg-white/10 px-3 text-sm text-white placeholder:text-white/40 outline-none focus:bg-white/15 focus:ring-2 focus:ring-blue-400/60"
+              className="h-9 min-w-0 flex-1 rounded-lg bg-white/10 px-3 text-sm text-white placeholder:text-white/40 outline-none focus:bg-white/15 focus:ring-2 focus:ring-emerald-300/50"
             />
             <button
               type="submit"
               disabled={!draft.trim()}
               aria-label="Send message"
-              className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-500 transition hover:bg-blue-600 disabled:bg-white/10 disabled:text-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+              className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-400 text-[#06281c] transition hover:bg-emerald-300 disabled:bg-white/10 disabled:text-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200"
             >
               <SendHorizontal className="size-4" />
             </button>

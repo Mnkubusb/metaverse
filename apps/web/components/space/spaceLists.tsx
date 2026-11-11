@@ -1,9 +1,10 @@
 "use client"
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { spaceAPI } from '../../lib/api';
 import CreateSpaceDialog from './spaceCreator';
+import SpaceCard, { SpaceGridSkeleton, VisibilityBadge } from './SpaceCard';
+import { Trash2 } from 'lucide-react';
 
 export interface Space{
     id: string;
@@ -13,7 +14,7 @@ export interface Space{
     visibility?: 'Private' | 'Unlisted' | 'Public';
 }
 
-const VISIBILITY_LABEL = { Private: 'Private', Unlisted: 'Link only', Public: 'Public' } as const;
+export const VISIBILITY_LABEL = { Private: 'Private', Unlisted: 'Link only', Public: 'Public' } as const;
 
 export default function SpacesList() {
   const [spaces, setSpaces] = useState<Space[] | []>([]);
@@ -38,7 +39,7 @@ export default function SpacesList() {
   };
 
   const handleDelete = async (spaceId : string) => {
-    if (!confirm('Are you sure you want to delete this space?')) return;
+    if (!confirm('Delete this space? Everyone in it is removed and its notes are lost.')) return;
     
     setDeleteInProgress(spaceId);
     
@@ -53,51 +54,46 @@ export default function SpacesList() {
     }
   };
 
-  if (loading) {
-    return <div className="text-center p-4">Loading spaces...</div>;
-  }
+  if (loading) return <SpaceGridSkeleton />;
   return (
     <div>
-      {error && <p role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {error && <p role="alert" className="mb-4 rounded-lg border border-brick/25 bg-brick/8 px-3 py-2 text-sm text-brick">{error}</p>}
       {spaces.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 p-10 text-center">
-          <p className="font-semibold text-gray-800">No spaces yet</p>
-          <p className="text-sm text-gray-500">Create one from the GEC Bilaspur campus map and invite your friends.</p>
+        <div className="flex flex-col items-start gap-3 rounded-xl border-2 border-dashed border-border p-8">
+          <p className="font-bold">No spaces yet</p>
+          <p className="max-w-[56ch] text-sm text-muted-foreground">Create one from the GEC Bilaspur campus map and invite your friends.</p>
           <CreateSpaceDialog />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {spaces.map(space => (
-            <div key={space.id} className="border rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow">
-              {space.thumbnail && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={space.thumbnail} alt="" className="aspect-[76/54] w-full object-cover [image-rendering:pixelated]" />
-              )}
-              <div className="p-4">
-                <div className="mb-2 flex items-start justify-between gap-2">
-                  <h3 className="font-bold text-xl">{space.name}</h3>
-                  {space.visibility && (
-                    <span className="mt-1 shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                      {VISIBILITY_LABEL[space.visibility]}
-                    </span>
-                  )}
-                </div>
-                <p className="text-gray-600">Dimensions: {space.dimensions}</p>
-                <div className="flex justify-between mt-4">
-                  <Link href={`/space/${space.id}`} className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600">
-                    Enter
-                  </Link>
-                  <button 
-                    onClick={() => handleDelete(space.id)} 
-                    className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </div>
+        <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {spaces.map((space) => (
+            <li key={space.id}>
+              <SpaceCard
+                href={`/space/${space.id}`}
+                name={space.name}
+                thumbnail={space.thumbnail}
+                detail={`${space.dimensions.replace('x', ' × ')} tiles`}
+                badge={space.visibility && <VisibilityBadge label={VISIBILITY_LABEL[space.visibility]} />}
+                actions={
+                  <>
+                    <Link href={`/space/${space.id}`}
+                      className="inline-flex h-9 items-center rounded-lg bg-sign px-4 text-sm font-bold text-plate transition-colors hover:bg-sign-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                      Enter
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(space.id)}
+                      disabled={deleteInProgress === space.id}
+                      className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-bold text-brick transition-colors hover:bg-brick/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brick/40 disabled:cursor-wait disabled:opacity-60"
+                    >
+                      <Trash2 className="size-4" /> {deleteInProgress === space.id ? 'Deleting…' : 'Delete'}
+                    </button>
+                  </>
+                }
+              />
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );

@@ -100,16 +100,16 @@ function Board({ spaceId, boardId }: { spaceId: string; boardId: string }) {
           <ul className="grid max-h-[45vh] grid-cols-2 gap-3 overflow-y-auto p-1 sm:grid-cols-3">
             {notices.map((n) => (
               <li key={n.id} style={{ transform: `rotate(${tilt(n.id)}deg)` }}
-                className={cn('relative flex min-h-24 flex-col gap-2 p-3 pt-4 text-sm text-gray-900 shadow-md', NOTE_COLORS[n.color] ?? NOTE_COLORS.yellow)}>
-                <Pin aria-hidden className="absolute left-1/2 top-0.5 size-4 -translate-x-1/2 fill-red-500 text-red-700" />
+                className={cn('relative flex min-h-24 flex-col gap-2 p-3 pt-4 text-sm text-foreground shadow-md', NOTE_COLORS[n.color] ?? NOTE_COLORS.yellow)}>
+                <Pin aria-hidden className="absolute left-1/2 top-0.5 size-4 -translate-x-1/2 fill-red-500 text-brick" />
                 {n.canDelete && (
                   <button type="button" onClick={() => remove(n)} aria-label={`Remove note by ${n.author}`}
-                    className="absolute right-1 top-1 rounded p-0.5 text-gray-500 hover:bg-black/10 hover:text-gray-900">
+                    className="absolute right-1 top-1 rounded p-0.5 text-muted-foreground hover:bg-black/10 hover:text-foreground">
                     <X className="size-3.5" />
                   </button>
                 )}
                 <p className="whitespace-pre-wrap break-words leading-snug">{n.body}</p>
-                <p className="mt-auto text-[11px] text-gray-600">{n.mine ? 'You' : n.author} · {timeAgo(n.createdAt)}</p>
+                <p className="mt-auto text-[11px] text-muted-foreground">{n.mine ? 'You' : n.author} · {timeAgo(n.createdAt)}</p>
               </li>
             ))}
           </ul>
@@ -117,27 +117,27 @@ function Board({ spaceId, boardId }: { spaceId: string; boardId: string }) {
       </div>
 
       <form onSubmit={post} className="grid gap-2">
-        <label htmlFor={`${ids}-note`} className="text-sm font-semibold text-gray-800">Pin a note</label>
+        <label htmlFor={`${ids}-note`} className="text-sm font-semibold text-foreground">Pin a note</label>
         <textarea id={`${ids}-note`} value={draft} maxLength={MAX} rows={2} onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) post(e); }}
           placeholder="e.g. Robotics club meets Friday 5 pm at the workshop"
-          className="resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" />
+          className="resize-none rounded-lg border border-input px-3 py-2 text-sm outline-none focus:border-sign focus:ring-4 focus:ring-sign/15" />
         <div className="flex flex-wrap items-center gap-3">
           <div role="radiogroup" aria-label="Note colour" className="flex gap-1.5">
             {(Object.keys(NOTE_COLORS) as NoteColor[]).map((c) => (
-              <label key={c} title={c} className={cn('size-6 cursor-pointer rounded-full border-2 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-blue-400',
-                NOTE_COLORS[c], color === c ? 'border-gray-900' : 'border-gray-300')}>
+              <label key={c} title={c} className={cn('size-6 cursor-pointer rounded-full border-2 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-sign/40',
+                NOTE_COLORS[c], color === c ? 'border-foreground' : 'border-input')}>
                 <input type="radio" name={`${ids}-color`} checked={color === c} onChange={() => setColor(c)} className="sr-only" aria-label={c} />
               </label>
             ))}
           </div>
-          <span className="mr-auto text-xs tabular-nums text-gray-400">{draft.trim().length}/{MAX}</span>
+          <span className="mr-auto text-xs tabular-nums text-muted-foreground/75">{draft.trim().length}/{MAX}</span>
           <button type="submit" disabled={!draft.trim() || posting}
-            className="inline-flex h-9 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
+            className="inline-flex h-9 items-center gap-2 rounded-lg bg-sign px-4 text-sm font-semibold text-white hover:bg-sign-deep disabled:cursor-not-allowed disabled:opacity-60">
             {posting ? <Loader2 className="size-4 animate-spin" /> : <Pin className="size-4" />} Pin note
           </button>
         </div>
-        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+        {error && <p role="alert" className="text-sm text-brick">{error}</p>}
       </form>
     </div>
   );
