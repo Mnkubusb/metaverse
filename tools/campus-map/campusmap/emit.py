@@ -2,6 +2,7 @@
 from PIL import Image, ImageDraw, ImageFont
 
 from .reach import blocked_tiles, unreachable_doors
+from .textures import ground_tint
 
 T = 32
 ELEMENT_PREFIX = "campus-"
@@ -159,6 +160,7 @@ def render_preview(lay, public_campus_dir, area_id="main", size=None):
         for y in range(size[1]):
             for x in range(size[0]):
                 canvas.alpha_composite(tiles[ground_tile(x, y)], (x * T, y * T))
+        canvas.alpha_composite(ground_tint(size[0], size[1]))
     cache = {}
     order = {"floor": 0, "wall": 1, "objects": 2, "topObjects": 3}
     placed = sorted((p for p in lay.placements if p.area == area_id),

@@ -9,8 +9,9 @@ class from how much asphalt / sidewalk covers them.
 import hashlib
 import io
 import math
+import random
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageChops, ImageDraw
 
 from .raster import snap45
 
@@ -20,6 +21,11 @@ ASPHALT_EDGE = (58, 60, 66, 255)
 SIDEWALK = (176, 178, 172, 255)
 SIDEWALK_EDGE = (150, 152, 146, 255)
 DASH = (236, 236, 228, 255)
+# surface texture laid over the flat colours by texture()
+ASPHALT_GRIT = [(84, 86, 92, 255), (84, 86, 92, 255), (66, 68, 74, 255), (98, 99, 104, 255)]
+SLAB_JOINT = (158, 160, 154, 255)
+SLAB_LIGHT = (188, 190, 184, 255)
+SLAB_SPECKS = [(168, 170, 164, 255), (184, 186, 180, 255)]
 SIDEWALK_TILES = 1.0   # sidewalk band on each side, in tiles
 DASH_LEN, DASH_GAP = 16, 16
 
@@ -86,20 +92,71 @@ def render(features, width, height):
     return im
 
 
-def slice_tiles(im):
-    """-> (tiles: hash -> PNG bytes, cells: (x, y) -> hash) for every non-empty tile."""
+def _pattern(fill, paint):
+    """One 32 px tile of surface texture; paint(px, rng) marks it up."""
+    tile = Image.new("RGBA", (T, T), fill)
+    paint(tile.load(), random.Random(7))
+    return tile
+
+
+def _asphalt_grit(px, rng):
+    for _ in range(70):
+        px[rng.randrange(T), rng.randrange(T)] = rng.choice(ASPHALT_GRIT)
+
+
+def _paving_slabs(px, rng):
+    for y in range(T):
+        for x in range(T):
+            if x % 16 == 0 or y % 16 == 0:
+                px[x, y] = SLAB_JOINT
+            elif x % 16 == 1 or y % 16 == 1:
+                px[x, y] = SLAB_LIGHT
+    for _ in range(14):
+        x, y = rng.randrange(T), rng.randrange(T)
+        if x % 16 > 1 and y % 16 > 1:
+            px[x, y] = rng.choice(SLAB_SPECKS)
+
+
+def _mask(im, colour):
+    """L mask: 255 where im is exactly `colour` (RGB), else 0."""
+    solid = Image.new("RGB", im.size, colour[:3])
+    diff = ImageChops.difference(im.convert("RGB"), solid).convert("L")
+    return diff.point(lambda v: 255 if v == 0 else 0)
+
+
+def texture(im):
+    """Grit on the asphalt and slab joints on the sidewalk. Run after classify(), which
+    needs the flat colours. The patterns repeat every tile and line up with the tile grid,
+    so identical tiles stay identical and slice_tiles() still deduplicates them."""
+    out = im.copy()
+    for colour, pattern in ((ASPHALT, _pattern(ASPHALT, _asphalt_grit)), (SIDEWALK, _pattern(SIDEWALK, _paving_slabs))):
+        layer = Image.new("RGBA", im.size)
+        for y in range(0, im.height, T):
+            for x in range(0, im.width, T):
+                layer.paste(pattern, (x, y))
+        out.paste(layer, (0, 0), _mask(im, colour))
+    return out
+
+
+def slice_tiles(im, art=None):
+    """-> (tiles: hash -> PNG bytes, cells: (x, y) -> hash) for every non-empty tile.
+    Tiles are keyed by the flat image `im` but written from `art` (the textured image,
+    default im). Texture is a pure function of the flat tile, so keys, element ids and the
+    map JSON stay the same when only the surface art changes, and spaces aren't rebuilt."""
+    art = art or im
     tiles, cells = {}, {}
     w, h = im.width // T, im.height // T
     for y in range(h):
         for x in range(w):
-            tile = im.crop((x * T, y * T, (x + 1) * T, (y + 1) * T))
+            box = (x * T, y * T, (x + 1) * T, (y + 1) * T)
+            tile = im.crop(box)
             if not tile.getbbox():
                 continue
             raw = tile.tobytes()
             key = hashlib.sha1(raw).hexdigest()[:10]
             if key not in tiles:
                 buf = io.BytesIO()
-                tile.save(buf, "PNG", optimize=True)
+                art.crop(box).save(buf, "PNG", optimize=True)
                 tiles[key] = buf.getvalue()
             cells[(x, y)] = key
     return tiles, cells

@@ -19,6 +19,7 @@ Manifest entry (tiles.toml):
   h = 1        # tiles tall (optional, default 1)
   scale = 2    # nearest-neighbour upscale so 16 px packs land on the 32 px grid
   over = [{ sheet = "...", tile = 32, x = 0, y = 0 }]  # optional overlays, same size
+  shadow = true  # optional contact shadow drawn under the sprite (trees, lamps, cars ...)
 
 Run: uv run --with pillow python tools/campus-map/fetch_sprites.py
 """
@@ -32,7 +33,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
@@ -127,6 +128,25 @@ def _crop(pack_dir: Path, sheet: str, tile: int, x: int, y: int, w: int, h: int)
     return im.crop(box)
 
 
+SHADOW = (22, 44, 26, 78)
+
+
+def with_shadow(im: Image.Image) -> Image.Image:
+    """Put a hard-edged contact shadow under a prop: a flat ellipse at the base of its
+    visible pixels, nudged right (light from the upper left), drawn behind the sprite."""
+    box = im.getbbox()
+    if not box:
+        return im
+    x0, _, x1, y1 = box
+    rx = max(5.0, (x1 - x0) * 0.42)
+    ry = max(2.5, min(5.0, rx * 0.32))
+    cx, cy = (x0 + x1) / 2 + 2, y1 - ry - 0.5
+    out = Image.new("RGBA", im.size, (0, 0, 0, 0))
+    ImageDraw.Draw(out).ellipse((cx - rx, cy - ry, cx + rx, cy + ry), fill=SHADOW)
+    out.alpha_composite(im)
+    return out
+
+
 def slice_manifest(manifest: dict, packs: dict[str, Path], out_dir: Path) -> list[str]:
     """Slice every manifest entry. All-or-nothing: sprites are written to a temp dir and
     only swapped into out_dir once every entry succeeded. Other files in out_dir (legacy
@@ -145,6 +165,8 @@ def slice_manifest(manifest: dict, packs: dict[str, Path], out_dir: Path) -> lis
             scale = spec.get("scale", 1)
             if scale != 1:
                 im = im.resize((im.width * scale, im.height * scale), Image.NEAREST)
+            if spec.get("shadow"):
+                im = with_shadow(im)
             im.save(tmp_dir / f"{name}.png", optimize=True)
             names.append(name)
         for name in names:

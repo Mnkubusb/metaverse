@@ -105,6 +105,7 @@ def paint(features, width, height):
         else:
             fill_polygon(grid, f.points, f.kind)
     roads.classify(grid.road_image, grid)
+    grid.road_art = roads.texture(grid.road_image)  # flat image kept: classify and tile keys use it
     # buildings win over roads where OSM data overlaps
     for f in features:
         if f.kind == "building":
@@ -244,7 +245,7 @@ def free(grid, lay, x, y, w, h, keep_clear, ground=("grass", "lawn")):
 
 
 def place_ground(lay, grid, rng):
-    tiles, cells = roads.slice_tiles(grid.road_image)
+    tiles, cells = roads.slice_tiles(grid.road_image, getattr(grid, "road_art", None))
     lay.road_tiles = tiles
     for y in range(grid.height):
         for x in range(grid.width):

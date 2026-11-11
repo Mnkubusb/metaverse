@@ -54,3 +54,13 @@ def test_diagonal_road_cells_form_a_connected_walkable_path():
                 seen.add(n)
                 stack.append(n)
     assert (18, 18) in seen
+
+
+def test_texture_keeps_tile_keys_and_dedup():
+    im = roads.render([road([(0, 5.5), (20, 5.5)])], 20, 12)
+    art = roads.texture(im)
+    assert art.tobytes() != im.tobytes()  # something was textured
+    flat_tiles, flat_cells = roads.slice_tiles(im)
+    tiles, cells = roads.slice_tiles(im, art)
+    assert cells == flat_cells and tiles.keys() == flat_tiles.keys()
+    assert any(tiles[k] != flat_tiles[k] for k in tiles)

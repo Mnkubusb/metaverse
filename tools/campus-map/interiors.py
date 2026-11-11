@@ -48,13 +48,21 @@ def floor_wood():
 
 
 def floor_tile(a=(226, 226, 220), b=(206, 208, 204)):
+    """Checkerboard of 16 px ceramic tiles, each with a lit top-left edge, a shaded
+    bottom-right edge and a little glaze speckle, separated by grout lines."""
     im, d = new(1, 1, a + (255,))
-    d.rectangle((16, 0, 31, 15), fill=b)
-    d.rectangle((0, 16, 15, 31), fill=b)
-    d.line((0, 0, 31, 0), fill=(180, 182, 178))
-    d.line((0, 0, 0, 31), fill=(180, 182, 178))
-    d.line((16, 0, 16, 31), fill=(190, 192, 188))
-    d.line((0, 16, 31, 16), fill=(190, 192, 188))
+    for (x0, y0), c in (((0, 0), a), ((16, 0), b), ((0, 16), b), ((16, 16), a)):
+        d.rectangle((x0, y0, x0 + 15, y0 + 15), fill=c)
+        speckle(d, (x0 + 2, y0 + 2, x0 + 14, y0 + 14), c, 0.05, 5)
+        d.line((x0 + 1, y0 + 1, x0 + 14, y0 + 1), fill=shade(c, 12))
+        d.line((x0 + 1, y0 + 1, x0 + 1, y0 + 14), fill=shade(c, 12))
+        d.line((x0 + 1, y0 + 15, x0 + 15, y0 + 15), fill=shade(c, -12))
+        d.line((x0 + 15, y0 + 1, x0 + 15, y0 + 15), fill=shade(c, -12))
+    grout = shade(b, -26)
+    d.line((0, 0, 31, 0), fill=grout)
+    d.line((0, 0, 0, 31), fill=grout)
+    d.line((16, 0, 16, 31), fill=grout)
+    d.line((0, 16, 31, 16), fill=grout)
     return im
 
 

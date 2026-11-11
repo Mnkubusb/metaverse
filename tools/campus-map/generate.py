@@ -38,7 +38,7 @@ from pathlib import Path
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from campusmap import areas, emit, geo, layout, reach  # noqa: E402
+from campusmap import areas, emit, geo, layout, reach, textures  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 PUBLIC = ROOT / "apps/web/public/campus"
@@ -58,6 +58,7 @@ def main():
     rooms = areas.RoomBuilder(lay)
     area_defs = rooms.build()
 
+    textures.paint_ground(PUBLIC)
     emit.render_forest_blocks(PUBLIC, random.Random(3))
     for old in PUBLIC.glob("road-*.png"):
         old.unlink()

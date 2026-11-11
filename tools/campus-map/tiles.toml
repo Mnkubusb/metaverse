@@ -2,7 +2,8 @@
 # Kenney packs are 16 px (scale = 2); LPC is 32 px (scale = 1).
 # x/y are tile column/row in the sheet (0-based).
 
-# ---- ground: four grass variants the renderer scatters (spaceGrid.tsx groundTile), Tiny Town
+# ---- ground: four grass variants the renderer scatters (spaceGrid.tsx groundTile), Tiny Town.
+# generate.py repaints grass-a..d and flowerbed (campusmap/textures.py); these slices are the fallback.
 [grass-a]
 pack = "tiny-town"
 sheet = "Tilemap/tilemap_packed.png"
@@ -238,6 +239,7 @@ x = 31
 y = 10
 h = 2
 scale = 2
+shadow = true
 
 [tree-b]
 pack = "roguelike-modern-city"
@@ -247,6 +249,7 @@ x = 33
 y = 10
 h = 2
 scale = 2
+shadow = true
 
 [lamp]
 pack = "roguelike-modern-city"
@@ -256,6 +259,7 @@ x = 4
 y = 17
 h = 2
 scale = 2
+shadow = true
 
 [bench]
 pack = "roguelike-modern-city"
@@ -265,6 +269,7 @@ x = 17
 y = 16
 w = 2
 scale = 2
+shadow = true
 
 [car-h-green]
 pack = "roguelike-modern-city"
@@ -274,6 +279,7 @@ x = 32
 y = 17
 w = 2
 scale = 2
+shadow = true
 
 [car-h-gray]
 pack = "roguelike-modern-city"
@@ -283,6 +289,7 @@ x = 32
 y = 21
 w = 2
 scale = 2
+shadow = true
 
 [car-h-orange]
 pack = "roguelike-modern-city"
@@ -292,6 +299,7 @@ x = 32
 y = 25
 w = 2
 scale = 2
+shadow = true
 
 [car-v-green]
 pack = "roguelike-modern-city"
@@ -302,6 +310,7 @@ y = 18
 w = 2
 h = 2
 scale = 2
+shadow = true
 
 [car-v-gray]
 pack = "roguelike-modern-city"
@@ -312,6 +321,7 @@ y = 22
 w = 2
 h = 2
 scale = 2
+shadow = true
 
 [car-v-orange]
 pack = "roguelike-modern-city"
@@ -322,6 +332,7 @@ y = 26
 w = 2
 h = 2
 scale = 2
+shadow = true
 
 [bike]
 pack = "roguelike-modern-city"
@@ -330,6 +341,7 @@ tile = 16
 x = 14
 y = 24
 scale = 2
+shadow = true
 
 [bin]
 pack = "roguelike-modern-city"
@@ -338,6 +350,7 @@ tile = 16
 x = 12
 y = 14
 scale = 2
+shadow = true
 
 [cone]
 pack = "roguelike-modern-city"
@@ -346,6 +359,7 @@ tile = 16
 x = 14
 y = 18
 scale = 2
+shadow = true
 
 [flag]
 pack = "lpc-city-outside"
@@ -354,6 +368,7 @@ tile = 32
 x = 20
 y = 3
 h = 2
+shadow = true
 
 [gate-pillar]
 pack = "lpc-city-outside"
@@ -362,6 +377,7 @@ tile = 32
 x = 23
 y = 7
 h = 2
+shadow = true
 
 
 # ---- roof edges / corners (Kenney city 4x4 roof blocks; a=tan col 24, b=red col 0, c=grey col 8, d=light col 16)
