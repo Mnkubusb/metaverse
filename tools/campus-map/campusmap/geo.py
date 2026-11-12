@@ -2,6 +2,8 @@
 import math
 from dataclasses import dataclass
 
+from .corrections import COURTYARDS, DEFAULT_ROOF, QUADS, RING_DEPTH, ROOF
+
 BBOX = (82.1280, 22.1340, 82.1330, 22.1385)  # W, S, E, N
 METERS_PER_TILE = 3.0
 MARGIN = 2  # grass tiles around the bbox
@@ -77,6 +79,10 @@ class Feature:
     osm_id: int
     width: int = 0            # roads: tiles
     sub: str | None = None    # asphalt: parking | motorcycle_parking
+    yard: int = 0             # buildings: wing depth when the building rings a courtyard
+    style: str | None = None  # buildings: roof style (corrections.ROOF)
+    template: str | None = None  # buildings: interior template (areas.TEMPLATES); default from the name
+    storeys: int = 0          # buildings: floors with interiors (0 = corrections.FLOORS / 1)
 
 
 ROAD_WIDTH = {"service": 2, "residential": 3, "tertiary": 3}
@@ -98,6 +104,8 @@ def classify(tags):
     if amenity in ("parking", "motorcycle_parking"):
         return "asphalt", 0, amenity
     if amenity == "college" and tags.get("name"):
+        if display_name(tags["name"]) in QUADS:
+            return "lawn", 0, None
         return "paver", 0, None
     return None
 
@@ -116,6 +124,13 @@ def load_features(osm_json, proj):
         pts = [proj.to_tile(*nodes[n]) for n in e["nodes"] if n in nodes]
         if len(pts) < (2 if kind == "road" else 4):
             continue
-        feats.append(Feature(kind=kind, name=display_name(tags.get("name")), points=pts,
-                             osm_id=e["id"], width=width, sub=sub))
+        name = display_name(tags.get("name"))
+        f = Feature(kind=kind, name=name, points=pts, osm_id=e["id"], width=width, sub=sub)
+        if kind == "building":
+            f.style = ROOF.get(name, DEFAULT_ROOF)
+            f.yard = RING_DEPTH.get(name, 0)
+            for k, (n, w, s_, e_) in enumerate(COURTYARDS.get(name, [])):
+                ring = [proj.to_tile(lat, lon) for lat, lon in ((n, w), (n, e_), (s_, e_), (s_, w), (n, w))]
+                feats.append(Feature(kind="courtyard", name=name, points=ring, osm_id=e["id"] * 10 + k))
+        feats.append(f)
     return feats

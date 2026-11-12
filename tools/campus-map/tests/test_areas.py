@@ -32,9 +32,11 @@ def test_rooms_and_door_mats_both_ways():
     lay = campus()
     rb = areas.RoomBuilder(lay)
     defs = rb.build()
-    assert [a["id"] for a in defs] == ["in-civil-dept", "in-amarkantak-hostel"]
+    assert [a["id"] for a in defs] == ["in-civil-dept", "in-civil-dept-1f", "in-civil-dept-2f",
+                                       "in-amarkantak-hostel", "in-amarkantak-hostel-1f", "in-amarkantak-hostel-2f"]
     civil = defs[0]
-    assert (civil["width"], civil["height"]) == areas.SIZES["dept"]
+    w, h = areas.SIZES["dept"]
+    assert (civil["width"], civil["height"]) == (w + areas.STAIR_W, h)
     name, dx, dy = next(d for d in lay.doors if d[0] == "Civil Dept")
     mats = [p for p in lay.placements if p.key == "door-in" and p.area == "main" and p.to and p.to[0] == "in-civil-dept"]
     assert sorted((p.x, p.y) for p in mats) == [(dx, dy + 2), (dx + 1, dy + 2)]
@@ -75,3 +77,29 @@ def test_validate_checks_every_area_and_door(tmp_path):
     lay.placements.append(layout.Placement("in-wall-side", defs[0]["spawnX"], defs[0]["spawnY"], "in-civil-dept"))
     errs = emit.validate(lay, tmp_path, defs)
     assert any("in-civil-dept" in e for e in errs)
+
+
+def test_stairs_join_the_floors_both_ways():
+    lay = campus()
+    defs = areas.RoomBuilder(lay).build()
+    def stairs(key, area):
+        return [p for p in lay.placements if p.key == key and p.area == area]
+    assert all(p.to[0] == "in-civil-dept-1f" for p in stairs("stairs-up", "in-civil-dept"))
+    assert all(p.to[0] == "in-civil-dept" for p in stairs("stairs-down", "in-civil-dept-1f"))
+    # the middle floor has both ways, on different tiles
+    up1, down1 = stairs("stairs-up", "in-civil-dept-1f"), stairs("stairs-down", "in-civil-dept-1f")
+    assert len(up1) == 4 and len(down1) == 4
+    assert not {(p.x, p.y) for p in up1} & {(p.x, p.y) for p in down1}
+    assert all(p.to[0] == "in-civil-dept-2f" for p in up1)
+    assert not stairs("stairs-up", "in-civil-dept-2f")
+    assert "Second floor" in next(a for a in defs if a["id"] == "in-civil-dept-2f")["name"]
+    # upper floors have no way outside
+    assert not any(p.key == "door-out" and p.area in ("in-civil-dept-1f", "in-civil-dept-2f") for p in lay.placements)
+
+
+def test_ring_buildings_get_an_open_courtyard():
+    lay = layout.build([Feature(kind="building", name="Amarkantak Hostel", points=rect(2, 2, 22, 18), osm_id=2, yard=3),
+                        Feature(kind="road", name=None, points=[(-2, 22.5), (32, 22.5)], osm_id=50, width=3)],
+                       30, 26, random.Random(1))
+    roofs = {(p.x, p.y) for p in lay.placements if p.key.startswith("roof-")}
+    assert (12, 10) not in roofs and (5, 3) in roofs

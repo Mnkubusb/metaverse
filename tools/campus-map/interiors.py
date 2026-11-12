@@ -6,6 +6,7 @@ the placement list.
 Every interior is its own "area" (see the `areas` column): a small map with its own walkable
 grid. Doors are placements with a target area/tile; stepping on one moves the player there.
 """
+import math
 import random
 
 from PIL import Image, ImageDraw
@@ -458,6 +459,22 @@ def stairs():
     return im
 
 
+def stair_mat(up):
+    """One walkable tile of a staircase: lit treads with an arrow showing which way it goes."""
+    im, d = new(1, 1, (150, 150, 146, 255))
+    for y in range(0, 32, 8):
+        d.rectangle((0, y, 31, y + 5), fill=(196, 196, 190))
+        d.line((0, y + 6, 31, y + 6), fill=(112, 112, 108))
+    d.rectangle((0, 0, 1, 31), fill=(110, 72, 44))
+    d.rectangle((30, 0, 31, 31), fill=(110, 72, 44))
+    c = (60, 140, 90) if up else (190, 110, 50)
+    if up:
+        d.polygon([(16, 6), (9, 15), (13, 15), (13, 25), (19, 25), (19, 15), (23, 15)], fill=c, outline=OUTLINE)
+    else:
+        d.polygon([(16, 26), (9, 17), (13, 17), (13, 7), (19, 7), (19, 17), (23, 17)], fill=c, outline=OUTLINE)
+    return im
+
+
 def locker():
     im, d = new(1, 1)
     d.rectangle((3, 2, 28, 30), fill=(80, 130, 180), outline=OUTLINE)
@@ -478,6 +495,104 @@ def dumbbells():
     return im
 
 
+def cinema_screen(w=10, h=3):
+    """Big screen on the back wall; watch parties play here (the web client overlays the video)."""
+    im, d = new(w, h)
+    d.rectangle((0, 0, w * T - 1, h * T - 1), fill=(30, 26, 34), outline=OUTLINE)
+    d.rectangle((8, 6, w * T - 9, h * T - 10), fill=(214, 222, 236))
+    d.rectangle((8, 6, w * T - 9, 12), fill=(236, 240, 248))
+    for x in range(0, w * T, 6):  # curtain fringe
+        d.rectangle((x, h * T - 8, x + 3, h * T - 1), fill=(150, 30, 40))
+    d.rectangle((0, 0, 6, h * T - 1), fill=(150, 30, 40))
+    d.rectangle((w * T - 7, 0, w * T - 1, h * T - 1), fill=(150, 30, 40))
+    return im
+
+
+def popcorn_counter():
+    im, d = new(4, 1)
+    d.rectangle((0, 6, 127, 31), fill=(176, 40, 46), outline=OUTLINE)
+    d.rectangle((2, 6, 125, 11), fill=(232, 210, 120))
+    for x in (12, 40):
+        d.rectangle((x, 0, x + 16, 10), fill=(250, 250, 240), outline=OUTLINE)
+        for k in range(4):
+            d.ellipse((x + 2 + k * 3, 0, x + 6 + k * 3, 4), fill=(250, 230, 150))
+    d.rectangle((76, 0, 92, 10), fill=(80, 60, 50), outline=OUTLINE)  # drinks machine
+    d.rectangle((100, 2, 118, 10), fill=(60, 140, 200), outline=OUTLINE)
+    return im
+
+
+def shop_front(colour, sign):
+    """A mall shop: shutter frame, lit window display, coloured sign band."""
+    im, d = new(3, 2)
+    d.rectangle((0, 0, 95, 63), fill=(206, 206, 210), outline=OUTLINE)
+    d.rectangle((0, 0, 95, 14), fill=colour)
+    d.text((8, 2), sign, fill=WHITE)
+    d.rectangle((6, 20, 89, 58), fill=(230, 238, 246), outline=OUTLINE)
+    for x in (14, 40, 66):
+        d.rectangle((x, 30, x + 14, 52), fill=shade(colour, 30), outline=OUTLINE)
+    return im
+
+
+def ticket_counter():
+    im, d = new(4, 1)
+    d.rectangle((0, 4, 127, 31), fill=(150, 104, 66), outline=OUTLINE)
+    for x in (6, 38, 70, 102):
+        d.rectangle((x, 0, x + 20, 12), fill=(150, 200, 230), outline=OUTLINE)
+        d.rectangle((x + 4, 14, x + 16, 20), fill=(240, 236, 220))
+    return im
+
+
+def departure_board():
+    im, d = new(4, 1)
+    d.rectangle((0, 2, 127, 29), fill=(20, 20, 24), outline=OUTLINE)
+    rows = ["12409 GONDWANA  2", "18237 CG EXPRES 4", "12069 JANSHATAB 1"]
+    for k, t in enumerate(rows):
+        d.text((4, 3 + k * 8), t, fill=(250, 190, 40))
+    return im
+
+
+def idol():
+    """Goddess murti in the sanctum: red chunari, gold crown, marigold garland, oil lamps."""
+    im, d = new(2, 2)
+    d.rectangle((4, 34, 59, 62), fill=(200, 170, 120), outline=OUTLINE)  # pedestal
+    d.rectangle((6, 36, 57, 40), fill=(226, 196, 140))
+    d.polygon([(32, 6), (14, 30), (14, 40), (50, 40), (50, 30)], fill=(200, 30, 40), outline=OUTLINE)
+    d.ellipse((24, 10, 40, 26), fill=(40, 30, 30), outline=OUTLINE)
+    d.polygon([(22, 12), (32, 0), (42, 12)], fill=(240, 196, 60), outline=OUTLINE)
+    for k in range(7):
+        a = math.radians(200 + k * 23)
+        d.ellipse((32 + math.cos(a) * 14 - 3, 28 + math.sin(a) * 10 - 3, 32 + math.cos(a) * 14 + 3, 28 + math.sin(a) * 10 + 3),
+                  fill=(250, 150, 30))
+    for x in (8, 52):
+        d.ellipse((x - 3, 44, x + 3, 50), fill=(250, 220, 90), outline=OUTLINE)
+    return im
+
+
+def temple_bell():
+    im, d = new(1, 1)
+    d.line((16, 0, 16, 10), fill=OUTLINE, width=2)
+    d.pieslice((6, 8, 26, 30), 180, 360, fill=(222, 178, 64), outline=OUTLINE)
+    d.rectangle((6, 18, 26, 21), fill=(222, 178, 64), outline=OUTLINE)
+    return im
+
+
+def diya_row():
+    im, d = new(2, 1)
+    d.rectangle((2, 20, 61, 26), fill=(150, 104, 66), outline=OUTLINE)
+    for x in range(8, 60, 10):
+        d.ellipse((x - 4, 14, x + 4, 22), fill=(190, 110, 60), outline=OUTLINE)
+        d.ellipse((x - 2, 6, x + 2, 14), fill=(255, 200, 60))
+    return im
+
+
+def railing():
+    im, d = new(1, 1)
+    d.rectangle((0, 12, 31, 15), fill=(196, 160, 60), outline=OUTLINE)
+    d.rectangle((2, 15, 4, 31), fill=(150, 120, 50))
+    d.rectangle((27, 15, 29, 31), fill=(150, 120, 50))
+    return im
+
+
 # --------------------------------------------------------------------------- catalogue
 
 def catalogue(element):
@@ -491,6 +606,8 @@ def catalogue(element):
     element("floor-stage", floor_stage(), "floor", False)
     element("door-in", door_mat("in"), "floor", False)
     element("door-out", door_mat("out"), "floor", False)
+    element("stairs-up", stair_mat(True), "floor", False)
+    element("stairs-down", stair_mat(False), "floor", False)
 
     element("in-wall-back", wall_back(), "wall", True)
     element("in-wall-back-blue", wall_back((206, 222, 232)), "wall", True)
@@ -536,6 +653,20 @@ def catalogue(element):
     element("clock", clock(), "topObjects", False)
     element("tv", tv(), "topObjects", False)
 
+    element("cinema-screen", cinema_screen(), "topObjects", False)
+    element("projector-screen", cinema_screen(6, 2), "topObjects", False)
+    element("popcorn-counter", popcorn_counter(), "wall", True)
+    element("shop-food", shop_front((200, 70, 50), "FOOD COURT"), "topObjects", False)
+    element("shop-fashion", shop_front((150, 60, 160), "FASHION"), "topObjects", False)
+    element("shop-games", shop_front((50, 120, 200), "GAME ZONE"), "topObjects", False)
+    element("shop-books", shop_front((40, 140, 90), "BOOKS"), "topObjects", False)
+    element("ticket-counter", ticket_counter(), "wall", True)
+    element("departure-board", departure_board(), "topObjects", False)
+    element("idol", idol(), "wall", True)
+    element("temple-bell", temple_bell(), "topObjects", False)
+    element("diya-row", diya_row(), "objects", True)
+    element("railing", railing(), "objects", True)
+
 
 # --------------------------------------------------------------------------- rooms
 
@@ -546,7 +677,7 @@ class Room:
     big tiled elements rather than one per tile, to keep the number of placements down.
     """
 
-    def __init__(self, area_id, name, w, h, floor="floor-tile", wall="in-wall-back", put=None, tiled=None):
+    def __init__(self, area_id, name, w, h, floor="floor-tile", wall="in-wall-back", put=None, tiled=None, exit=True):
         self.id = area_id
         self.name = name
         self.w, self.h = w, h
@@ -555,8 +686,11 @@ class Room:
         self.spawn = (w // 2 - 1, h - 2)
         self.put(tiled(floor, w, h), 0, 0)
         self.put(tiled(wall, w, 2), 0, 0)
-        self.put(tiled("in-wall-front", self.exit_x, 1), 0, h - 1)
-        self.put(tiled("in-wall-front", w - self.exit_x - 2, 1), self.exit_x + 2, h - 1)
+        if exit:
+            self.put(tiled("in-wall-front", self.exit_x, 1), 0, h - 1)
+            self.put(tiled("in-wall-front", w - self.exit_x - 2, 1), self.exit_x + 2, h - 1)
+        else:  # upper floors: a solid front wall, the only way out is the stairs
+            self.put(tiled("in-wall-front", w, 1), 0, h - 1)
         self.put(tiled("in-wall-side", 1, h - 3), 0, 2)
         self.put(tiled("in-wall-side", 1, h - 3), w - 1, 2)
         # windows and a clock along the back wall
@@ -717,6 +851,7 @@ def auditorium(r):
         for x in range(1, r.w - 1):
             r.put("floor-stage", x, y)
     r.put("podium", r.w // 2, 2)
+    r.put("projector-screen", r.w // 2 - 3, 0)
     r.put("poster-red", 2, 0)
     r.put("poster-blue", r.w - 3, 0)
     r.put("plant", 1, 3)
@@ -752,8 +887,63 @@ def dispensary(r):
     r.put("water-cooler", r.w - 3, r.h - 2)
 
 
+def cinema(r):
+    """Multiplex audience hall: wide screen on the back wall, stepped rows of red seats, aisle in the middle."""
+    r.put("cinema-screen", r.w // 2 - 5, 0)
+    for y in range(5, r.h - 3, 2):
+        for x in (1, 4, r.w - 7, r.w - 4):
+            r.put("seat-row", x, y)
+    r.put("plant", 1, 3)
+    r.put("plant", r.w - 2, 3)
+
+
+def mall(r):
+    """Mall floor: shops along the back wall, a popcorn counter, food court tables."""
+    shops = ["shop-food", "shop-fashion", "shop-games", "shop-books"]
+    for k, x in enumerate(range(1, r.w - 3, 4)):
+        r.put(shops[k % len(shops)], x, 0)
+    r.put("popcorn-counter", 1, 3)
+    for y in range(6, r.h - 4, 3):
+        for x in range(2, r.w - 4, 5):
+            r.put("table-round", x, y)
+            r.put("chair-red", x - 1, y + 1)
+            r.put("chair-red", x + 2, y + 1)
+    r.put("plant", 1, r.h - 2)
+    r.put("plant", r.w - 2, r.h - 2)
+
+
+def station(r):
+    """Waiting hall: ticket counters, departure board, rows of benches, a tea stall counter."""
+    r.put("departure-board", r.w // 2 - 2, 0)
+    r.put("ticket-counter", 1, 2)
+    r.put("ticket-counter", 5, 2)
+    r.put("counter", r.w - 4, 2)
+    for y in range(5, r.h - 3, 2):
+        for x in range(2, r.w - 4, 4):
+            r.put("bench-long", x, y)
+    r.put("water-cooler", r.w - 2, r.h - 2)
+    r.put("notice-board", r.w - 4, r.h - 4)
+
+
+def temple(r):
+    """Garbhagriha: the goddess on the back wall, bells, lamps, a railing for the queue."""
+    r.put("idol", r.w // 2 - 1, 2)
+    for x in (r.w // 2 - 4, r.w // 2 + 3):
+        r.put("temple-bell", x, 2)
+        r.put("diya-row", x - 1, 4)
+    for x in range(2, r.w - 2):
+        if abs(x - r.w // 2) > 1:
+            r.put("railing", x, 6)
+    r.put("plant", 1, r.h - 2)
+    r.put("plant", r.w - 2, r.h - 2)
+
+
 TEMPLATES = {
     "classroom": classroom,
+    "cinema": cinema,
+    "mall": mall,
+    "station": station,
+    "temple": temple,
     "lab": computer_lab,
     "dept": dept,
     "library": library,

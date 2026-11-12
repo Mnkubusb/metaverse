@@ -4,7 +4,8 @@ from dataclasses import dataclass, field
 
 from .autotile import ring_variant
 from . import roads
-from .raster import Grid, bbox_of, fill_polygon
+from .props import PROP_LAYERS, PROP_SIZES
+from .raster import Grid, bbox_of, fill_polygon, stroke_polyline
 
 # w, h in tiles for every sliced sprite (see tools/campus-map/tiles.toml)
 SPRITE_SIZES = {
@@ -24,8 +25,13 @@ SPRITE_SIZES = {
     "forest-a": (3, 3), "forest-b": (3, 3), "forest-c": (3, 3),  # canopy blocks rendered by emit
     # hand-made boards kept from the previous map; the notices API finds them by element id
     "notice-board": (2, 2), "sign-welcome": (3, 2), "sign-hostels": (3, 2),
+    # legacy hand-drawn props reused by the Bilaspur place maps
+    "auto": (2, 1), "cow": (2, 1), "tea-stall": (3, 2), "scooter-blue": (1, 1), "scooter-red": (1, 1),
+    "fountain": (3, 3), "hedge": (1, 1),
+    **PROP_SIZES,
 }
 
+BLOCKING = {"water", "rail", "fence"}
 FLOOR = {"grass-a", "grass-b", "grass-c", "grass-d", "lawn", "flowerbed", "court", "paver", "asphalt", "sidewalk",
          "road-h", "road-v", "road-x", "road-plain", "mark-p", "mark-bike"}
 TOP = {"gate-arch"}
@@ -70,13 +76,16 @@ class Layout:
     doors: list = field(default_factory=list)
     signs: dict = field(default_factory=dict)
     footprints: dict = field(default_factory=dict)  # building name -> (w, h) of its bbox, for interiors
+    building_meta: dict = field(default_factory=dict)  # building name -> (template, storeys) when set by a place plan
     road_tiles: dict = field(default_factory=dict)  # pixel-hash -> PNG bytes of the rendered road tiles
 
     def element(self, key, w=None, h=None, image_url=None):
         if key not in self.elements:
             w, h = (w, h) if w else SPRITE_SIZES[key]
-            layer = "floor" if key in FLOOR or key.startswith("road:") else "topObjects" if key in TOP else \
-                "wall" if key.startswith(("wall-", "wallbase-", "window-", "roof-", "forest-")) else "objects"
+            layer = "floor" if key in FLOOR or key.startswith("road:") else \
+                "topObjects" if key in TOP or key.startswith("gate-arch") else \
+                "wall" if key.startswith(("wall-", "wallbase-", "window-", "roof-", "forest-", "block-")) else \
+                PROP_LAYERS.get(key, "objects")
             static = key not in NON_STATIC_OBJECTS and layer not in ("floor", "topObjects")
             self.elements[key] = ElementDef(key, image_url or f"/campus/{key}.png", w, h, static, layer)
         return self.elements[key]
@@ -95,22 +104,43 @@ def slug(name):
 def paint(features, width, height):
     """Rasterize features into a Grid. Later kinds win: ground < road < building."""
     grid = Grid(width, height)
-    order = {"lawn": 0, "court": 0, "paver": 0, "asphalt": 0, "road": 1, "building": 2}
+    order = {"lawn": 0, "court": 0, "paver": 0, "asphalt": 0, "road": 1, "building": 2, "courtyard": 3,
+             **{k: 1 for k in roads.TERRAIN_KINDS}}
     grid.road_image = roads.render(features, width, height)
     for f in sorted(features, key=lambda f: order[f.kind]):
-        if f.kind == "road":
-            continue  # painted at pixel level below so diagonals stay diagonal
+        if f.kind in ("road", "courtyard") or f.kind in roads.TERRAIN_KINDS:
+            continue  # painted at pixel level (roads.render) so diagonals stay diagonal; courtyards: last
         elif f.kind == "building":
             fill_polygon(grid, f.points, f"building:{f.osm_id}")
         else:
             fill_polygon(grid, f.points, f.kind)
     roads.classify(grid.road_image, grid)
+    roads.classify_terrain(grid.road_image, grid)
     grid.road_art = roads.texture(grid.road_image)  # flat image kept: classify and tile keys use it
     # buildings win over roads where OSM data overlaps
     for f in features:
         if f.kind == "building":
             fill_polygon(grid, f.points, f"building:{f.osm_id}")
+    carve_courtyards(grid, features)
     return grid
+
+
+def carve_courtyards(grid, features):
+    """Open courtyards inside buildings (corrections.COURTYARDS and RING_DEPTH) back to grass."""
+    for f in features:
+        if f.kind == "courtyard":
+            probe = Grid(grid.width, grid.height, fill="")
+            fill_polygon(probe, f.points, "yard")
+            for (x, y) in probe.find("yard"):
+                if (grid.get(x, y) or "").startswith("building:"):
+                    grid.set(x, y, "grass")
+        elif f.kind == "building" and f.yard:
+            tag = f"building:{f.osm_id}"
+            cells = set(grid.find(tag))
+            d = f.yard
+            for (x, y) in cells:
+                if all((x + dx, y + dy) in cells for dx in range(-d, d + 1) for dy in range(-d, d + 1)):
+                    grid.set(x, y, "grass")
 
 
 def building_cells(grid, osm_id):
@@ -257,13 +287,24 @@ def place_ground(lay, grid, rng):
             # grass: the renderer paints the base itself (spaceGrid.tsx GROUND_TILES)
             # building cells get no floor: the wall/roof covers them
     for (x, y), key in sorted(cells.items()):
-        if grid.get(x, y) in ("road", "sidewalk", "grass"):
+        if grid.get(x, y) in ("road", "sidewalk", "grass", *roads.TERRAIN_KINDS):
             lay.put(f"road:{key}", x, y, w=1, h=1, image_url=f"/campus/road-{key}.png")
+    # water, tracks and fences block: invisible wall strips over them, one per horizontal run
+    for y in range(grid.height):
+        x = 0
+        while x < grid.width:
+            if grid.get(x, y) in BLOCKING:
+                x0 = x
+                while x < grid.width and grid.get(x, y) in BLOCKING:
+                    x += 1
+                lay.put(f"block-{x - x0}x1", x0, y, w=x - x0, h=1, image_url="/campus/block.png")
+            else:
+                x += 1
 
 
-def place_props(lay, grid, features, rng):
+def place_props(lay, grid, features, rng, occupied=None, forest=True):
     keep_clear = approach_cells(lay)
-    occupied = set()
+    occupied = set() if occupied is None else occupied
 
     def take(key, x, y):
         w, h = SPRITE_SIZES[key]
@@ -318,6 +359,8 @@ def place_props(lay, grid, features, rng):
             lay.put(mark, x0, y0)
 
     # forest: every grass cell at least FOREST_MARGIN tiles from anything else gets dense trees
+    if not forest:
+        return place_door_props(lay, grid, can, take)
     open_cells = {(x, y) for y in range(grid.height) for x in range(grid.width) if grid.cells[y][x] != "grass"}
     near = set(open_cells)
     frontier = set(open_cells)
@@ -340,6 +383,10 @@ def place_props(lay, grid, features, rng):
         if can(key, tx, ty - 1):
             take(key, tx, ty - 1)
 
+    place_door_props(lay, grid, can, take)
+
+
+def place_door_props(lay, grid, can, take):
     # bins next to doors
     for (_, dx, dy) in lay.doors:
         if can("bin", dx + 2, dy + 1):
@@ -414,16 +461,74 @@ def spawn_fallback(lay, grid):
 
 # ----------------------------------------------------------------------------- entry point
 
-def build(features, width, height, rng):
+def fill_houses(grid, rng, margin=2, first_id=9_000_000, reserved=()):
+    """City blocks: pack small houses (3-4 wide, 3 tall, one-tile lanes) into the open grass
+    that is at least `margin` tiles from anything else. Returns their building features."""
+    from .geo import Feature
+    busy = {(x, y) for y in range(grid.height) for x in range(grid.width) if grid.cells[y][x] != "grass"} | set(reserved)
+    near = set(busy)
+    for _ in range(margin):
+        near |= {(x + dx, y + dy) for (x, y) in near for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))}
+    feats = []
+    y = 1
+    while y + 3 < grid.height - 1:
+        x = 1 + rng.randint(0, 2)
+        while x + 3 < grid.width - 1:
+            w = rng.choice((3, 3, 4, 5))
+            cells = [(x + dx, y + dy) for dx in range(w) for dy in range(3)]
+            if all(c not in near and grid.inside(*c) for c in cells) and rng.random() < 0.85:
+                fid = first_id + len(feats)
+                for c in cells:
+                    grid.set(*c, f"building:{fid}")
+                feats.append(Feature(kind="building", name=None, points=[], osm_id=fid,
+                                     style=rng.choice("abcd")))
+                x += w + 1
+            else:
+                x += 1
+        y += 4
+    return feats
+
+
+def place_plan_props(lay, grid, plan, occupied):
+    for key, x, y in plan.props:
+        w, h = SPRITE_SIZES[key]
+        for dx in range(w):
+            for dy in range(h):
+                occupied.add((x + dx, y + dy))
+        lay.put(key, x, y)
+    if plan.gate:
+        key, x, y, w, text = plan.gate
+        lay.put(key, x, y, w=w, h=2, image_url=f"/campus/{key}.png")
+        lay.signs[key] = text
+    for key, text, x, y, w in plan.signs:
+        lay.put(key, x, y, w=w, h=1, image_url=f"/campus/{key.replace(':', '-')}.png")
+        lay.signs[key] = text
+
+
+def build(features, width, height, rng, plan=None):
     lay = Layout(width, height)
     grid = paint(features, width, height)
     buildings = [f for f in features if f.kind == "building"]
+    if plan and plan.filler == "houses":
+        reserved = set()
+        for key, x, y in plan.props + [(s[0], s[2], s[3]) for s in plan.signs]:
+            w, h = SPRITE_SIZES.get(key, (4, 1))
+            reserved |= {(x + dx, y + dy) for dx in range(-1, w + 1) for dy in range(-1, h + 1)}
+        reserved |= {(plan.spawn[0] + dx, plan.spawn[1] + dy) for dx in range(-2, 3) for dy in range(-2, 3)}
+        buildings += fill_houses(grid, rng, reserved=reserved)
     open_set = open_cells(grid) if grid.find("road") else None
     for i, f in enumerate(sorted(buildings, key=lambda f: f.osm_id)):
-        place_building(lay, grid, f, STYLES[i % len(STYLES)], rng, open_set)
+        place_building(lay, grid, f, f.style or STYLES[i % len(STYLES)], rng, open_set)
+        if f.name and (f.template or f.storeys):
+            lay.building_meta[f.name] = (f.template, f.storeys or 1)
     place_ground(lay, grid, rng)
-    place_props(lay, grid, features, rng)
-    if grid.find("road"):
+    occupied = set()
+    if plan:
+        place_plan_props(lay, grid, plan, occupied)
+    place_props(lay, grid, features, rng, occupied, forest=not plan or plan.filler == "forest")
+    if plan:
+        lay.spawn = plan.spawn
+    elif grid.find("road"):
         main_gate(lay, grid)
     else:
         lay.spawn = spawn_fallback(lay, grid)

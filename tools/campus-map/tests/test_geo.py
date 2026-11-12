@@ -59,7 +59,7 @@ def test_load_features_classifies_tags():
     assert by_id[14].kind == "court"
     assert by_id[15].kind == "asphalt" and by_id[15].sub == "parking"
     assert by_id[16].kind == "asphalt" and by_id[16].sub == "motorcycle_parking"
-    assert by_id[17].kind == "paver"
+    assert by_id[17].kind == "lawn"  # planted quadrangle (corrections.QUADS)
     assert 18 not in by_id and 19 not in by_id
 
 

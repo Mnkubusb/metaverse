@@ -56,6 +56,26 @@ def render_arch(text, w_tiles, h_tiles):
     return _board(text, w_tiles, h_tiles, ARCH_BG, SIGN_EDGE)
 
 
+def render_station_board(text, w_tiles, h_tiles):
+    """Indian Railways station board: yellow, black lettering."""
+    im = Image.new("RGBA", (w_tiles * T, h_tiles * T), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    d.rectangle((0, 2, im.width - 1, im.height - 3), fill=(246, 206, 46, 255), outline=(30, 30, 30, 255), width=2)
+    d.fontmode = "1"
+    f = _fit(d, text, im.width - 10)
+    x0, y0, x1, y1 = d.textbbox((0, 0), text, font=f)
+    d.text(((im.width - (x1 - x0)) / 2 - x0, (im.height - (y1 - y0)) / 2 - y0), text, font=f, fill=(20, 20, 20, 255))
+    return im
+
+
+def render_label(key, text, w, h):
+    if key.startswith("gate-arch"):
+        return render_arch(text, w, h)
+    if key.startswith("board:"):
+        return render_station_board(text, w, h)
+    return render_sign(text, w, h)
+
+
 def element_id(key):
     return ELEMENT_PREFIX + key.replace(":", "-")
 
@@ -163,8 +183,11 @@ def render_preview(lay, public_campus_dir, area_id="main", size=None):
         canvas.alpha_composite(ground_tint(size[0], size[1]))
     cache = {}
     order = {"floor": 0, "wall": 1, "objects": 2, "topObjects": 3}
+    # floors keep their placement order (rooms lay the floor first, then mats and stairs on it),
+    # like the web renderer; everything else is sorted by its bottom edge
     placed = sorted((p for p in lay.placements if p.area == area_id),
-                    key=lambda p: (order[lay.elements[p.key].layer], p.y + lay.elements[p.key].height))
+                    key=lambda p: (order[lay.elements[p.key].layer],
+                                   0 if lay.elements[p.key].layer == "floor" else p.y + lay.elements[p.key].height))
     for p in placed:
         e = lay.elements[p.key]
         if p.key not in cache:

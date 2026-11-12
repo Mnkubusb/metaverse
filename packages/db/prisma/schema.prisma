@@ -29,6 +29,24 @@ model User {
   memberships SpaceMember[]
   avatar      Avatar?       @relation(fields: [avatarId], references: [id])
   noticePosts NoticePost[]
+  dmsSent     DirectMessage[] @relation("dmSender")
+  dmsReceived DirectMessage[] @relation("dmRecipient")
+}
+
+// A one-to-one message between two players. Delivered live over the WebSocket when the
+// recipient is connected, and loaded from here otherwise.
+model DirectMessage {
+  id          String    @id @default(cuid())
+  senderId    String
+  recipientId String
+  body        String
+  createdAt   DateTime  @default(now())
+  readAt      DateTime?
+  sender      User      @relation("dmSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient   User      @relation("dmRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([senderId, recipientId, createdAt])
+  @@index([recipientId, readAt])
 }
 
 model Space {
@@ -50,6 +68,8 @@ model Space {
   areas       Json            @default("[]")
   // Map.version this space was built from, so the seed can rebuild it when the map changes
   mapVersion  String?
+  // Map this space was created from (null for blank spaces and spaces made before this column)
+  mapId       String?
   createdAt   DateTime        @default(now())
   creatorId   String
   creator     User            @relation(fields: [creatorId], references: [id])
