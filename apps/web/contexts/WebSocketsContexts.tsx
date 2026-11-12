@@ -152,6 +152,8 @@ export const WebSocketProvider = ({ children, spaceId }: {
   const boardSeq = useRef(0);
   const dmHandlers = useRef<Set<DmHandler>>(new Set());
   const [dmError, setDmError] = useState('');
+  // why the server refused or failed the last join (shown on the connecting screen)
+  const [joinError, setJoinError] = useState('');
   const [watching, setWatching] = useState<Map<string, WatchState>>(new Map());
   const selfIdRef = useRef('');
   const everConnected = useRef(false);
@@ -179,6 +181,7 @@ export const WebSocketProvider = ({ children, spaceId }: {
     if (payload?.userId && payload?.username) namesRef.current.set(payload.userId, payload.username);
     switch (type) {
       case 'space-joined': {
+        setJoinError('');
         setSelfId(payload.userId);
         selfIdRef.current = payload.userId;
         setSelfAvatar(payload.avatar ?? null);
@@ -214,6 +217,10 @@ export const WebSocketProvider = ({ children, spaceId }: {
         break;
       case 'rtc':
         rtcHandlers.current.forEach((h) => h(payload.from, payload.data));
+        break;
+      case 'join-rejected':
+        setJoinError(payload?.reason === 'private' ? 'This space is private. Ask the owner for an invite link.'
+          : `The server couldn't open this space${payload?.detail ? ` (${payload.detail})` : ''}. Retrying…`);
         break;
       case 'dm':
         setDmError('');
@@ -403,6 +410,7 @@ export const WebSocketProvider = ({ children, spaceId }: {
       <div className="flex h-dvh flex-col items-center justify-center gap-2 text-gray-500">
         <div className="size-8 animate-spin rounded-full border-b-2 border-t-2 border-blue-500" />
         <p>{everConnected.current ? 'Connection lost. Reconnecting…' : 'Connecting to space...'}</p>
+        {joinError && <p role="alert" className="max-w-md text-center text-sm text-red-500">{joinError}</p>}
         {!everConnected.current && <p className="text-xs text-gray-400">A sleeping server can take up to a minute to wake up.</p>}
       </div>
     )}

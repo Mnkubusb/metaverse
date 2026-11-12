@@ -13,6 +13,14 @@ const HEARTBEAT_TIMEOUT = 10_000;  // 10 seconds to pong
 // One tile per step; the client animates each step over ~140ms, so this only stops floods.
 const MIN_MOVE_INTERVAL = 60;
 
+// Fail a join step that hangs (an unreachable database or Redis) instead of waiting forever.
+function withTimeout<T>(step: string, work: Promise<T>, ms = 12_000): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(`timed out ${step}`)), ms);
+        work.then((v) => { clearTimeout(timer); resolve(v); }, (e) => { clearTimeout(timer); reject(e); });
+    });
+}
+
 function getRandomId(length: number) {
     let result = '';
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -109,7 +117,8 @@ export class User {
                         return;
                     }
                     const rooms = RoomManager.getInstance();
-                    const [grid, dbUser, chat, access] = await Promise.all([
+                    try {
+                    const [grid, dbUser, chat, access] = await withTimeout("loading the space from the database", Promise.all([
                         rooms.getGrid(spaceId),
                         client.user.findUnique({
                             where: { id: userId },
@@ -120,7 +129,7 @@ export class User {
                             where: { id: spaceId },
                             select: { visibility: true, members: { where: { userId }, select: { role: true } } },
                         }),
-                    ]);
+                    ]));
                     // Same rule as apps/http/src/access.ts: private spaces are members-only
                     if (access && access.visibility === "Private" && access.members.length === 0) {
                         this.send({ type: "join-rejected", payload: { reason: "private" } });
@@ -140,7 +149,7 @@ export class User {
                     this.area = MAIN_AREA;
                     this.x = spawn.x;
                     this.y = spawn.y;
-                    await rooms.addUser(spaceId, this);
+                    await withTimeout("joining the room (Redis)", rooms.addUser(spaceId, this));
                     this.send({
                         type: "space-joined",
                         payload: {
@@ -156,6 +165,14 @@ export class User {
                         type: "user-joined",
                         payload: { area: this.area, x: this.x, y: this.y, userId: this.userId, username: this.username, avatar: this.avatar }
                     }, this, spaceId);
+                    } catch (err) {
+                        // a database or Redis failure: say so instead of leaving the client waiting
+                        console.error("join failed", err);
+                        const e = err as Error;
+                        const detail = `${e?.name ?? "Error"}: ${String(e?.message ?? err)}`.replace(/\w+:\/\/\S+/g, "<url>").slice(0, 160);
+                        this.send({ type: "join-rejected", payload: { reason: "server-error", detail } });
+                        this.ws.close();
+                    }
                     break;
                 }
                 case "chat": {
