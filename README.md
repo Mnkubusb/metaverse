@@ -172,6 +172,8 @@ ALLOWED_ORIGIN=https://<your-web-app>.vercel.app   # comma-separate extra origin
 ```
 
 The API is then served at `https://<api-project>.vercel.app/api/v1`.
+Each API deploy runs `prisma migrate deploy` first (see `apps/http/vercel.json`), so schema changes reach
+the database with the code that needs them. Seeding stays manual: `pnpm db:seed` rebuilds spaces from the maps.
 
 **3a. WebSocket server on Vercel.** Create a Redis database first (Vercel dashboard → Storage → Upstash
 Redis, or any Redis with a `rediss://` URL). Then New Project → import this repo → Root Directory `apps/ws`
