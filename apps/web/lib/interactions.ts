@@ -36,31 +36,46 @@ export function findInteraction(elements: spaceElement[], x: number, y: number):
   return best?.hit ?? null;
 }
 
-// Screens that host watch parties (Netflix-and-chill): the multiplex screen, the auditorium's
-// projector, hostel common-room TVs and the riverfront's open-air screen.
-const SCREEN_ELEMENTS: Record<string, string> = {
-  'campus-cinema-screen': 'cinema screen',
-  'campus-projector-screen': 'projector screen',
-  'campus-tv': 'TV',
-  'campus-led-screen': 'open-air screen',
+// Screens that host watch parties: the multiplex screen, the auditorium's projector, hostel
+// common-room TVs and the riverfront's open-air screen. `inset` is the picture area inside the
+// sprite in art pixels (left, top, right, bottom): the video is laid over exactly that rectangle.
+// Keep in sync with cinema_screen() / tv() in tools/campus-map/interiors.py and led_screen() in props.py.
+const SCREEN_ELEMENTS: Record<string, { label: string; inset: [number, number, number, number] }> = {
+  'campus-cinema-screen': { label: 'cinema screen', inset: [8, 8, 8, 14] },
+  'campus-projector-screen': { label: 'projector screen', inset: [8, 8, 8, 14] },
+  'campus-tv': { label: 'TV', inset: [9, 7, 9, 6] },
+  'campus-led-screen': { label: 'open-air screen', inset: [7, 9, 7, 36] },
 };
 export const SCREEN_RANGE = 9;
 
-export interface ScreenSpot { screenId: string; label: string; x: number; y: number; width: number; height: number }
+export interface ScreenSpot {
+  screenId: string;
+  label: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  inset: [number, number, number, number];
+}
 
 export function screensIn(elements: spaceElement[]): ScreenSpot[] {
   return elements
     .filter((e) => e.element.id in SCREEN_ELEMENTS)
-    .map((e) => ({ screenId: e.id, label: SCREEN_ELEMENTS[e.element.id]!, x: e.x, y: e.y, width: e.element.width, height: e.element.height }));
+    .map((e) => ({ screenId: e.id, x: e.x, y: e.y, width: e.element.width, height: e.element.height, ...SCREEN_ELEMENTS[e.element.id]! }));
 }
 
-// The closest screen within SCREEN_RANGE tiles of (x, y) (measured to the screen's footprint).
+// Tiles from (x, y) to the screen's footprint (Chebyshev).
+export function screenDistance(s: ScreenSpot, x: number, y: number) {
+  const dx = Math.max(s.x - x, 0, x - (s.x + s.width - 1));
+  const dy = Math.max(s.y - y, 0, y - (s.y + s.height - 1));
+  return Math.max(dx, dy);
+}
+
+// The closest screen within SCREEN_RANGE tiles of (x, y).
 export function nearestScreen(screens: ScreenSpot[], x: number, y: number): ScreenSpot | null {
   let best: { d: number; s: ScreenSpot } | null = null;
   for (const s of screens) {
-    const dx = Math.max(s.x - x, 0, x - (s.x + s.width - 1));
-    const dy = Math.max(s.y - y, 0, y - (s.y + s.height - 1));
-    const d = Math.max(dx, dy);
+    const d = screenDistance(s, x, y);
     if (d <= SCREEN_RANGE && (!best || d < best.d)) best = { d, s };
   }
   return best?.s ?? null;

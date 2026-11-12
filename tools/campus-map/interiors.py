@@ -495,16 +495,18 @@ def dumbbells():
     return im
 
 
-def cinema_screen(w=10, h=3):
-    """Big screen on the back wall; watch parties play here (the web client overlays the video)."""
+def cinema_screen(w=9, h=5):
+    """Screen on the back wall, close to 16:9; watch parties play inside it (the web client lays
+    the video over the inner rectangle: 8 px in from the sides and top, 14 px up from the bottom)."""
     im, d = new(w, h)
-    d.rectangle((0, 0, w * T - 1, h * T - 1), fill=(30, 26, 34), outline=OUTLINE)
-    d.rectangle((8, 6, w * T - 9, h * T - 10), fill=(214, 222, 236))
-    d.rectangle((8, 6, w * T - 9, 12), fill=(236, 240, 248))
-    for x in range(0, w * T, 6):  # curtain fringe
-        d.rectangle((x, h * T - 8, x + 3, h * T - 1), fill=(150, 30, 40))
-    d.rectangle((0, 0, 6, h * T - 1), fill=(150, 30, 40))
-    d.rectangle((w * T - 7, 0, w * T - 1, h * T - 1), fill=(150, 30, 40))
+    W, H = w * T, h * T
+    d.rectangle((0, 0, W - 1, H - 1), fill=(24, 22, 28), outline=OUTLINE)
+    d.rectangle((4, 4, W - 5, H - 11), fill=(48, 46, 54))
+    d.rectangle((8, 8, W - 9, H - 15), fill=(14, 16, 22))
+    for x in range(0, W, 6):  # curtain fringe along the bottom
+        d.rectangle((x, H - 9, x + 3, H - 1), fill=(150, 30, 40))
+    d.rectangle((0, 0, 3, H - 1), fill=(150, 30, 40))
+    d.rectangle((W - 4, 0, W - 1, H - 1), fill=(150, 30, 40))
     return im
 
 
@@ -654,7 +656,7 @@ def catalogue(element):
     element("tv", tv(), "topObjects", False)
 
     element("cinema-screen", cinema_screen(), "topObjects", False)
-    element("projector-screen", cinema_screen(6, 2), "topObjects", False)
+    element("projector-screen", cinema_screen(5, 3), "topObjects", False)
     element("popcorn-counter", popcorn_counter(), "wall", True)
     element("shop-food", shop_front((200, 70, 50), "FOOD COURT"), "topObjects", False)
     element("shop-fashion", shop_front((150, 60, 160), "FASHION"), "topObjects", False)
@@ -851,7 +853,7 @@ def auditorium(r):
         for x in range(1, r.w - 1):
             r.put("floor-stage", x, y)
     r.put("podium", r.w // 2, 2)
-    r.put("projector-screen", r.w // 2 - 3, 0)
+    r.put("projector-screen", r.w // 2 - 2, 0)
     r.put("poster-red", 2, 0)
     r.put("poster-blue", r.w - 3, 0)
     r.put("plant", 1, 3)
@@ -889,7 +891,7 @@ def dispensary(r):
 
 def cinema(r):
     """Multiplex audience hall: wide screen on the back wall, stepped rows of red seats, aisle in the middle."""
-    r.put("cinema-screen", r.w // 2 - 5, 0)
+    r.put("cinema-screen", r.w // 2 - 4, 0)
     for y in range(5, r.h - 3, 2):
         for x in (1, 4, r.w - 7, r.w - 4):
             r.put("seat-row", x, y)

@@ -10,8 +10,8 @@ import ChatPanel from './ChatPanel';
 import AvatarPicker, { AvatarSprite } from '../avatar/AvatarPicker';
 import { EMOTES, emojiFor } from '@/lib/emotes';
 import { findPlaces, nearestPlace } from '@/lib/places';
-import { findInteraction, Interaction, nearestScreen, ScreenSpot, screensIn } from '@/lib/interactions';
-import WatchParty from './WatchParty';
+import { findInteraction, Interaction, nearestScreen, ScreenSpot, screenDistance, screensIn } from '@/lib/interactions';
+import WatchParty, { Rect } from './WatchParty';
 import type { Person } from './ChatPanel';
 import NoticeBoard from './NoticeBoard';
 import { ArrowLeft, Check, Clapperboard, DoorOpen, Expand, Globe, Link2, Lock, MapPin, Map as MapIcon, MessageCircle, Minimize, Settings } from 'lucide-react';
@@ -189,7 +189,18 @@ const SpaceGrid = ({ id }: { id: string }) => {
   const [dmWith, setDmWith] = useState<Person | null>(null);
   // watch parties: the nearest screen (HUD button) and the one whose panel is open
   const [screen, setScreen] = useState<ScreenSpot | null>(null);
-  const [watchScreen, setWatchScreen] = useState<ScreenSpot | null>(null);
+  // the screen shown in the big theater view, and the screen in this room with a show running
+  const [theater, setTheater] = useState<ScreenSpot | null>(null);
+  const [liveScreen, setLiveScreen] = useState<ScreenSpot | null>(null);
+  const shownScreen = theater ?? liveScreen;
+  // a different room: its screens are different ones
+  useEffect(() => {
+    setTheater(null);
+    setLiveScreen(null);
+    setScreen(null);
+    liveRef.current = null;
+    screenRef.current = null;
+  }, [serverPosition.area]);
   const watchingRef = useRef(watching);
   watchingRef.current = watching;
   const [interaction, setInteraction] = useState<Interaction | null>(null);
@@ -279,6 +290,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
   const places = useMemo(() => findPlaces(areaElements), [areaElements]);
   const screens = useMemo(() => screensIn(areaElements), [areaElements]);
   const screenRef = useRef<ScreenSpot | null>(null);
+  const liveRef = useRef<ScreenSpot | null>(null);
 
   // door tiles: tap-to-walk routes around them unless you tapped the door itself
   const doorTiles = useMemo(() => {
@@ -464,8 +476,8 @@ const SpaceGrid = ({ id }: { id: string }) => {
         interact();
         return;
       }
-      if (e.key.toLowerCase() === 't' && !e.repeat && screenRef.current) {
-        setWatchScreen(screenRef.current);
+      if (e.key.toLowerCase() === 't' && !e.repeat && (screenRef.current || liveRef.current)) {
+        setTheater((cur) => (cur ? null : screenRef.current ?? liveRef.current));
         return;
       }
       if (e.key.toLowerCase() === 'm' && !e.repeat) {
@@ -823,28 +835,47 @@ const SpaceGrid = ({ id }: { id: string }) => {
         const img = imageCache.get(e.element.imageUrl);
         if (ready(img)) ctx.drawImage(img, e.x * TILE, e.y * TILE, e.element.width * TILE, e.element.height * TILE);
       }
-      // screens with a watch party running glow and carry a LIVE tag
+      // screens: idle ones show a title card; the one playing in this room has the video laid
+      // over it by <WatchParty>, so only its black backing is drawn here
       for (const sc of screens) {
-        const w = watchingRef.current.get(sc.screenId);
-        if (!w) continue;
-        const x = sc.x * TILE, y = sc.y * TILE, sw = sc.width * TILE, sh = sc.height * TILE;
-        const pulse = 0.5 + 0.5 * Math.sin(now / 400);
+        const [l, t, r, b] = sc.inset;
+        const x = sc.x * TILE + l, y = sc.y * TILE + t, sw = sc.width * TILE - l - r, sh = sc.height * TILE - t - b;
+        if (sw < 20 || sh < 12) continue;
+        const live = watchingRef.current.get(sc.screenId);
         ctx.save();
-        ctx.fillStyle = `rgba(40,70,140,${0.55 + 0.15 * pulse})`;
-        ctx.fillRect(x + 8, y + 6, sw - 16, sh - 16);
-        ctx.fillStyle = "#f5f7f2";
-        const cx = x + sw / 2, cy = y + sh / 2 - 4, r = Math.min(10, sh / 4);
-        if (w.playing) {
-          ctx.beginPath(); ctx.moveTo(cx - r * 0.6, cy - r); ctx.lineTo(cx + r, cy); ctx.lineTo(cx - r * 0.6, cy + r); ctx.closePath(); ctx.fill();
+        if (live) {
+          ctx.fillStyle = "#000";
+          ctx.fillRect(x, y, sw, sh);
+          if (liveRef.current?.screenId !== sc.screenId) {
+            ctx.fillStyle = "#e11d48";
+            ctx.fillRect(x + 4, y + 4, 26, 11);
+            ctx.font = `700 8px ${canvasFont}`;
+            ctx.fillStyle = "#fff"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+            ctx.fillText("LIVE", x + 8, y + 10);
+          }
         } else {
-          ctx.fillRect(cx - r * 0.7, cy - r, r * 0.5, r * 2); ctx.fillRect(cx + r * 0.2, cy - r, r * 0.5, r * 2);
+          const g = ctx.createLinearGradient(x, y, x, y + sh);
+          g.addColorStop(0, "#1b2230"); g.addColorStop(1, "#0b0e14");
+          ctx.fillStyle = g;
+          ctx.fillRect(x, y, sw, sh);
+          // a soft projector glow sweeping across, and the call to action
+          const sweep = (now / 3200) % 1;
+          const glow = ctx.createRadialGradient(x + sw * sweep, y + sh * 0.4, 2, x + sw * sweep, y + sh * 0.4, sw * 0.6);
+          glow.addColorStop(0, "rgba(110,231,183,0.10)"); glow.addColorStop(1, "rgba(110,231,183,0)");
+          ctx.fillStyle = glow;
+          ctx.fillRect(x, y, sw, sh);
+          if (sh >= 40) {
+            const cx = x + sw / 2, cy = y + sh / 2 - 6, rr = Math.min(12, sh / 6);
+            ctx.strokeStyle = "rgba(245,247,242,0.55)"; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.arc(cx, cy, rr + 6, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = "rgba(245,247,242,0.8)";
+            ctx.beginPath(); ctx.moveTo(cx - rr * 0.45, cy - rr * 0.7); ctx.lineTo(cx + rr * 0.75, cy); ctx.lineTo(cx - rr * 0.45, cy + rr * 0.7); ctx.closePath(); ctx.fill();
+            ctx.font = `700 9px ${canvasFont}`;
+            ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillStyle = "rgba(245,247,242,0.7)";
+            ctx.fillText("Press T to watch together", cx, cy + rr + 16);
+          }
         }
-        ctx.font = `700 10px ${canvasFont}`;
-        ctx.textAlign = "left"; ctx.textBaseline = "middle";
-        const tw = ctx.measureText("LIVE").width + 10;
-        ctx.fillStyle = "#e11d48";
-        ctx.beginPath(); ctx.roundRect(x + 10, y + 10, tw, 14, 3); ctx.fill();
-        ctx.fillStyle = "#fff"; ctx.fillText("LIVE", x + 15, y + 17.5);
         ctx.restore();
       }
       actors.forEach((a) => drawName(ctx, a));
@@ -867,7 +898,14 @@ const SpaceGrid = ({ id }: { id: string }) => {
       if (now - lastPlaceCheck > 250) {
         lastPlaceCheck = now;
         setPlace(indoors ? `Inside ${area!.name}` : nearestPlace(places, self.x, self.y));
-        const near = nearestScreen(screens, self.seat ? self.seat.x : self.x, self.seat ? self.seat.y : self.y);
+        const px = self.seat ? self.seat.x : self.x, py = self.seat ? self.seat.y : self.y;
+        const live = screens.filter((sc) => watchingRef.current.has(sc.screenId))
+          .sort((p, q) => screenDistance(p, px, py) - screenDistance(q, px, py))[0] ?? null;
+        if (live?.screenId !== liveRef.current?.screenId) {
+          liveRef.current = live;
+          setLiveScreen(live);
+        }
+        const near = nearestScreen(screens, px, py);
         if (near?.screenId !== screenRef.current?.screenId) {
           screenRef.current = near;
           setScreen(near);
@@ -888,6 +926,26 @@ const SpaceGrid = ({ id }: { id: string }) => {
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [dims, loadingArt, isWalkable, sprites, moveUser, selfId, places, indoors, area, interact, screens]);
+
+  // Where the shown screen's picture is on the page (the video is laid over it), and how loud
+  // the room's copy is from where you stand: full within 2 tiles, silent 14 tiles away.
+  const worldRect = useCallback((): Rect | null => {
+    const sc = shownScreen, cam = cameraRef.current;
+    if (!sc || !canvasRef.current) return null;
+    const [l, t, r, b] = sc.inset;
+    return {
+      left: (sc.x * TILE + l - cam.x) * cam.zoom,
+      top: (sc.y * TILE + t - cam.y) * cam.zoom,
+      width: (sc.width * TILE - l - r) * cam.zoom,
+      height: (sc.height * TILE - t - b) * cam.zoom,
+    };
+  }, [shownScreen]);
+  const proximity = useCallback(() => {
+    const sc = shownScreen, self = selfRef.current;
+    if (!sc || !self) return 0;
+    const d = screenDistance(sc, self.seat ? self.seat.x : self.x, self.seat ? self.seat.y : self.y);
+    return Math.max(0, Math.min(1, 1 - (d - 2) / 12));
+  }, [shownScreen]);
 
   // --- tap / click to walk ------------------------------------------------------------------
   const pressRef = useRef<{ x: number; y: number; id: number } | null>(null);
@@ -1118,20 +1176,33 @@ const SpaceGrid = ({ id }: { id: string }) => {
       <NoticeBoard spaceId={id} boardId={openBoard?.id ?? null} title={openBoard?.title ?? ''} onClose={() => setOpenBoard(null)} />
       <ChatPanel compact={touch} open={touch ? chatOpen : undefined} onOpenChange={touch ? setChatOpen : undefined}
         people={people} dmWith={dmWith} onDmWithChange={(p) => { setDmWith(p); if (p && touch) setChatOpen(true); }} />
-      {screen && !watchScreen && (
-        <button
-          type="button"
-          onClick={() => setWatchScreen(screen)}
-          className={cn('absolute left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full hud py-1.5 pl-1.5 pr-4 text-sm font-medium text-white hover:bg-[#1d2e26]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/70',
-            touch ? 'top-[8.5rem]' : 'bottom-[10rem]')}
-        >
-          <span className={cn('flex size-6 items-center justify-center rounded-md', watching.get(screen.screenId) ? 'bg-rose-500 text-white' : 'bg-white text-gray-900')}>
-            {touch ? <Clapperboard className="size-3.5" /> : <kbd className="font-mono text-xs font-bold">T</kbd>}
-          </span>
-          {watching.get(screen.screenId) ? `Join the watch party on the ${screen.label}` : `Watch together on the ${screen.label}`}
-        </button>
+      {(screen ?? liveScreen) && !theater && (() => {
+        const target = screen ?? liveScreen!;
+        const live = watching.get(target.screenId);
+        return (
+          <button
+            type="button"
+            onClick={() => setTheater(target)}
+            className={cn('absolute left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full hud py-1.5 pl-1.5 pr-4 text-sm font-medium text-white transition hover:bg-[#1d2e26]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/70 animate-in fade-in-0 slide-in-from-bottom-2 duration-300',
+              touch ? 'top-[8.5rem]' : 'bottom-[10rem]')}
+          >
+            <span className={cn('flex size-6 items-center justify-center rounded-md', live ? 'bg-rose-500 text-white' : 'bg-white text-gray-900')}>
+              {touch ? <Clapperboard className="size-3.5" /> : <kbd className="font-mono text-xs font-bold">T</kbd>}
+            </span>
+            {live ? `Watch the show on the ${target.label}` : `Watch together on the ${target.label}`}
+          </button>
+        );
+      })()}
+      {shownScreen && (
+        <WatchParty
+          key={shownScreen.screenId}
+          screen={shownScreen}
+          mode={theater ? 'theater' : 'world'}
+          onModeChange={(m) => { if (m !== 'theater') setTheater(null); }}
+          worldRect={worldRect}
+          proximity={proximity}
+        />
       )}
-      {watchScreen && <WatchParty screenId={watchScreen.screenId} label={watchScreen.label} onClose={() => setWatchScreen(null)} />}
       <MediaDock
         remote={media.remote}
         names={names}

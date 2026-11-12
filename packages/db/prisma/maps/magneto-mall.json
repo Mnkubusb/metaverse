@@ -2000,8 +2000,8 @@
   {
    "id": "campus-cinema-screen",
    "imageUrl": "/campus/cinema-screen.png",
-   "width": 10,
-   "height": 3,
+   "width": 9,
+   "height": 5,
    "static": false,
    "layer": "topObjects"
   },
@@ -36809,7 +36809,7 @@
   },
   {
    "elementId": "campus-cinema-screen",
-   "x": 7,
+   "x": 8,
    "y": 0,
    "area": "in-magneto-mall-1f"
   },

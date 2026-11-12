@@ -2900,8 +2900,8 @@
   {
    "id": "campus-projector-screen",
    "imageUrl": "/campus/projector-screen.png",
-   "width": 6,
-   "height": 2,
+   "width": 5,
+   "height": 3,
    "static": false,
    "layer": "topObjects"
   },
@@ -68301,7 +68301,7 @@
   },
   {
    "elementId": "campus-projector-screen",
-   "x": 7,
+   "x": 8,
    "y": 0,
    "area": "in-visvesvaraya-hall"
   },
