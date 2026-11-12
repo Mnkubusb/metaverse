@@ -46,7 +46,7 @@ const SCREEN_ELEMENTS: Record<string, { label: string; inset: [number, number, n
   'campus-tv': { label: 'TV', inset: [9, 7, 9, 6] },
   'campus-led-screen': { label: 'open-air screen', inset: [7, 9, 7, 36] },
 };
-export const SCREEN_RANGE = 9;
+export const SCREEN_RANGE = 16; // a big hall: the back row still gets the button
 
 export interface ScreenSpot {
   screenId: string;

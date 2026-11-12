@@ -510,6 +510,40 @@ def cinema_screen(w=9, h=5):
     return im
 
 
+def cinema_step():
+    """Stepped carpet row in front of a row of seats: a lit nosing strip with aisle LEDs."""
+    im, d = new(1, 1, (92, 22, 34, 255))
+    speckle(d, (0, 0, 32, 32), (92, 22, 34), 0.18, 8)
+    d.rectangle((0, 26, 31, 31), fill=(64, 14, 24))
+    d.line((0, 26, 31, 26), fill=(150, 60, 70))
+    for x in (6, 22):
+        d.point((x, 29), fill=(255, 214, 120))
+    return im
+
+
+def exit_sign():
+    im, d = new(1, 1)
+    d.rectangle((2, 8, 29, 20), fill=(30, 140, 70), outline=OUTLINE)
+    d.text((5, 9), "EXIT", fill=WHITE)
+    return im
+
+
+def wall_sconce():
+    im, d = new(1, 1)
+    d.polygon([(10, 12), (22, 12), (19, 22), (13, 22)], fill=(214, 170, 90), outline=OUTLINE)
+    d.ellipse((12, 6, 20, 14), fill=(255, 226, 150))
+    return im
+
+
+def projection_window():
+    """The projection booth's port in the back wall of the hall."""
+    im, d = new(2, 1)
+    d.rectangle((6, 6, 57, 25), fill=(30, 30, 36), outline=OUTLINE)
+    d.rectangle((10, 10, 25, 21), fill=(250, 240, 200))
+    d.rectangle((38, 10, 53, 21), fill=(60, 70, 90))
+    return im
+
+
 def popcorn_counter():
     im, d = new(4, 1)
     d.rectangle((0, 6, 127, 31), fill=(176, 40, 46), outline=OUTLINE)
@@ -655,7 +689,12 @@ def catalogue(element):
     element("clock", clock(), "topObjects", False)
     element("tv", tv(), "topObjects", False)
 
-    element("cinema-screen", cinema_screen(), "topObjects", False)
+    element("cinema-screen", cinema_screen(18, 9), "topObjects", False)
+    element("floor-cinema", floor_carpet((92, 22, 34)), "floor", False)
+    element("cinema-step", cinema_step(), "floor", False)
+    element("exit-sign", exit_sign(), "topObjects", False)
+    element("wall-sconce", wall_sconce(), "topObjects", False)
+    element("projection-window", projection_window(), "topObjects", False)
     element("projector-screen", cinema_screen(5, 3), "topObjects", False)
     element("popcorn-counter", popcorn_counter(), "wall", True)
     element("shop-food", shop_front((200, 70, 50), "FOOD COURT"), "topObjects", False)
@@ -890,13 +929,29 @@ def dispensary(r):
 
 
 def cinema(r):
-    """Multiplex audience hall: wide screen on the back wall, stepped rows of red seats, aisle in the middle."""
-    r.put("cinema-screen", r.w // 2 - 4, 0)
-    for y in range(5, r.h - 3, 2):
-        for x in (1, 4, r.w - 7, r.w - 4):
-            r.put("seat-row", x, y)
-    r.put("plant", 1, 3)
-    r.put("plant", r.w - 2, 3)
+    """Full multiplex auditorium: a wall-to-wall screen above a low stage, a rail in front of it,
+    rows of red seats in three blocks with two aisles, lit steps, exit signs and sconces on the
+    walls, and the projection port in the back wall. Every seat row has a free row behind it."""
+    sw = min(18, r.w - 4)
+    sx = (r.w - sw) // 2
+    r.put("cinema-screen", sx, 0)
+    for x in range(1, r.w - 1):
+        for y in range(2, 10):
+            r.put("floor-stage", x, y)
+        r.put("railing", x, 10)
+    for x in (1, r.w - 2):
+        r.put("exit-sign", x, 0)
+    for x in range(3, sx - 1, 3):
+        r.put("wall-sconce", x, 1)
+        r.put("wall-sconce", r.w - 1 - x, 1)
+    blocks = [(2, sx - 1), (sx + 1, sx + sw - 1), (sx + sw + 1, r.w - 2)]  # left, centre, right; aisles between
+    for y in range(12, r.h - 3, 2):
+        for x0, x1 in blocks:
+            for x in range(x0, x1 - 2, 3):
+                r.put("seat-row", x, y)
+        for x in range(1, r.w - 1):
+            r.put("cinema-step", x, y - 1)
+    r.put("projection-window", r.w // 2 - 1, r.h - 1)
 
 
 def mall(r):

@@ -11,10 +11,10 @@
    {
     "id": "in-bilaspur-junction",
     "name": "Bilaspur Junction",
-    "width": 22,
-    "height": 12,
-    "spawnX": 10,
-    "spawnY": 10,
+    "width": 32,
+    "height": 17,
+    "spawnX": 15,
+    "spawnY": 15,
     "ground": "dark"
    }
   ]
@@ -877,34 +877,34 @@
    "layer": "topObjects"
   },
   {
-   "id": "campus-floor-tile-22x12",
-   "imageUrl": "/campus/floor-tile-22x12.png",
-   "width": 22,
-   "height": 12,
+   "id": "campus-floor-tile-32x17",
+   "imageUrl": "/campus/floor-tile-32x17.png",
+   "width": 32,
+   "height": 17,
    "static": false,
    "layer": "floor"
   },
   {
-   "id": "campus-in-wall-back-22x2",
-   "imageUrl": "/campus/in-wall-back-22x2.png",
-   "width": 22,
+   "id": "campus-in-wall-back-32x2",
+   "imageUrl": "/campus/in-wall-back-32x2.png",
+   "width": 32,
    "height": 2,
    "static": true,
    "layer": "wall"
   },
   {
-   "id": "campus-in-wall-front-10x1",
-   "imageUrl": "/campus/in-wall-front-10x1.png",
-   "width": 10,
+   "id": "campus-in-wall-front-15x1",
+   "imageUrl": "/campus/in-wall-front-15x1.png",
+   "width": 15,
    "height": 1,
    "static": true,
    "layer": "wall"
   },
   {
-   "id": "campus-in-wall-side-1x9",
-   "imageUrl": "/campus/in-wall-side-1x9.png",
+   "id": "campus-in-wall-side-1x14",
+   "imageUrl": "/campus/in-wall-side-1x14.png",
    "width": 1,
-   "height": 9,
+   "height": 14,
    "static": true,
    "layer": "wall"
   },
@@ -40573,38 +40573,38 @@
    "area": "main"
   },
   {
-   "elementId": "campus-floor-tile-22x12",
+   "elementId": "campus-floor-tile-32x17",
    "x": 0,
    "y": 0,
    "area": "in-bilaspur-junction"
   },
   {
-   "elementId": "campus-in-wall-back-22x2",
+   "elementId": "campus-in-wall-back-32x2",
    "x": 0,
    "y": 0,
    "area": "in-bilaspur-junction"
   },
   {
-   "elementId": "campus-in-wall-front-10x1",
+   "elementId": "campus-in-wall-front-15x1",
    "x": 0,
-   "y": 11,
+   "y": 16,
    "area": "in-bilaspur-junction"
   },
   {
-   "elementId": "campus-in-wall-front-10x1",
-   "x": 12,
-   "y": 11,
+   "elementId": "campus-in-wall-front-15x1",
+   "x": 17,
+   "y": 16,
    "area": "in-bilaspur-junction"
   },
   {
-   "elementId": "campus-in-wall-side-1x9",
+   "elementId": "campus-in-wall-side-1x14",
    "x": 0,
    "y": 2,
    "area": "in-bilaspur-junction"
   },
   {
-   "elementId": "campus-in-wall-side-1x9",
-   "x": 21,
+   "elementId": "campus-in-wall-side-1x14",
+   "x": 31,
    "y": 2,
    "area": "in-bilaspur-junction"
   },
@@ -40633,14 +40633,32 @@
    "area": "in-bilaspur-junction"
   },
   {
+   "elementId": "campus-window-in",
+   "x": 19,
+   "y": 0,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-window-in",
+   "x": 23,
+   "y": 0,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-window-in",
+   "x": 27,
+   "y": 0,
+   "area": "in-bilaspur-junction"
+  },
+  {
    "elementId": "campus-clock",
-   "x": 20,
+   "x": 30,
    "y": 0,
    "area": "in-bilaspur-junction"
   },
   {
    "elementId": "campus-departure-board",
-   "x": 9,
+   "x": 14,
    "y": 0,
    "area": "in-bilaspur-junction"
   },
@@ -40658,7 +40676,7 @@
   },
   {
    "elementId": "campus-counter",
-   "x": 18,
+   "x": 28,
    "y": 2,
    "area": "in-bilaspur-junction"
   },
@@ -40688,6 +40706,24 @@
   },
   {
    "elementId": "campus-bench-long",
+   "x": 18,
+   "y": 5,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 22,
+   "y": 5,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 26,
+   "y": 5,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
    "x": 2,
    "y": 7,
    "area": "in-bilaspur-junction"
@@ -40711,15 +40747,159 @@
    "area": "in-bilaspur-junction"
   },
   {
+   "elementId": "campus-bench-long",
+   "x": 18,
+   "y": 7,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 22,
+   "y": 7,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 26,
+   "y": 7,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 2,
+   "y": 9,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 6,
+   "y": 9,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 10,
+   "y": 9,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 14,
+   "y": 9,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 18,
+   "y": 9,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 22,
+   "y": 9,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 26,
+   "y": 9,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 2,
+   "y": 11,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 6,
+   "y": 11,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 10,
+   "y": 11,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 14,
+   "y": 11,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 18,
+   "y": 11,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 22,
+   "y": 11,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 26,
+   "y": 11,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 2,
+   "y": 13,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 6,
+   "y": 13,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 10,
+   "y": 13,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 14,
+   "y": 13,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 18,
+   "y": 13,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 22,
+   "y": 13,
+   "area": "in-bilaspur-junction"
+  },
+  {
+   "elementId": "campus-bench-long",
+   "x": 26,
+   "y": 13,
+   "area": "in-bilaspur-junction"
+  },
+  {
    "elementId": "campus-water-cooler",
-   "x": 20,
-   "y": 10,
+   "x": 30,
+   "y": 15,
    "area": "in-bilaspur-junction"
   },
   {
    "elementId": "campus-notice-board",
-   "x": 18,
-   "y": 8,
+   "x": 28,
+   "y": 13,
    "area": "in-bilaspur-junction"
   },
   {
@@ -40728,8 +40908,8 @@
    "y": 25,
    "area": "main",
    "toArea": "in-bilaspur-junction",
-   "toX": 10,
-   "toY": 10
+   "toX": 15,
+   "toY": 15
   },
   {
    "elementId": "campus-door-in",
@@ -40737,13 +40917,13 @@
    "y": 25,
    "area": "main",
    "toArea": "in-bilaspur-junction",
-   "toX": 10,
-   "toY": 10
+   "toX": 15,
+   "toY": 15
   },
   {
    "elementId": "campus-door-out",
-   "x": 10,
-   "y": 11,
+   "x": 15,
+   "y": 16,
    "area": "in-bilaspur-junction",
    "toArea": "main",
    "toX": 63,
@@ -40751,8 +40931,8 @@
   },
   {
    "elementId": "campus-door-out",
-   "x": 11,
-   "y": 11,
+   "x": 16,
+   "y": 16,
    "area": "in-bilaspur-junction",
    "toArea": "main",
    "toX": 63,

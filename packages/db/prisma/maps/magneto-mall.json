@@ -11,18 +11,18 @@
    {
     "id": "in-magneto-mall",
     "name": "Magneto Mall",
-    "width": 27,
-    "height": 13,
-    "spawnX": 12,
-    "spawnY": 11,
+    "width": 37,
+    "height": 18,
+    "spawnX": 17,
+    "spawnY": 16,
     "ground": "dark"
    },
    {
     "id": "in-magneto-mall-1f",
     "name": "Magneto Mall \u00b7 First floor",
-    "width": 27,
-    "height": 13,
-    "spawnX": 24,
+    "width": 39,
+    "height": 24,
+    "spawnX": 36,
     "spawnY": 4,
     "ground": "dark"
    }
@@ -1918,6 +1918,14 @@
    "layer": "floor"
   },
   {
+   "id": "campus-floor-stage",
+   "imageUrl": "/campus/floor-stage.png",
+   "width": 1,
+   "height": 1,
+   "static": false,
+   "layer": "floor"
+  },
+  {
    "id": "campus-door-in",
    "imageUrl": "/campus/door-in.png",
    "width": 1,
@@ -2000,8 +2008,40 @@
   {
    "id": "campus-cinema-screen",
    "imageUrl": "/campus/cinema-screen.png",
-   "width": 9,
-   "height": 5,
+   "width": 18,
+   "height": 9,
+   "static": false,
+   "layer": "topObjects"
+  },
+  {
+   "id": "campus-cinema-step",
+   "imageUrl": "/campus/cinema-step.png",
+   "width": 1,
+   "height": 1,
+   "static": false,
+   "layer": "floor"
+  },
+  {
+   "id": "campus-exit-sign",
+   "imageUrl": "/campus/exit-sign.png",
+   "width": 1,
+   "height": 1,
+   "static": false,
+   "layer": "topObjects"
+  },
+  {
+   "id": "campus-wall-sconce",
+   "imageUrl": "/campus/wall-sconce.png",
+   "width": 1,
+   "height": 1,
+   "static": false,
+   "layer": "topObjects"
+  },
+  {
+   "id": "campus-projection-window",
+   "imageUrl": "/campus/projection-window.png",
+   "width": 2,
+   "height": 1,
    "static": false,
    "layer": "topObjects"
   },
@@ -2046,58 +2086,82 @@
    "layer": "topObjects"
   },
   {
-   "id": "campus-floor-tile-27x13",
-   "imageUrl": "/campus/floor-tile-27x13.png",
-   "width": 27,
-   "height": 13,
+   "id": "campus-railing",
+   "imageUrl": "/campus/railing.png",
+   "width": 1,
+   "height": 1,
+   "static": true,
+   "layer": "objects"
+  },
+  {
+   "id": "campus-floor-tile-37x18",
+   "imageUrl": "/campus/floor-tile-37x18.png",
+   "width": 37,
+   "height": 18,
    "static": false,
    "layer": "floor"
   },
   {
-   "id": "campus-in-wall-back-27x2",
-   "imageUrl": "/campus/in-wall-back-27x2.png",
-   "width": 27,
+   "id": "campus-in-wall-back-37x2",
+   "imageUrl": "/campus/in-wall-back-37x2.png",
+   "width": 37,
    "height": 2,
    "static": true,
    "layer": "wall"
   },
   {
-   "id": "campus-in-wall-front-12x1",
-   "imageUrl": "/campus/in-wall-front-12x1.png",
-   "width": 12,
+   "id": "campus-in-wall-front-17x1",
+   "imageUrl": "/campus/in-wall-front-17x1.png",
+   "width": 17,
    "height": 1,
    "static": true,
    "layer": "wall"
   },
   {
-   "id": "campus-in-wall-front-13x1",
-   "imageUrl": "/campus/in-wall-front-13x1.png",
-   "width": 13,
+   "id": "campus-in-wall-front-18x1",
+   "imageUrl": "/campus/in-wall-front-18x1.png",
+   "width": 18,
    "height": 1,
    "static": true,
    "layer": "wall"
   },
   {
-   "id": "campus-in-wall-side-1x10",
-   "imageUrl": "/campus/in-wall-side-1x10.png",
+   "id": "campus-in-wall-side-1x15",
+   "imageUrl": "/campus/in-wall-side-1x15.png",
    "width": 1,
-   "height": 10,
+   "height": 15,
    "static": true,
    "layer": "wall"
   },
   {
-   "id": "campus-floor-carpet-27x13",
-   "imageUrl": "/campus/floor-carpet-27x13.png",
-   "width": 27,
-   "height": 13,
+   "id": "campus-floor-cinema-39x24",
+   "imageUrl": "/campus/floor-cinema-39x24.png",
+   "width": 39,
+   "height": 24,
    "static": false,
    "layer": "floor"
   },
   {
-   "id": "campus-in-wall-front-27x1",
-   "imageUrl": "/campus/in-wall-front-27x1.png",
-   "width": 27,
+   "id": "campus-in-wall-back-grey-39x2",
+   "imageUrl": "/campus/in-wall-back-grey-39x2.png",
+   "width": 39,
+   "height": 2,
+   "static": true,
+   "layer": "wall"
+  },
+  {
+   "id": "campus-in-wall-front-39x1",
+   "imageUrl": "/campus/in-wall-front-39x1.png",
+   "width": 39,
    "height": 1,
+   "static": true,
+   "layer": "wall"
+  },
+  {
+   "id": "campus-in-wall-side-1x21",
+   "imageUrl": "/campus/in-wall-side-1x21.png",
+   "width": 1,
+   "height": 21,
    "static": true,
    "layer": "wall"
   }
@@ -36502,38 +36566,38 @@
    "area": "main"
   },
   {
-   "elementId": "campus-floor-tile-27x13",
+   "elementId": "campus-floor-tile-37x18",
    "x": 0,
    "y": 0,
    "area": "in-magneto-mall"
   },
   {
-   "elementId": "campus-in-wall-back-27x2",
+   "elementId": "campus-in-wall-back-37x2",
    "x": 0,
    "y": 0,
    "area": "in-magneto-mall"
   },
   {
-   "elementId": "campus-in-wall-front-12x1",
+   "elementId": "campus-in-wall-front-17x1",
    "x": 0,
-   "y": 12,
+   "y": 17,
    "area": "in-magneto-mall"
   },
   {
-   "elementId": "campus-in-wall-front-13x1",
-   "x": 14,
-   "y": 12,
+   "elementId": "campus-in-wall-front-18x1",
+   "x": 19,
+   "y": 17,
    "area": "in-magneto-mall"
   },
   {
-   "elementId": "campus-in-wall-side-1x10",
+   "elementId": "campus-in-wall-side-1x15",
    "x": 0,
    "y": 2,
    "area": "in-magneto-mall"
   },
   {
-   "elementId": "campus-in-wall-side-1x10",
-   "x": 26,
+   "elementId": "campus-in-wall-side-1x15",
+   "x": 36,
    "y": 2,
    "area": "in-magneto-mall"
   },
@@ -36574,8 +36638,20 @@
    "area": "in-magneto-mall"
   },
   {
+   "elementId": "campus-window-in",
+   "x": 27,
+   "y": 0,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-window-in",
+   "x": 31,
+   "y": 0,
+   "area": "in-magneto-mall"
+  },
+  {
    "elementId": "campus-clock",
-   "x": 25,
+   "x": 35,
    "y": 0,
    "area": "in-magneto-mall"
   },
@@ -36606,6 +36682,24 @@
   {
    "elementId": "campus-shop-food",
    "x": 17,
+   "y": 0,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-shop-fashion",
+   "x": 21,
+   "y": 0,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-shop-games",
+   "x": 25,
+   "y": 0,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-shop-books",
+   "x": 29,
    "y": 0,
    "area": "in-magneto-mall"
   },
@@ -36688,15 +36782,267 @@
    "area": "in-magneto-mall"
   },
   {
-   "elementId": "campus-plant",
+   "elementId": "campus-table-round",
+   "x": 22,
+   "y": 6,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 21,
+   "y": 7,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 24,
+   "y": 7,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-table-round",
+   "x": 27,
+   "y": 6,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 26,
+   "y": 7,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 29,
+   "y": 7,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-table-round",
+   "x": 2,
+   "y": 9,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
    "x": 1,
-   "y": 11,
+   "y": 10,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 4,
+   "y": 10,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-table-round",
+   "x": 7,
+   "y": 9,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 6,
+   "y": 10,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 9,
+   "y": 10,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-table-round",
+   "x": 12,
+   "y": 9,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 11,
+   "y": 10,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 14,
+   "y": 10,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-table-round",
+   "x": 17,
+   "y": 9,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 16,
+   "y": 10,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 19,
+   "y": 10,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-table-round",
+   "x": 22,
+   "y": 9,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 21,
+   "y": 10,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 24,
+   "y": 10,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-table-round",
+   "x": 27,
+   "y": 9,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 26,
+   "y": 10,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 29,
+   "y": 10,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-table-round",
+   "x": 2,
+   "y": 12,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 1,
+   "y": 13,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 4,
+   "y": 13,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-table-round",
+   "x": 7,
+   "y": 12,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 6,
+   "y": 13,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 9,
+   "y": 13,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-table-round",
+   "x": 12,
+   "y": 12,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 11,
+   "y": 13,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 14,
+   "y": 13,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-table-round",
+   "x": 17,
+   "y": 12,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 16,
+   "y": 13,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 19,
+   "y": 13,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-table-round",
+   "x": 22,
+   "y": 12,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 21,
+   "y": 13,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 24,
+   "y": 13,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-table-round",
+   "x": 27,
+   "y": 12,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 26,
+   "y": 13,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 29,
+   "y": 13,
    "area": "in-magneto-mall"
   },
   {
    "elementId": "campus-plant",
-   "x": 22,
-   "y": 11,
+   "x": 1,
+   "y": 16,
+   "area": "in-magneto-mall"
+  },
+  {
+   "elementId": "campus-plant",
+   "x": 32,
+   "y": 16,
    "area": "in-magneto-mall"
   },
   {
@@ -36705,8 +37051,8 @@
    "y": 44,
    "area": "main",
    "toArea": "in-magneto-mall",
-   "toX": 12,
-   "toY": 11
+   "toX": 17,
+   "toY": 16
   },
   {
    "elementId": "campus-door-in",
@@ -36714,13 +37060,13 @@
    "y": 44,
    "area": "main",
    "toArea": "in-magneto-mall",
-   "toX": 12,
-   "toY": 11
+   "toX": 17,
+   "toY": 16
   },
   {
    "elementId": "campus-door-out",
-   "x": 12,
-   "y": 12,
+   "x": 17,
+   "y": 17,
    "area": "in-magneto-mall",
    "toArea": "main",
    "toX": 63,
@@ -36728,40 +37074,40 @@
   },
   {
    "elementId": "campus-door-out",
-   "x": 13,
-   "y": 12,
+   "x": 18,
+   "y": 17,
    "area": "in-magneto-mall",
    "toArea": "main",
    "toX": 63,
    "toY": 45
   },
   {
-   "elementId": "campus-floor-carpet-27x13",
+   "elementId": "campus-floor-cinema-39x24",
    "x": 0,
    "y": 0,
    "area": "in-magneto-mall-1f"
   },
   {
-   "elementId": "campus-in-wall-back-27x2",
+   "elementId": "campus-in-wall-back-grey-39x2",
    "x": 0,
    "y": 0,
    "area": "in-magneto-mall-1f"
   },
   {
-   "elementId": "campus-in-wall-front-27x1",
+   "elementId": "campus-in-wall-front-39x1",
    "x": 0,
-   "y": 12,
+   "y": 23,
    "area": "in-magneto-mall-1f"
   },
   {
-   "elementId": "campus-in-wall-side-1x10",
+   "elementId": "campus-in-wall-side-1x21",
    "x": 0,
    "y": 2,
    "area": "in-magneto-mall-1f"
   },
   {
-   "elementId": "campus-in-wall-side-1x10",
-   "x": 26,
+   "elementId": "campus-in-wall-side-1x21",
+   "x": 38,
    "y": 2,
    "area": "in-magneto-mall-1f"
   },
@@ -36802,171 +37148,3273 @@
    "area": "in-magneto-mall-1f"
   },
   {
+   "elementId": "campus-window-in",
+   "x": 27,
+   "y": 0,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-window-in",
+   "x": 31,
+   "y": 0,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-window-in",
+   "x": 35,
+   "y": 0,
+   "area": "in-magneto-mall-1f"
+  },
+  {
    "elementId": "campus-clock",
-   "x": 25,
+   "x": 37,
    "y": 0,
    "area": "in-magneto-mall-1f"
   },
   {
    "elementId": "campus-cinema-screen",
-   "x": 8,
+   "x": 9,
    "y": 0,
    "area": "in-magneto-mall-1f"
   },
   {
-   "elementId": "campus-seat-row",
+   "elementId": "campus-floor-stage",
    "x": 1,
-   "y": 5,
+   "y": 2,
    "area": "in-magneto-mall-1f"
   },
   {
-   "elementId": "campus-seat-row",
-   "x": 4,
-   "y": 5,
-   "area": "in-magneto-mall-1f"
-  },
-  {
-   "elementId": "campus-seat-row",
-   "x": 17,
-   "y": 5,
-   "area": "in-magneto-mall-1f"
-  },
-  {
-   "elementId": "campus-seat-row",
-   "x": 20,
-   "y": 5,
-   "area": "in-magneto-mall-1f"
-  },
-  {
-   "elementId": "campus-seat-row",
-   "x": 1,
-   "y": 7,
-   "area": "in-magneto-mall-1f"
-  },
-  {
-   "elementId": "campus-seat-row",
-   "x": 4,
-   "y": 7,
-   "area": "in-magneto-mall-1f"
-  },
-  {
-   "elementId": "campus-seat-row",
-   "x": 17,
-   "y": 7,
-   "area": "in-magneto-mall-1f"
-  },
-  {
-   "elementId": "campus-seat-row",
-   "x": 20,
-   "y": 7,
-   "area": "in-magneto-mall-1f"
-  },
-  {
-   "elementId": "campus-seat-row",
-   "x": 1,
-   "y": 9,
-   "area": "in-magneto-mall-1f"
-  },
-  {
-   "elementId": "campus-seat-row",
-   "x": 4,
-   "y": 9,
-   "area": "in-magneto-mall-1f"
-  },
-  {
-   "elementId": "campus-seat-row",
-   "x": 17,
-   "y": 9,
-   "area": "in-magneto-mall-1f"
-  },
-  {
-   "elementId": "campus-seat-row",
-   "x": 20,
-   "y": 9,
-   "area": "in-magneto-mall-1f"
-  },
-  {
-   "elementId": "campus-plant",
+   "elementId": "campus-floor-stage",
    "x": 1,
    "y": 3,
    "area": "in-magneto-mall-1f"
   },
   {
-   "elementId": "campus-plant",
+   "elementId": "campus-floor-stage",
+   "x": 1,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 1,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 1,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 1,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 1,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 1,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 1,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 2,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 2,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 2,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 2,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 2,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 2,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 2,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 2,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 2,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 3,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 3,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 3,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 3,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 3,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 3,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 3,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 3,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 3,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 4,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 4,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 4,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 4,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 4,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 4,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 4,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 4,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 4,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 5,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 5,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 5,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 5,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 5,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 5,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 5,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 5,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 5,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 6,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 6,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 6,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 6,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 6,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 6,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 6,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 6,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 6,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 7,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 7,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 7,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 7,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 7,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 7,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 7,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 7,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 7,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 8,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 8,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 8,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 8,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 8,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 8,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 8,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 8,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 8,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 9,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 9,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 9,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 9,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 9,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 9,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 9,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 9,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 9,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 10,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 10,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 10,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 10,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 10,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 10,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 10,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 10,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 10,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 11,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 11,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 11,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 11,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 11,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 11,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 11,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 11,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 11,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 12,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 12,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 12,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 12,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 12,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 12,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 12,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 12,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 12,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 13,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 13,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 13,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 13,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 13,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 13,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 13,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 13,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 13,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 14,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 14,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 14,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 14,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 14,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 14,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 14,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 14,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 14,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 15,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 15,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 15,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 15,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 15,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 15,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 15,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 15,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 15,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 16,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 16,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 16,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 16,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 16,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 16,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 16,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 16,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 16,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 17,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 17,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 17,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 17,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 17,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 17,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 17,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 17,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 17,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 18,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 18,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 18,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 18,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 18,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 18,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 18,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 18,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 18,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 19,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 19,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 19,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 19,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 19,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 19,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 19,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 19,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 19,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 20,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 20,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 20,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 20,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 20,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 20,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 20,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 20,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 20,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 21,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 21,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 21,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 21,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 21,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 21,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 21,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 21,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 21,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 22,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
    "x": 22,
    "y": 3,
    "area": "in-magneto-mall-1f"
   },
   {
-   "elementId": "campus-stairs-up",
+   "elementId": "campus-floor-stage",
+   "x": 22,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 22,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 22,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 22,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 22,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 22,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 22,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 23,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 23,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 23,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 23,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 23,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 23,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 23,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 23,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 23,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
    "x": 24,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 24,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 24,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 24,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 24,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 24,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 24,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 24,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 24,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 25,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 25,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 25,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 25,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 25,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 25,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 25,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 25,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 25,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 26,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 26,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 26,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 26,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 26,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 26,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 26,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 26,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 26,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 27,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 27,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 27,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 27,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 27,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 27,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 27,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 27,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 27,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 28,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 28,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 28,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 28,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 28,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 28,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 28,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 28,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 28,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 29,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 29,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 29,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 29,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 29,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 29,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 29,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 29,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 29,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 30,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 30,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 30,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 30,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 30,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 30,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 30,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 30,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 30,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 31,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 31,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 31,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 31,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 31,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 31,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 31,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 31,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 31,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 32,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 32,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 32,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 32,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 32,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 32,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 32,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 32,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 32,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 33,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 33,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 33,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 33,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 33,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 33,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 33,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 33,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 33,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 34,
+   "y": 2,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 34,
+   "y": 3,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 34,
+   "y": 4,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 34,
+   "y": 5,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 34,
+   "y": 6,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 34,
+   "y": 7,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 34,
+   "y": 8,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-floor-stage",
+   "x": 34,
+   "y": 9,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 34,
+   "y": 10,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-exit-sign",
+   "x": 1,
+   "y": 0,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-exit-sign",
+   "x": 34,
+   "y": 0,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-wall-sconce",
+   "x": 3,
+   "y": 1,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-wall-sconce",
+   "x": 32,
+   "y": 1,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-wall-sconce",
+   "x": 6,
+   "y": 1,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-wall-sconce",
+   "x": 29,
+   "y": 1,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 2,
+   "y": 12,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 5,
+   "y": 12,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 10,
+   "y": 12,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 13,
+   "y": 12,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 16,
+   "y": 12,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 19,
+   "y": 12,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 22,
+   "y": 12,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 28,
+   "y": 12,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 31,
+   "y": 12,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 1,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 2,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 3,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 4,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 5,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 6,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 7,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 8,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 9,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 10,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 11,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 12,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 13,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 14,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 15,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 16,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 17,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 18,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 19,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 20,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 21,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 22,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 23,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 24,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 25,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 26,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 27,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 28,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 29,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 30,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 31,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 32,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 33,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 34,
+   "y": 11,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 2,
+   "y": 14,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 5,
+   "y": 14,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 10,
+   "y": 14,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 13,
+   "y": 14,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 16,
+   "y": 14,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 19,
+   "y": 14,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 22,
+   "y": 14,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 28,
+   "y": 14,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 31,
+   "y": 14,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 1,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 2,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 3,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 4,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 5,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 6,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 7,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 8,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 9,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 10,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 11,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 12,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 13,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 14,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 15,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 16,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 17,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 18,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 19,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 20,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 21,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 22,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 23,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 24,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 25,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 26,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 27,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 28,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 29,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 30,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 31,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 32,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 33,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 34,
+   "y": 13,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 2,
+   "y": 16,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 5,
+   "y": 16,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 10,
+   "y": 16,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 13,
+   "y": 16,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 16,
+   "y": 16,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 19,
+   "y": 16,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 22,
+   "y": 16,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 28,
+   "y": 16,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 31,
+   "y": 16,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 1,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 2,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 3,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 4,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 5,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 6,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 7,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 8,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 9,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 10,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 11,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 12,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 13,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 14,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 15,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 16,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 17,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 18,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 19,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 20,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 21,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 22,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 23,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 24,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 25,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 26,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 27,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 28,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 29,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 30,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 31,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 32,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 33,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 34,
+   "y": 15,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 2,
+   "y": 18,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 5,
+   "y": 18,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 10,
+   "y": 18,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 13,
+   "y": 18,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 16,
+   "y": 18,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 19,
+   "y": 18,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 22,
+   "y": 18,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 28,
+   "y": 18,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 31,
+   "y": 18,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 1,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 2,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 3,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 4,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 5,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 6,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 7,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 8,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 9,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 10,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 11,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 12,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 13,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 14,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 15,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 16,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 17,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 18,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 19,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 20,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 21,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 22,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 23,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 24,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 25,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 26,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 27,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 28,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 29,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 30,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 31,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 32,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 33,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 34,
+   "y": 17,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 2,
+   "y": 20,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 5,
+   "y": 20,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 10,
+   "y": 20,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 13,
+   "y": 20,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 16,
+   "y": 20,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 19,
+   "y": 20,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 22,
+   "y": 20,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 28,
+   "y": 20,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-seat-row",
+   "x": 31,
+   "y": 20,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 1,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 2,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 3,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 4,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 5,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 6,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 7,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 8,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 9,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 10,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 11,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 12,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 13,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 14,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 15,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 16,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 17,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 18,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 19,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 20,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 21,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 22,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 23,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 24,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 25,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 26,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 27,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 28,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 29,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 30,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 31,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 32,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 33,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-cinema-step",
+   "x": 34,
+   "y": 19,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-projection-window",
+   "x": 17,
+   "y": 23,
+   "area": "in-magneto-mall-1f"
+  },
+  {
+   "elementId": "campus-stairs-up",
+   "x": 34,
    "y": 6,
    "area": "in-magneto-mall",
    "toArea": "in-magneto-mall-1f",
-   "toX": 24,
+   "toX": 36,
    "toY": 4
   },
   {
    "elementId": "campus-stairs-up",
-   "x": 24,
+   "x": 34,
    "y": 7,
    "area": "in-magneto-mall",
    "toArea": "in-magneto-mall-1f",
-   "toX": 24,
+   "toX": 36,
    "toY": 4
   },
   {
    "elementId": "campus-stairs-down",
-   "x": 24,
+   "x": 36,
    "y": 2,
    "area": "in-magneto-mall-1f",
    "toArea": "in-magneto-mall",
-   "toX": 24,
+   "toX": 34,
    "toY": 5
   },
   {
    "elementId": "campus-stairs-down",
-   "x": 24,
+   "x": 36,
    "y": 3,
    "area": "in-magneto-mall-1f",
    "toArea": "in-magneto-mall",
-   "toX": 24,
+   "toX": 34,
    "toY": 5
   },
   {
    "elementId": "campus-stairs-up",
-   "x": 25,
+   "x": 35,
    "y": 6,
    "area": "in-magneto-mall",
    "toArea": "in-magneto-mall-1f",
-   "toX": 24,
+   "toX": 36,
    "toY": 4
   },
   {
    "elementId": "campus-stairs-up",
-   "x": 25,
+   "x": 35,
    "y": 7,
    "area": "in-magneto-mall",
    "toArea": "in-magneto-mall-1f",
-   "toX": 24,
+   "toX": 36,
    "toY": 4
   },
   {
    "elementId": "campus-stairs-down",
-   "x": 25,
+   "x": 37,
    "y": 2,
    "area": "in-magneto-mall-1f",
    "toArea": "in-magneto-mall",
-   "toX": 24,
+   "toX": 34,
    "toY": 5
   },
   {
    "elementId": "campus-stairs-down",
-   "x": 25,
+   "x": 37,
    "y": 3,
    "area": "in-magneto-mall-1f",
    "toArea": "in-magneto-mall",
-   "toX": 24,
+   "toX": 34,
    "toY": 5
   }
  ]

@@ -11,10 +11,10 @@
    {
     "id": "in-mahamaya-mandir",
     "name": "Mahamaya Mandir",
-    "width": 16,
-    "height": 11,
-    "spawnX": 7,
-    "spawnY": 9,
+    "width": 24,
+    "height": 16,
+    "spawnX": 11,
+    "spawnY": 14,
     "ground": "dark"
    }
   ]
@@ -2845,34 +2845,34 @@
    "layer": "objects"
   },
   {
-   "id": "campus-floor-tile-16x11",
-   "imageUrl": "/campus/floor-tile-16x11.png",
-   "width": 16,
-   "height": 11,
+   "id": "campus-floor-tile-24x16",
+   "imageUrl": "/campus/floor-tile-24x16.png",
+   "width": 24,
+   "height": 16,
    "static": false,
    "layer": "floor"
   },
   {
-   "id": "campus-in-wall-back-pink-16x2",
-   "imageUrl": "/campus/in-wall-back-pink-16x2.png",
-   "width": 16,
+   "id": "campus-in-wall-back-pink-24x2",
+   "imageUrl": "/campus/in-wall-back-pink-24x2.png",
+   "width": 24,
    "height": 2,
    "static": true,
    "layer": "wall"
   },
   {
-   "id": "campus-in-wall-front-7x1",
-   "imageUrl": "/campus/in-wall-front-7x1.png",
-   "width": 7,
+   "id": "campus-in-wall-front-11x1",
+   "imageUrl": "/campus/in-wall-front-11x1.png",
+   "width": 11,
    "height": 1,
    "static": true,
    "layer": "wall"
   },
   {
-   "id": "campus-in-wall-side-1x8",
-   "imageUrl": "/campus/in-wall-side-1x8.png",
+   "id": "campus-in-wall-side-1x13",
+   "imageUrl": "/campus/in-wall-side-1x13.png",
    "width": 1,
-   "height": 8,
+   "height": 13,
    "static": true,
    "layer": "wall"
   }
@@ -40619,38 +40619,38 @@
    "area": "main"
   },
   {
-   "elementId": "campus-floor-tile-16x11",
+   "elementId": "campus-floor-tile-24x16",
    "x": 0,
    "y": 0,
    "area": "in-mahamaya-mandir"
   },
   {
-   "elementId": "campus-in-wall-back-pink-16x2",
+   "elementId": "campus-in-wall-back-pink-24x2",
    "x": 0,
    "y": 0,
    "area": "in-mahamaya-mandir"
   },
   {
-   "elementId": "campus-in-wall-front-7x1",
+   "elementId": "campus-in-wall-front-11x1",
    "x": 0,
-   "y": 10,
+   "y": 15,
    "area": "in-mahamaya-mandir"
   },
   {
-   "elementId": "campus-in-wall-front-7x1",
-   "x": 9,
-   "y": 10,
+   "elementId": "campus-in-wall-front-11x1",
+   "x": 13,
+   "y": 15,
    "area": "in-mahamaya-mandir"
   },
   {
-   "elementId": "campus-in-wall-side-1x8",
+   "elementId": "campus-in-wall-side-1x13",
    "x": 0,
    "y": 2,
    "area": "in-mahamaya-mandir"
   },
   {
-   "elementId": "campus-in-wall-side-1x8",
-   "x": 15,
+   "elementId": "campus-in-wall-side-1x13",
+   "x": 23,
    "y": 2,
    "area": "in-mahamaya-mandir"
   },
@@ -40669,42 +40669,54 @@
   {
    "elementId": "campus-window-in",
    "x": 11,
+   "y": 0,
+   "area": "in-mahamaya-mandir"
+  },
+  {
+   "elementId": "campus-window-in",
+   "x": 15,
+   "y": 0,
+   "area": "in-mahamaya-mandir"
+  },
+  {
+   "elementId": "campus-window-in",
+   "x": 19,
    "y": 0,
    "area": "in-mahamaya-mandir"
   },
   {
    "elementId": "campus-clock",
-   "x": 14,
+   "x": 22,
    "y": 0,
    "area": "in-mahamaya-mandir"
   },
   {
    "elementId": "campus-idol",
-   "x": 7,
-   "y": 2,
-   "area": "in-mahamaya-mandir"
-  },
-  {
-   "elementId": "campus-temple-bell",
-   "x": 4,
-   "y": 2,
-   "area": "in-mahamaya-mandir"
-  },
-  {
-   "elementId": "campus-diya-row",
-   "x": 3,
-   "y": 4,
-   "area": "in-mahamaya-mandir"
-  },
-  {
-   "elementId": "campus-temple-bell",
    "x": 11,
    "y": 2,
    "area": "in-mahamaya-mandir"
   },
   {
+   "elementId": "campus-temple-bell",
+   "x": 8,
+   "y": 2,
+   "area": "in-mahamaya-mandir"
+  },
+  {
    "elementId": "campus-diya-row",
-   "x": 10,
+   "x": 7,
+   "y": 4,
+   "area": "in-mahamaya-mandir"
+  },
+  {
+   "elementId": "campus-temple-bell",
+   "x": 15,
+   "y": 2,
+   "area": "in-mahamaya-mandir"
+  },
+  {
+   "elementId": "campus-diya-row",
+   "x": 14,
    "y": 4,
    "area": "in-mahamaya-mandir"
   },
@@ -40740,38 +40752,86 @@
   },
   {
    "elementId": "campus-railing",
+   "x": 7,
+   "y": 6,
+   "area": "in-mahamaya-mandir"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 8,
+   "y": 6,
+   "area": "in-mahamaya-mandir"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 9,
+   "y": 6,
+   "area": "in-mahamaya-mandir"
+  },
+  {
+   "elementId": "campus-railing",
    "x": 10,
    "y": 6,
    "area": "in-mahamaya-mandir"
   },
   {
    "elementId": "campus-railing",
-   "x": 11,
+   "x": 14,
    "y": 6,
    "area": "in-mahamaya-mandir"
   },
   {
    "elementId": "campus-railing",
-   "x": 12,
+   "x": 15,
    "y": 6,
    "area": "in-mahamaya-mandir"
   },
   {
    "elementId": "campus-railing",
-   "x": 13,
+   "x": 16,
+   "y": 6,
+   "area": "in-mahamaya-mandir"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 17,
+   "y": 6,
+   "area": "in-mahamaya-mandir"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 18,
+   "y": 6,
+   "area": "in-mahamaya-mandir"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 19,
+   "y": 6,
+   "area": "in-mahamaya-mandir"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 20,
+   "y": 6,
+   "area": "in-mahamaya-mandir"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 21,
    "y": 6,
    "area": "in-mahamaya-mandir"
   },
   {
    "elementId": "campus-plant",
    "x": 1,
-   "y": 9,
+   "y": 14,
    "area": "in-mahamaya-mandir"
   },
   {
    "elementId": "campus-plant",
-   "x": 14,
-   "y": 9,
+   "x": 22,
+   "y": 14,
    "area": "in-mahamaya-mandir"
   },
   {
@@ -40780,8 +40840,8 @@
    "y": 26,
    "area": "main",
    "toArea": "in-mahamaya-mandir",
-   "toX": 7,
-   "toY": 9
+   "toX": 11,
+   "toY": 14
   },
   {
    "elementId": "campus-door-in",
@@ -40789,13 +40849,13 @@
    "y": 26,
    "area": "main",
    "toArea": "in-mahamaya-mandir",
-   "toX": 7,
-   "toY": 9
+   "toX": 11,
+   "toY": 14
   },
   {
    "elementId": "campus-door-out",
-   "x": 7,
-   "y": 10,
+   "x": 11,
+   "y": 15,
    "area": "in-mahamaya-mandir",
    "toArea": "main",
    "toX": 25,
@@ -40803,8 +40863,8 @@
   },
   {
    "elementId": "campus-door-out",
-   "x": 8,
-   "y": 10,
+   "x": 12,
+   "y": 15,
    "area": "in-mahamaya-mandir",
    "toArea": "main",
    "toX": 25,

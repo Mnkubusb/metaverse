@@ -878,6 +878,22 @@ const SpaceGrid = ({ id }: { id: string }) => {
         }
         ctx.restore();
       }
+      // lights down: while a show runs on a cinema or projector screen in this room, the room
+      // dims and the screen throws a cool wash of light over the front rows
+      const show = liveRef.current;
+      if (indoors && show && (show.label === 'cinema screen' || show.label === 'projector screen')) {
+        ctx.save();
+        ctx.fillStyle = "rgba(4,5,9,0.58)";
+        ctx.fillRect(0, 0, worldW, worldH);
+        const cx = (show.x + show.width / 2) * TILE, cy = (show.y + show.height) * TILE;
+        const wash = ctx.createRadialGradient(cx, cy, 8, cx, cy, show.width * TILE * 0.9);
+        const flicker = 0.10 + 0.03 * Math.sin(now / 230) + 0.02 * Math.sin(now / 97);
+        wash.addColorStop(0, `rgba(150,180,255,${flicker})`);
+        wash.addColorStop(1, "rgba(150,180,255,0)");
+        ctx.fillStyle = wash;
+        ctx.fillRect(0, 0, worldW, worldH);
+        ctx.restore();
+      }
       actors.forEach((a) => drawName(ctx, a));
       const speakers: [string, Actor][] = [[selfId, self], ...othersRef.current.entries()];
       drawBubbles(ctx, speakers, now);

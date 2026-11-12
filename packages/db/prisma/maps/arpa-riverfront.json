@@ -11,19 +11,19 @@
    {
     "id": "in-riverfront-cafe",
     "name": "Riverfront Cafe",
-    "width": 16,
-    "height": 11,
-    "spawnX": 7,
-    "spawnY": 9,
+    "width": 26,
+    "height": 15,
+    "spawnX": 12,
+    "spawnY": 13,
     "ground": "dark"
    },
    {
     "id": "in-ghat-mandir",
     "name": "Ghat Mandir",
-    "width": 16,
-    "height": 11,
-    "spawnX": 7,
-    "spawnY": 9,
+    "width": 24,
+    "height": 16,
+    "spawnX": 11,
+    "spawnY": 14,
     "ground": "dark"
    }
   ]
@@ -4542,42 +4542,66 @@
    "layer": "objects"
   },
   {
-   "id": "campus-floor-tile-16x11",
-   "imageUrl": "/campus/floor-tile-16x11.png",
-   "width": 16,
-   "height": 11,
+   "id": "campus-floor-tile-26x15",
+   "imageUrl": "/campus/floor-tile-26x15.png",
+   "width": 26,
+   "height": 15,
    "static": false,
    "layer": "floor"
   },
   {
-   "id": "campus-in-wall-back-16x2",
-   "imageUrl": "/campus/in-wall-back-16x2.png",
-   "width": 16,
+   "id": "campus-in-wall-back-26x2",
+   "imageUrl": "/campus/in-wall-back-26x2.png",
+   "width": 26,
    "height": 2,
    "static": true,
    "layer": "wall"
   },
   {
-   "id": "campus-in-wall-front-7x1",
-   "imageUrl": "/campus/in-wall-front-7x1.png",
-   "width": 7,
+   "id": "campus-in-wall-front-12x1",
+   "imageUrl": "/campus/in-wall-front-12x1.png",
+   "width": 12,
    "height": 1,
    "static": true,
    "layer": "wall"
   },
   {
-   "id": "campus-in-wall-side-1x8",
-   "imageUrl": "/campus/in-wall-side-1x8.png",
+   "id": "campus-in-wall-side-1x12",
+   "imageUrl": "/campus/in-wall-side-1x12.png",
    "width": 1,
-   "height": 8,
+   "height": 12,
    "static": true,
    "layer": "wall"
   },
   {
-   "id": "campus-in-wall-back-pink-16x2",
-   "imageUrl": "/campus/in-wall-back-pink-16x2.png",
-   "width": 16,
+   "id": "campus-floor-tile-24x16",
+   "imageUrl": "/campus/floor-tile-24x16.png",
+   "width": 24,
+   "height": 16,
+   "static": false,
+   "layer": "floor"
+  },
+  {
+   "id": "campus-in-wall-back-pink-24x2",
+   "imageUrl": "/campus/in-wall-back-pink-24x2.png",
+   "width": 24,
    "height": 2,
+   "static": true,
+   "layer": "wall"
+  },
+  {
+   "id": "campus-in-wall-front-11x1",
+   "imageUrl": "/campus/in-wall-front-11x1.png",
+   "width": 11,
+   "height": 1,
+   "static": true,
+   "layer": "wall"
+  },
+  {
+   "id": "campus-in-wall-side-1x13",
+   "imageUrl": "/campus/in-wall-side-1x13.png",
+   "width": 1,
+   "height": 13,
    "static": true,
    "layer": "wall"
   }
@@ -50364,38 +50388,38 @@
    "area": "main"
   },
   {
-   "elementId": "campus-floor-tile-16x11",
+   "elementId": "campus-floor-tile-26x15",
    "x": 0,
    "y": 0,
    "area": "in-riverfront-cafe"
   },
   {
-   "elementId": "campus-in-wall-back-16x2",
+   "elementId": "campus-in-wall-back-26x2",
    "x": 0,
    "y": 0,
    "area": "in-riverfront-cafe"
   },
   {
-   "elementId": "campus-in-wall-front-7x1",
+   "elementId": "campus-in-wall-front-12x1",
    "x": 0,
-   "y": 10,
+   "y": 14,
    "area": "in-riverfront-cafe"
   },
   {
-   "elementId": "campus-in-wall-front-7x1",
-   "x": 9,
-   "y": 10,
+   "elementId": "campus-in-wall-front-12x1",
+   "x": 14,
+   "y": 14,
    "area": "in-riverfront-cafe"
   },
   {
-   "elementId": "campus-in-wall-side-1x8",
+   "elementId": "campus-in-wall-side-1x12",
    "x": 0,
    "y": 2,
    "area": "in-riverfront-cafe"
   },
   {
-   "elementId": "campus-in-wall-side-1x8",
-   "x": 15,
+   "elementId": "campus-in-wall-side-1x12",
+   "x": 25,
    "y": 2,
    "area": "in-riverfront-cafe"
   },
@@ -50418,8 +50442,20 @@
    "area": "in-riverfront-cafe"
   },
   {
+   "elementId": "campus-window-in",
+   "x": 15,
+   "y": 0,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-window-in",
+   "x": 19,
+   "y": 0,
+   "area": "in-riverfront-cafe"
+  },
+  {
    "elementId": "campus-clock",
-   "x": 14,
+   "x": 24,
    "y": 0,
    "area": "in-riverfront-cafe"
   },
@@ -50437,7 +50473,7 @@
   },
   {
    "elementId": "campus-tv",
-   "x": 12,
+   "x": 22,
    "y": 0,
    "area": "in-riverfront-cafe"
   },
@@ -50455,7 +50491,7 @@
   },
   {
    "elementId": "campus-water-cooler",
-   "x": 14,
+   "x": 24,
    "y": 2,
    "area": "in-riverfront-cafe"
   },
@@ -50514,9 +50550,225 @@
    "area": "in-riverfront-cafe"
   },
   {
+   "elementId": "campus-canteen-table",
+   "x": 16,
+   "y": 4,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 16,
+   "y": 5,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 18,
+   "y": 5,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-canteen-table",
+   "x": 21,
+   "y": 4,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 21,
+   "y": 5,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 23,
+   "y": 5,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-canteen-table",
+   "x": 1,
+   "y": 7,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 1,
+   "y": 8,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 3,
+   "y": 8,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-canteen-table",
+   "x": 6,
+   "y": 7,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 6,
+   "y": 8,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 8,
+   "y": 8,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-canteen-table",
+   "x": 11,
+   "y": 7,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 11,
+   "y": 8,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 13,
+   "y": 8,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-canteen-table",
+   "x": 16,
+   "y": 7,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 16,
+   "y": 8,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 18,
+   "y": 8,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-canteen-table",
+   "x": 21,
+   "y": 7,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 21,
+   "y": 8,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 23,
+   "y": 8,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-canteen-table",
+   "x": 1,
+   "y": 10,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 1,
+   "y": 11,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 3,
+   "y": 11,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-canteen-table",
+   "x": 6,
+   "y": 10,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 6,
+   "y": 11,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 8,
+   "y": 11,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-canteen-table",
+   "x": 11,
+   "y": 10,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 11,
+   "y": 11,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 13,
+   "y": 11,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-canteen-table",
+   "x": 16,
+   "y": 10,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 16,
+   "y": 11,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 18,
+   "y": 11,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-canteen-table",
+   "x": 21,
+   "y": 10,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 21,
+   "y": 11,
+   "area": "in-riverfront-cafe"
+  },
+  {
+   "elementId": "campus-chair-red",
+   "x": 23,
+   "y": 11,
+   "area": "in-riverfront-cafe"
+  },
+  {
    "elementId": "campus-plant",
-   "x": 14,
-   "y": 9,
+   "x": 24,
+   "y": 13,
    "area": "in-riverfront-cafe"
   },
   {
@@ -50525,8 +50777,8 @@
    "y": 70,
    "area": "main",
    "toArea": "in-riverfront-cafe",
-   "toX": 7,
-   "toY": 9
+   "toX": 12,
+   "toY": 13
   },
   {
    "elementId": "campus-door-in",
@@ -50534,13 +50786,13 @@
    "y": 70,
    "area": "main",
    "toArea": "in-riverfront-cafe",
-   "toX": 7,
-   "toY": 9
+   "toX": 12,
+   "toY": 13
   },
   {
    "elementId": "campus-door-out",
-   "x": 7,
-   "y": 10,
+   "x": 12,
+   "y": 14,
    "area": "in-riverfront-cafe",
    "toArea": "main",
    "toX": 34,
@@ -50548,46 +50800,46 @@
   },
   {
    "elementId": "campus-door-out",
-   "x": 8,
-   "y": 10,
+   "x": 13,
+   "y": 14,
    "area": "in-riverfront-cafe",
    "toArea": "main",
    "toX": 34,
    "toY": 71
   },
   {
-   "elementId": "campus-floor-tile-16x11",
+   "elementId": "campus-floor-tile-24x16",
    "x": 0,
    "y": 0,
    "area": "in-ghat-mandir"
   },
   {
-   "elementId": "campus-in-wall-back-pink-16x2",
+   "elementId": "campus-in-wall-back-pink-24x2",
    "x": 0,
    "y": 0,
    "area": "in-ghat-mandir"
   },
   {
-   "elementId": "campus-in-wall-front-7x1",
+   "elementId": "campus-in-wall-front-11x1",
    "x": 0,
-   "y": 10,
+   "y": 15,
    "area": "in-ghat-mandir"
   },
   {
-   "elementId": "campus-in-wall-front-7x1",
-   "x": 9,
-   "y": 10,
+   "elementId": "campus-in-wall-front-11x1",
+   "x": 13,
+   "y": 15,
    "area": "in-ghat-mandir"
   },
   {
-   "elementId": "campus-in-wall-side-1x8",
+   "elementId": "campus-in-wall-side-1x13",
    "x": 0,
    "y": 2,
    "area": "in-ghat-mandir"
   },
   {
-   "elementId": "campus-in-wall-side-1x8",
-   "x": 15,
+   "elementId": "campus-in-wall-side-1x13",
+   "x": 23,
    "y": 2,
    "area": "in-ghat-mandir"
   },
@@ -50606,42 +50858,54 @@
   {
    "elementId": "campus-window-in",
    "x": 11,
+   "y": 0,
+   "area": "in-ghat-mandir"
+  },
+  {
+   "elementId": "campus-window-in",
+   "x": 15,
+   "y": 0,
+   "area": "in-ghat-mandir"
+  },
+  {
+   "elementId": "campus-window-in",
+   "x": 19,
    "y": 0,
    "area": "in-ghat-mandir"
   },
   {
    "elementId": "campus-clock",
-   "x": 14,
+   "x": 22,
    "y": 0,
    "area": "in-ghat-mandir"
   },
   {
    "elementId": "campus-idol",
-   "x": 7,
-   "y": 2,
-   "area": "in-ghat-mandir"
-  },
-  {
-   "elementId": "campus-temple-bell",
-   "x": 4,
-   "y": 2,
-   "area": "in-ghat-mandir"
-  },
-  {
-   "elementId": "campus-diya-row",
-   "x": 3,
-   "y": 4,
-   "area": "in-ghat-mandir"
-  },
-  {
-   "elementId": "campus-temple-bell",
    "x": 11,
    "y": 2,
    "area": "in-ghat-mandir"
   },
   {
+   "elementId": "campus-temple-bell",
+   "x": 8,
+   "y": 2,
+   "area": "in-ghat-mandir"
+  },
+  {
    "elementId": "campus-diya-row",
-   "x": 10,
+   "x": 7,
+   "y": 4,
+   "area": "in-ghat-mandir"
+  },
+  {
+   "elementId": "campus-temple-bell",
+   "x": 15,
+   "y": 2,
+   "area": "in-ghat-mandir"
+  },
+  {
+   "elementId": "campus-diya-row",
+   "x": 14,
    "y": 4,
    "area": "in-ghat-mandir"
   },
@@ -50677,38 +50941,86 @@
   },
   {
    "elementId": "campus-railing",
+   "x": 7,
+   "y": 6,
+   "area": "in-ghat-mandir"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 8,
+   "y": 6,
+   "area": "in-ghat-mandir"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 9,
+   "y": 6,
+   "area": "in-ghat-mandir"
+  },
+  {
+   "elementId": "campus-railing",
    "x": 10,
    "y": 6,
    "area": "in-ghat-mandir"
   },
   {
    "elementId": "campus-railing",
-   "x": 11,
+   "x": 14,
    "y": 6,
    "area": "in-ghat-mandir"
   },
   {
    "elementId": "campus-railing",
-   "x": 12,
+   "x": 15,
    "y": 6,
    "area": "in-ghat-mandir"
   },
   {
    "elementId": "campus-railing",
-   "x": 13,
+   "x": 16,
+   "y": 6,
+   "area": "in-ghat-mandir"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 17,
+   "y": 6,
+   "area": "in-ghat-mandir"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 18,
+   "y": 6,
+   "area": "in-ghat-mandir"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 19,
+   "y": 6,
+   "area": "in-ghat-mandir"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 20,
+   "y": 6,
+   "area": "in-ghat-mandir"
+  },
+  {
+   "elementId": "campus-railing",
+   "x": 21,
    "y": 6,
    "area": "in-ghat-mandir"
   },
   {
    "elementId": "campus-plant",
    "x": 1,
-   "y": 9,
+   "y": 14,
    "area": "in-ghat-mandir"
   },
   {
    "elementId": "campus-plant",
-   "x": 14,
-   "y": 9,
+   "x": 22,
+   "y": 14,
    "area": "in-ghat-mandir"
   },
   {
@@ -50717,8 +51029,8 @@
    "y": 76,
    "area": "main",
    "toArea": "in-ghat-mandir",
-   "toX": 7,
-   "toY": 9
+   "toX": 11,
+   "toY": 14
   },
   {
    "elementId": "campus-door-in",
@@ -50726,13 +51038,13 @@
    "y": 76,
    "area": "main",
    "toArea": "in-ghat-mandir",
-   "toX": 7,
-   "toY": 9
+   "toX": 11,
+   "toY": 14
   },
   {
    "elementId": "campus-door-out",
-   "x": 7,
-   "y": 10,
+   "x": 11,
+   "y": 15,
    "area": "in-ghat-mandir",
    "toArea": "main",
    "toX": 69,
@@ -50740,8 +51052,8 @@
   },
   {
    "elementId": "campus-door-out",
-   "x": 8,
-   "y": 10,
+   "x": 12,
+   "y": 15,
    "area": "in-ghat-mandir",
    "toArea": "main",
    "toX": 69,

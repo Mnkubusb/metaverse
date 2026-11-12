@@ -17,12 +17,13 @@ T = 32
 MAIN = "main"
 
 # template, room size and floor/wall per kind of building (same tables as the previous generator)
-SIZES = {"admin": (20, 13), "library": (20, 13), "auditorium": (20, 13), "dept": (22, 13), "lab": (18, 12),
-         "workshop": (18, 12), "canteen": (16, 11), "dispensary": (14, 10), "hostel": (18, 12),
-         "cinema": (24, 14), "mall": (24, 13), "station": (22, 12), "temple": (16, 11)}
+# room sizes in tiles; big enough to fill a laptop screen at 1:1 so rooms feel like real halls
+SIZES = {"admin": (30, 17), "library": (30, 17), "auditorium": (32, 20), "dept": (32, 17), "lab": (28, 16),
+         "workshop": (28, 16), "canteen": (26, 15), "dispensary": (22, 14), "hostel": (28, 16), "classroom": (32, 17),
+         "cinema": (36, 24), "mall": (34, 18), "station": (32, 17), "temple": (24, 16)}
 FLOORS = {"admin": "floor-carpet", "library": "floor-wood", "auditorium": "floor-carpet", "dept": "floor-tile",
           "lab": "floor-tile-blue", "workshop": "floor-concrete", "canteen": "floor-tile",
-          "dispensary": "floor-tile-blue", "hostel": "floor-tile", "cinema": "floor-carpet", "mall": "floor-tile",
+          "dispensary": "floor-tile-blue", "hostel": "floor-tile", "cinema": "floor-cinema", "mall": "floor-tile",
           "station": "floor-tile", "temple": "floor-tile"}
 # what the first floor of each kind of building holds
 UPSTAIRS = {"dept": "classroom", "admin": "library", "auditorium": "classroom", "lab": "lab", "hostel": "hostel",
@@ -106,30 +107,31 @@ class RoomBuilder:
             area_id = f"in-{slug_of(name)}"
             w, h = SIZES[template]
             storeys = meta_storeys or STOREYS.get(name, 1)
-            full_w = w + (STAIR_W if storeys > 1 else 0)
+            stairs = STAIR_W if storeys > 1 else 0
             wall = WALLS.get(template, "in-wall-back")
-            ground = self._room(area_id, name, full_w, w, h, FLOORS[template], wall, template, exit=True)
+            ground = self._room(area_id, name, w + stairs, w, h, FLOORS[template], wall, template, exit=True)
             # the two paver tiles just below the 2x2 door lead inside; the exit leads to the tile below them
             for x in (dx, dx + 1):
                 self.put("door-in", x, dy + 2, MAIN, (area_id, *ground.spawn))
             ground.exits(MAIN, dx, dy + 3)
             self.areas.append(ground.area_def())
-            below = ground
+            below, below_w = ground, w
             for level in range(1, storeys):
                 upper_id = f"{area_id}-{level}f"
                 label = {1: "First floor", 2: "Second floor", 3: "Third floor"}.get(level, f"Floor {level}")
                 up_template = upstairs or UPSTAIRS[template]
-                upper = self._room(upper_id, f"{name} · {label}", full_w, w, h, FLOORS.get(up_template, FLOORS[template]), wall,
-                                   up_template, exit=False)
-                upper.spawn = DOWN_ARRIVE(w)
-                # stairwell: the way up at rows 6-7, the way down at rows 2-3, so a middle floor has both
-                for x in (w, w + 1):
+                uw, uh = SIZES.get(up_template, (w, h)) if upstairs else (w, h)
+                upper = self._room(upper_id, f"{name} · {label}", uw + STAIR_W, uw, uh,
+                                   FLOORS.get(up_template, FLOORS[template]), WALLS.get(up_template, wall), up_template, exit=False)
+                upper.spawn = DOWN_ARRIVE(uw)
+                # stairwell on the right of every floor: the way up at rows 6-7, the way down at rows 2-3
+                for k in (0, 1):
                     for y in UP_ROWS:
-                        below.put("stairs-up", x, y, (upper_id, *DOWN_ARRIVE(w)))
+                        below.put("stairs-up", below_w + k, y, (upper_id, *DOWN_ARRIVE(uw)))
                     for y in DOWN_ROWS:
-                        upper.put("stairs-down", x, y, (below.id, *UP_ARRIVE(w)))
+                        upper.put("stairs-down", uw + k, y, (below.id, *UP_ARRIVE(below_w)))
                 self.areas.append(upper.area_def())
-                below = upper
+                below, below_w = upper, uw
         return self.areas
 
     def _room(self, area_id, name, full_w, w, h, floor, wall, template, exit):
