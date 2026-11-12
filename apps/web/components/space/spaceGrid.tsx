@@ -10,9 +10,11 @@ import ChatPanel from './ChatPanel';
 import AvatarPicker, { AvatarSprite } from '../avatar/AvatarPicker';
 import { EMOTES, emojiFor } from '@/lib/emotes';
 import { findPlaces, nearestPlace } from '@/lib/places';
-import { findInteraction, Interaction } from '@/lib/interactions';
+import { findInteraction, Interaction, nearestScreen, ScreenSpot, screensIn } from '@/lib/interactions';
+import WatchParty from './WatchParty';
+import type { Person } from './ChatPanel';
 import NoticeBoard from './NoticeBoard';
-import { ArrowLeft, Check, DoorOpen, Expand, Globe, Link2, Lock, MapPin, Map as MapIcon, MessageCircle, Minimize, Settings } from 'lucide-react';
+import { ArrowLeft, Check, Clapperboard, DoorOpen, Expand, Globe, Link2, Lock, MapPin, Map as MapIcon, MessageCircle, Minimize, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { useProximityMedia } from '@/lib/useProximityMedia';
 import MediaDock, { MediaControls } from './MediaDock';
@@ -182,7 +184,14 @@ async function renderBackground(width: number, height: number, elements: spaceEl
 const SpaceGrid = ({ id }: { id: string }) => {
   const { user } = useAuth();
   const { moveUser, serverPosition, users, selfId, chat, lastEmote, sendEmote, selfAvatar: selfAvatarUrl, announceAvatarChange,
-    selfSeat, sit } = useWebSocket();
+    selfSeat, sit, watching } = useWebSocket();
+  // private chat opened by clicking a player on the map
+  const [dmWith, setDmWith] = useState<Person | null>(null);
+  // watch parties: the nearest screen (HUD button) and the one whose panel is open
+  const [screen, setScreen] = useState<ScreenSpot | null>(null);
+  const [watchScreen, setWatchScreen] = useState<ScreenSpot | null>(null);
+  const watchingRef = useRef(watching);
+  watchingRef.current = watching;
   const [interaction, setInteraction] = useState<Interaction | null>(null);
   const [openBoard, setOpenBoard] = useState<{ id: string; title: string } | null>(null);
   const interactionRef = useRef<Interaction | null>(null);
@@ -268,6 +277,8 @@ const SpaceGrid = ({ id }: { id: string }) => {
   );
 
   const places = useMemo(() => findPlaces(areaElements), [areaElements]);
+  const screens = useMemo(() => screensIn(areaElements), [areaElements]);
+  const screenRef = useRef<ScreenSpot | null>(null);
 
   // door tiles: tap-to-walk routes around them unless you tapped the door itself
   const doorTiles = useMemo(() => {
@@ -286,6 +297,9 @@ const SpaceGrid = ({ id }: { id: string }) => {
   const getSelfPosition = useCallback(
     () => (selfRef.current ? { area: areaRef.current, x: selfRef.current.x, y: selfRef.current.y } : null), []);
   const media = useProximityMedia(getSelfPosition);
+  const people = useMemo<Person[]>(() => [...users.values()]
+    .filter((u) => u.userId !== selfId)
+    .map((u) => ({ userId: u.userId, username: u.username ?? 'Player', avatar: u.avatar ?? null })), [users, selfId]);
   const names = useMemo(
     () => new Map([...users.values()].map((u) => [u.userId, u.username ?? 'Player'])), [users]);
 
@@ -448,6 +462,10 @@ const SpaceGrid = ({ id }: { id: string }) => {
         // swallow the key so the "e" doesn't land in the notice board's text box as it opens
         e.preventDefault();
         interact();
+        return;
+      }
+      if (e.key.toLowerCase() === 't' && !e.repeat && screenRef.current) {
+        setWatchScreen(screenRef.current);
         return;
       }
       if (e.key.toLowerCase() === 'm' && !e.repeat) {
@@ -805,6 +823,30 @@ const SpaceGrid = ({ id }: { id: string }) => {
         const img = imageCache.get(e.element.imageUrl);
         if (ready(img)) ctx.drawImage(img, e.x * TILE, e.y * TILE, e.element.width * TILE, e.element.height * TILE);
       }
+      // screens with a watch party running glow and carry a LIVE tag
+      for (const sc of screens) {
+        const w = watchingRef.current.get(sc.screenId);
+        if (!w) continue;
+        const x = sc.x * TILE, y = sc.y * TILE, sw = sc.width * TILE, sh = sc.height * TILE;
+        const pulse = 0.5 + 0.5 * Math.sin(now / 400);
+        ctx.save();
+        ctx.fillStyle = `rgba(40,70,140,${0.55 + 0.15 * pulse})`;
+        ctx.fillRect(x + 8, y + 6, sw - 16, sh - 16);
+        ctx.fillStyle = "#f5f7f2";
+        const cx = x + sw / 2, cy = y + sh / 2 - 4, r = Math.min(10, sh / 4);
+        if (w.playing) {
+          ctx.beginPath(); ctx.moveTo(cx - r * 0.6, cy - r); ctx.lineTo(cx + r, cy); ctx.lineTo(cx - r * 0.6, cy + r); ctx.closePath(); ctx.fill();
+        } else {
+          ctx.fillRect(cx - r * 0.7, cy - r, r * 0.5, r * 2); ctx.fillRect(cx + r * 0.2, cy - r, r * 0.5, r * 2);
+        }
+        ctx.font = `700 10px ${canvasFont}`;
+        ctx.textAlign = "left"; ctx.textBaseline = "middle";
+        const tw = ctx.measureText("LIVE").width + 10;
+        ctx.fillStyle = "#e11d48";
+        ctx.beginPath(); ctx.roundRect(x + 10, y + 10, tw, 14, 3); ctx.fill();
+        ctx.fillStyle = "#fff"; ctx.fillText("LIVE", x + 15, y + 17.5);
+        ctx.restore();
+      }
       actors.forEach((a) => drawName(ctx, a));
       const speakers: [string, Actor][] = [[selfId, self], ...othersRef.current.entries()];
       drawBubbles(ctx, speakers, now);
@@ -825,6 +867,11 @@ const SpaceGrid = ({ id }: { id: string }) => {
       if (now - lastPlaceCheck > 250) {
         lastPlaceCheck = now;
         setPlace(indoors ? `Inside ${area!.name}` : nearestPlace(places, self.x, self.y));
+        const near = nearestScreen(screens, self.seat ? self.seat.x : self.x, self.seat ? self.seat.y : self.y);
+        if (near?.screenId !== screenRef.current?.screenId) {
+          screenRef.current = near;
+          setScreen(near);
+        }
         const hit = self.seat ? null : findInteraction(elementsRef.current, self.x, self.y);
         if (JSON.stringify(hit) !== JSON.stringify(interactionRef.current)) {
           interactionRef.current = hit;
@@ -840,7 +887,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [dims, loadingArt, isWalkable, sprites, moveUser, selfId, places, indoors, area, interact]);
+  }, [dims, loadingArt, isWalkable, sprites, moveUser, selfId, places, indoors, area, interact, screens]);
 
   // --- tap / click to walk ------------------------------------------------------------------
   const pressRef = useRef<{ x: number; y: number; id: number } | null>(null);
@@ -852,6 +899,14 @@ const SpaceGrid = ({ id }: { id: string }) => {
     const tx = Math.floor(((clientX - r.left) / cam.zoom + cam.x) / TILE);
     const ty = Math.floor(((clientY - r.top) / cam.zoom + cam.y) / TILE);
     if (tx < 0 || ty < 0 || tx >= dims.w || ty >= dims.h) return;
+    // clicked another player (their feet tile or the tile their head is drawn on): message them
+    for (const [uid, a] of othersRef.current) {
+      const p = a.seat ?? { x: Math.round(a.rx), y: Math.round(a.ry) };
+      if (tx === p.x && (ty === p.y || ty === p.y - 1)) {
+        setDmWith({ userId: uid, username: a.name, avatar: a.avatar });
+        return;
+      }
+    }
     // tapped something you can use (a bench, a board)? walk up to it and use it
     const usable = elementsRef.current.some((e) =>
       ['campus-notice-board', 'campus-sign-welcome', 'campus-sign-hostels', 'campus-bench', 'campus-chair', 'campus-chair-red',
@@ -912,7 +967,9 @@ const SpaceGrid = ({ id }: { id: string }) => {
               ))}
             </p>
           )}
-          {indoors && <p className="mt-2 text-xs text-emerald-200">{touch ? 'Step on the green mat to go back outside.' : 'Walk onto the green mat at the bottom to go back outside.'}</p>}
+          {indoors && <p className="mt-2 text-xs text-emerald-200">{/-\d+f$/.test(area!.id)
+            ? 'Take the stairs (orange arrows) down to the ground floor.'
+            : touch ? 'Step on the green mat to go back outside. Green arrows lead upstairs.' : 'Walk onto the green mat at the bottom to go back outside. Green arrows lead upstairs.'}</p>}
         </div>
         <button
           type="button"
@@ -1059,7 +1116,22 @@ const SpaceGrid = ({ id }: { id: string }) => {
         </button>
       )}
       <NoticeBoard spaceId={id} boardId={openBoard?.id ?? null} title={openBoard?.title ?? ''} onClose={() => setOpenBoard(null)} />
-      <ChatPanel compact={touch} open={touch ? chatOpen : undefined} onOpenChange={touch ? setChatOpen : undefined} />
+      <ChatPanel compact={touch} open={touch ? chatOpen : undefined} onOpenChange={touch ? setChatOpen : undefined}
+        people={people} dmWith={dmWith} onDmWithChange={(p) => { setDmWith(p); if (p && touch) setChatOpen(true); }} />
+      {screen && !watchScreen && (
+        <button
+          type="button"
+          onClick={() => setWatchScreen(screen)}
+          className={cn('absolute left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full hud py-1.5 pl-1.5 pr-4 text-sm font-medium text-white hover:bg-[#1d2e26]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/70',
+            touch ? 'top-[8.5rem]' : 'bottom-[10rem]')}
+        >
+          <span className={cn('flex size-6 items-center justify-center rounded-md', watching.get(screen.screenId) ? 'bg-rose-500 text-white' : 'bg-white text-gray-900')}>
+            {touch ? <Clapperboard className="size-3.5" /> : <kbd className="font-mono text-xs font-bold">T</kbd>}
+          </span>
+          {watching.get(screen.screenId) ? `Join the watch party on the ${screen.label}` : `Watch together on the ${screen.label}`}
+        </button>
+      )}
+      {watchScreen && <WatchParty screenId={watchScreen.screenId} label={watchScreen.label} onClose={() => setWatchScreen(null)} />}
       <MediaDock
         remote={media.remote}
         names={names}

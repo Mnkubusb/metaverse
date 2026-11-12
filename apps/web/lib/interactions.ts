@@ -35,3 +35,33 @@ export function findInteraction(elements: spaceElement[], x: number, y: number):
   }
   return best?.hit ?? null;
 }
+
+// Screens that host watch parties (Netflix-and-chill): the multiplex screen, the auditorium's
+// projector, hostel common-room TVs and the riverfront's open-air screen.
+const SCREEN_ELEMENTS: Record<string, string> = {
+  'campus-cinema-screen': 'cinema screen',
+  'campus-projector-screen': 'projector screen',
+  'campus-tv': 'TV',
+  'campus-led-screen': 'open-air screen',
+};
+export const SCREEN_RANGE = 9;
+
+export interface ScreenSpot { screenId: string; label: string; x: number; y: number; width: number; height: number }
+
+export function screensIn(elements: spaceElement[]): ScreenSpot[] {
+  return elements
+    .filter((e) => e.element.id in SCREEN_ELEMENTS)
+    .map((e) => ({ screenId: e.id, label: SCREEN_ELEMENTS[e.element.id]!, x: e.x, y: e.y, width: e.element.width, height: e.element.height }));
+}
+
+// The closest screen within SCREEN_RANGE tiles of (x, y) (measured to the screen's footprint).
+export function nearestScreen(screens: ScreenSpot[], x: number, y: number): ScreenSpot | null {
+  let best: { d: number; s: ScreenSpot } | null = null;
+  for (const s of screens) {
+    const dx = Math.max(s.x - x, 0, x - (s.x + s.width - 1));
+    const dy = Math.max(s.y - y, 0, y - (s.y + s.height - 1));
+    const d = Math.max(dx, dy);
+    if (d <= SCREEN_RANGE && (!best || d < best.d)) best = { d, s };
+  }
+  return best?.s ?? null;
+}

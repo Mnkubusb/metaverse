@@ -59,9 +59,11 @@ await step("protected endpoints reject anonymous callers", async () => {
     assert.equal((await call("GET", "/users")).status, 401);
     assert.equal((await call("GET", "/users", null, a.token)).status, 403);
 });
-await step("seeded campus map and avatars exist", async () => {
+await step("seeded campus map, Bilaspur place maps and avatars exist", async () => {
     const maps = await call("GET", "/maps");
-    assert.ok(maps.body.maps.some((m) => m.id === "gec-bilaspur-campus"));
+    for (const id of ["gec-bilaspur-campus", "arpa-riverfront", "bilaspur-junction", "kanan-pendari-zoo", "ratanpur-mahamaya", "magneto-mall"]) {
+        assert.ok(maps.body.maps.some((m) => m.id === id), id);
+    }
     const avatars = await call("GET", "/avatars");
     assert.ok(avatars.body.avatars.length >= 8);
 });
@@ -175,6 +177,39 @@ await step("chat is saved and broadcast", async () => {
 await step("emotes are relayed", async () => {
     pa.send("emote", { emote: "wave" });
     assert.equal((await pb.next("emote")).payload.emote, "wave");
+});
+await step("direct messages reach only the recipient and are saved", async () => {
+    const aId = JSON.parse(Buffer.from(a.token.split(".")[1], "base64")).userId;
+    const bId = JSON.parse(Buffer.from(b.token.split(".")[1], "base64")).userId;
+    pa.send("dm", { to: bId, text: " psst, meet at the canteen " });
+    const got = await pb.next("dm");
+    assert.equal(got.payload.text, "psst, meet at the canteen");
+    assert.equal(got.payload.from, aId);
+    assert.equal((await pa.next("dm")).payload.id, got.payload.id); // echoed to the sender
+    pa.send("dm", { to: "nobody-with-this-id", text: "hi" });
+    assert.equal((await pa.next("dm-rejected")).payload.reason, "no-user");
+    const threads = await call("GET", "/dm", null, b.token);
+    const t = threads.body.threads.find((x) => x.userId === aId);
+    assert.equal(t.unread, 1);
+    const history = await call("GET", `/dm/${aId}`, null, b.token);
+    assert.equal(history.body.messages.at(-1).text, "psst, meet at the canteen");
+    assert.equal((await call("GET", "/dm", null, b.token)).body.threads.find((x) => x.userId === aId).unread, 0);
+});
+await step("watch parties stay in sync for everyone in the space", async () => {
+    pa.send("watch", { screenId: "screen-1", action: "load", url: "https://example.com/not-a-video" });
+    assert.equal((await pa.next("watch-rejected")).payload.reason, "invalid");
+    pa.send("watch", { screenId: "screen-1", action: "load", url: "https://youtu.be/dQw4w9WgXcQ" });
+    const started = await pb.next("watch-state");
+    assert.equal(started.payload.state.youtubeId, "dQw4w9WgXcQ");
+    assert.equal(started.payload.state.playing, true);
+    await pa.next("watch-state"); // the starter gets the same state back
+    pb.send("watch", { screenId: "screen-1", action: "pause", position: 42 });
+    await pb.next("watch-state");
+    const paused = await pa.next("watch-state");
+    assert.equal(paused.payload.state.playing, false);
+    assert.equal(paused.payload.state.position, 42);
+    pa.send("watch", { screenId: "screen-1", action: "stop" });
+    assert.equal((await pb.next("watch-state")).payload.state, null);
 });
 
 await step("sitting needs an adjacent seat", async () => {

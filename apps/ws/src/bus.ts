@@ -76,6 +76,16 @@ export class RedisBus {
         await this.sub.unsubscribe(`space:${spaceId}`);
     }
 
+    // Messages addressed to a user wherever they are connected (direct messages)
+    async subscribeUsers(handler: (env: Envelope) => void) {
+        this.handlers.set("users", handler);
+        await this.sub.subscribe("users");
+    }
+
+    publishToUser(env: Omit<Envelope, "from">) {
+        this.pub.publish("users", JSON.stringify({ ...env, from: this.instanceId })).catch(this.onError);
+    }
+
     publish(spaceId: string, env: Omit<Envelope, "from">) {
         this.pub.publish(`space:${spaceId}`, JSON.stringify({ ...env, from: this.instanceId })).catch(this.onError);
     }

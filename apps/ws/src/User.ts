@@ -6,6 +6,7 @@ import jwt, { JwtPayload } from "jsonwebtoken"
 import { JWT_SECRET } from "./config";
 import { MAIN_AREA, type SpaceGrid } from "./SpaceGrid";
 import { EMOTES, RateLimiter, chatRateLimiter, cleanChatText, emoteRateLimiter, recentChat, saveChatMessage } from "./chat";
+import { applyWatch, currentPosition, type WatchAction } from "./watch";
 
 const HEARTBEAT_INTERVAL = 30_000; // 30 seconds
 const HEARTBEAT_TIMEOUT = 10_000;  // 10 seconds to pong
@@ -42,6 +43,8 @@ export class User {
     // WebRTC setup sends a burst of ICE candidates per peer, so this allows a large burst.
     private rtcLimiter = new RateLimiter(80, 50);
     private interactLimiter = new RateLimiter(10, 500);
+    private dmLimiter = chatRateLimiter();
+    private watchLimiter = new RateLimiter(6, 1000);
     private ws: WebSocket;
     private heartbeatInterval?: ReturnType<typeof setInterval>;
     private heartbeatTimeout?: ReturnType<typeof setTimeout>;
@@ -146,6 +149,7 @@ export class User {
                             spawn: { area: this.area, x: this.x, y: this.y },
                             chat,
                             users: rooms.roster(spaceId, this),
+                            watching: rooms.watchStates(spaceId).map((w) => ({ ...w, position: currentPosition(w), updatedAt: Date.now() })),
                         }
                     });
                     rooms.broadcast({
@@ -174,6 +178,58 @@ export class User {
                         console.error("Failed to save chat message", err);
                         this.send({ type: "chat-rejected", payload: { reason: "error" } });
                     }
+                    break;
+                }
+                case "dm": {
+                    // A private message to one player, wherever they are (or saved for later).
+                    if (!this.userId || !this.username) return;
+                    const to = parsedData.payload?.to;
+                    const text = cleanChatText(parsedData.payload?.text);
+                    if (typeof to !== "string" || to === this.userId || to.length > 64 || !text) {
+                        this.send({ type: "dm-rejected", payload: { to, reason: "invalid" } });
+                        return;
+                    }
+                    if (!this.dmLimiter.take()) {
+                        this.send({ type: "dm-rejected", payload: { to, reason: "rate-limited" } });
+                        return;
+                    }
+                    try {
+                        const recipient = await client.user.findUnique({ where: { id: to }, select: { username: true } });
+                        if (!recipient) {
+                            this.send({ type: "dm-rejected", payload: { to, reason: "no-user" } });
+                            return;
+                        }
+                        const row = await client.directMessage.create({ data: { senderId: this.userId, recipientId: to, body: text } });
+                        const message = {
+                            type: "dm",
+                            payload: {
+                                id: row.id, from: this.userId, fromName: this.username, to, toName: recipient.username,
+                                text, createdAt: row.createdAt.toISOString(),
+                            },
+                        };
+                        RoomManager.getInstance().sendToUser(this.userId, message); // every tab of the sender
+                        RoomManager.getInstance().sendToUser(to, message);
+                    } catch (err) {
+                        console.error("Failed to save direct message", err);
+                        this.send({ type: "dm-rejected", payload: { to, reason: "error" } });
+                    }
+                    break;
+                }
+                case "watch": {
+                    // Start, pause, seek or stop the video on a screen; everyone in the space follows.
+                    if (!this.spaceId || !this.username || !this.watchLimiter.take()) return;
+                    const screenId = parsedData.payload?.screenId;
+                    if (typeof screenId !== "string" || !screenId || screenId.length > 64) return;
+                    const rooms = RoomManager.getInstance();
+                    const next = applyWatch(rooms.watchState(this.spaceId, screenId), screenId, parsedData.payload as WatchAction, this.username);
+                    if (next === undefined) {
+                        this.send({ type: "watch-rejected", payload: { screenId, reason: "invalid" } });
+                        return;
+                    }
+                    rooms.setWatch(this.spaceId, screenId, next);
+                    const message = { type: "watch-state", payload: { screenId, state: next } };
+                    this.send(message);
+                    rooms.broadcast(message, this, this.spaceId);
                     break;
                 }
                 case "sit": {

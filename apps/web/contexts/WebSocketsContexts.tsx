@@ -70,9 +70,42 @@ interface WebSocketContextType {
   // bumps when someone else changes a notice board, so an open board can refresh
   boardUpdate: { boardId: string; seq: number } | null;
   announceBoardUpdate: (boardId: string) => void;
+  sendDm: (to: string, text: string) => void;
+  subscribeDm: (handler: DmHandler) => () => void;
+  dmError: string;
+  watching: Map<string, WatchState>;
+  sendWatch: (screenId: string, action: WatchAction) => void;
 }
 
 export type RtcHandler = (from: string, data: any) => void;
+
+// A live direct message (sent or received by this user)
+export interface DirectMessage {
+  id: string;
+  from: string;
+  fromName: string;
+  to: string;
+  toName: string;
+  text: string;
+  createdAt: string;
+}
+export type DmHandler = (msg: DirectMessage) => void;
+
+// The video on one screen in this space (see apps/ws/src/watch.ts)
+export interface WatchState {
+  screenId: string;
+  url: string;
+  youtubeId: string | null;
+  playing: boolean;
+  position: number;
+  // local clock time the position was measured at (ms)
+  updatedAt: number;
+  by: string;
+}
+export type WatchAction =
+  | { action: 'load'; url: string }
+  | { action: 'play' | 'pause' | 'seek'; position: number }
+  | { action: 'stop' };
 
 const WebSocketContext = createContext<WebSocketContextType>({
   connected: false,
@@ -94,6 +127,11 @@ const WebSocketContext = createContext<WebSocketContextType>({
   sit: () => { },
   boardUpdate: null,
   announceBoardUpdate: () => { },
+  sendDm: () => { },
+  subscribeDm: () => () => { },
+  dmError: '',
+  watching: new Map(),
+  sendWatch: () => { },
 });
 
 export const WebSocketProvider = ({ children, spaceId }: {
@@ -112,6 +150,9 @@ export const WebSocketProvider = ({ children, spaceId }: {
   const [selfSeat, setSelfSeat] = useState<Seat | null>(null);
   const [boardUpdate, setBoardUpdate] = useState<{ boardId: string; seq: number } | null>(null);
   const boardSeq = useRef(0);
+  const dmHandlers = useRef<Set<DmHandler>>(new Set());
+  const [dmError, setDmError] = useState('');
+  const [watching, setWatching] = useState<Map<string, WatchState>>(new Map());
   const selfIdRef = useRef('');
   const everConnected = useRef(false);
   const rtcHandlers = useRef<Set<RtcHandler>>(new Set());
@@ -145,6 +186,8 @@ export const WebSocketProvider = ({ children, spaceId }: {
         setUsers(new Map((payload.users as RemoteUser[]).map((u) => [u.userId, { ...u, area: u.area ?? MAIN_AREA }])));
         (payload.users as RemoteUser[]).forEach((u) => u.username && namesRef.current.set(u.userId, u.username));
         setChat((payload.chat ?? []).slice(-MAX_CHAT_MESSAGES));
+        // server positions are current as of now; re-stamp with the local clock
+        setWatching(new Map(((payload.watching ?? []) as WatchState[]).map((w) => [w.screenId, { ...w, updatedAt: Date.now() }])));
         everConnected.current = true;
         setConnected(true);
         break;
@@ -171,6 +214,22 @@ export const WebSocketProvider = ({ children, spaceId }: {
         break;
       case 'rtc':
         rtcHandlers.current.forEach((h) => h(payload.from, payload.data));
+        break;
+      case 'dm':
+        setDmError('');
+        dmHandlers.current.forEach((h) => h(payload as DirectMessage));
+        break;
+      case 'dm-rejected':
+        setDmError(payload?.reason === 'rate-limited' ? 'You are sending messages too fast. Wait a moment.'
+          : payload?.reason === 'no-user' ? 'That player no longer exists.' : 'That message could not be sent.');
+        break;
+      case 'watch-state':
+        setWatching((prev) => {
+          const next = new Map(prev);
+          if (payload.state) next.set(payload.screenId, { ...payload.state, updatedAt: Date.now() });
+          else next.delete(payload.screenId);
+          return next;
+        });
         break;
       case 'pose':
         if (payload.userId === selfIdRef.current) {
@@ -292,6 +351,20 @@ export const WebSocketProvider = ({ children, spaceId }: {
     if (socket && connected) socket.sendMessage({ type: 'rtc', payload: { to, data } });
   }, [socket, connected]);
 
+  const sendDm = useCallback((to: string, text: string) => {
+    const trimmed = text.trim();
+    if (socket && connected && trimmed) socket.sendMessage({ type: 'dm', payload: { to, text: trimmed } });
+  }, [socket, connected]);
+
+  const subscribeDm = useCallback((handler: DmHandler) => {
+    dmHandlers.current.add(handler);
+    return () => { dmHandlers.current.delete(handler); };
+  }, []);
+
+  const sendWatch = useCallback((screenId: string, action: WatchAction) => {
+    if (socket && connected) socket.sendMessage({ type: 'watch', payload: { screenId, ...action } });
+  }, [socket, connected]);
+
   const subscribeRtc = useCallback((handler: RtcHandler) => {
     rtcHandlers.current.add(handler);
     return () => { rtcHandlers.current.delete(handler); };
@@ -317,7 +390,12 @@ export const WebSocketProvider = ({ children, spaceId }: {
     sit,
     boardUpdate,
     announceBoardUpdate,
-  }), [sendRtc, subscribeRtc, selfSeat, sit, boardUpdate, announceBoardUpdate, connected, users, selfId, serverPosition, sendMessage, moveUser, chat, chatError, sendChat, lastEmote, sendEmote,
+    sendDm,
+    subscribeDm,
+    dmError,
+    watching,
+    sendWatch,
+  }), [sendDm, subscribeDm, dmError, watching, sendWatch, sendRtc, subscribeRtc, selfSeat, sit, boardUpdate, announceBoardUpdate, connected, users, selfId, serverPosition, sendMessage, moveUser, chat, chatError, sendChat, lastEmote, sendEmote,
     selfAvatar, announceAvatarChange]);
 
   return <WebSocketContext.Provider value={value}>

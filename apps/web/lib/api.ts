@@ -78,6 +78,16 @@ export const noticeAPI = {
     remove: (spaceId: string, noticeId: string) => api.delete(`/space/${spaceId}/notices/${noticeId}`),
 };
 
+// One-to-one messages (sent live over the WebSocket; these load the inbox and history)
+export interface DmThread { userId: string; username: string; avatar: string | null; last: string; lastAt: string; fromMe: boolean; unread: number }
+export interface DmMessage { id: string; from: string; to: string; text: string; createdAt: string }
+export const dmAPI = {
+    threads: () => api.get<{ threads: DmThread[] }>('/dm'),
+    history: (userId: string, before?: string) =>
+        api.get<{ user: { userId: string; username: string; avatar: string | null }; hasMore: boolean; messages: DmMessage[] }>(`/dm/${userId}`, { params: before ? { before } : {} }),
+    markRead: (userId: string) => api.post(`/dm/${userId}/read`),
+};
+
 // Link someone can open to enter the space; private spaces need the owner's invite code in it.
 export function inviteLink(spaceId: string, inviteCode?: string | null) {
     const url = new URL(`/space/${spaceId}`, window.location.origin);

@@ -33,7 +33,7 @@ spaceRouter.post("/" ,userMiddleware, async (req, res) => {
 
     const map = await client.map.findUnique({
         where: { id: mapId },
-        select: { mapElements: true, width: true, height: true, thumbnail: true, spawnX: true, spawnY: true, areas: true },
+        select: { mapElements: true, width: true, height: true, thumbnail: true, spawnX: true, spawnY: true, areas: true, version: true },
     });
     if (!map) {
         res.status(404).json({ message: "Map not found" });
@@ -50,6 +50,8 @@ spaceRouter.post("/" ,userMiddleware, async (req, res) => {
                 spawnX: map.spawnX,
                 spawnY: map.spawnY,
                 areas: map.areas ?? [],
+                mapId,
+                mapVersion: map.version,
                 creatorId: req.userId,
                 ...ownership,
             },

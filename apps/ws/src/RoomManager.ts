@@ -2,6 +2,7 @@ import { outgoingMessage } from "./types";
 import type { User } from "./User";
 import { SpaceGrid } from "./SpaceGrid";
 import { RedisBus, type Envelope, type Snapshot } from "./bus";
+import type { WatchState } from "./watch";
 
 // How often a moving player's position is written to Redis. Other instances follow the "move"
 // messages anyway; the stored position only has to be fresh for an instance joining a space.
@@ -33,6 +34,10 @@ export class RoomManager {
     private remote: Map<string, Map<string, RosterEntry>> = new Map();
     private lastPresenceWrite = new Map<string, number>();
     private bus: RedisBus | null = null;
+    // every connection by user id, across spaces, for direct messages
+    private online: Map<string, Set<User>> = new Map();
+    // watch parties per space, by screen id
+    private watching: Map<string, Map<string, WatchState>> = new Map();
     private reconcileTimer?: ReturnType<typeof setInterval>;
     static instance: RoomManager;
 
@@ -41,6 +46,9 @@ export class RoomManager {
         if (url) {
             this.bus = new RedisBus(url);
             this.reconcileTimer = setInterval(() => this.reconcile(), RECONCILE_MS);
+            this.bus.subscribeUsers((env) => {
+                if (env.to) this.online.get(env.to)?.forEach((u) => u.send(env.message));
+            }).catch((err) => console.error("users channel", err));
             console.log(`Rooms shared through Redis (instance ${this.bus.instanceId})`);
         }
     }
@@ -72,6 +80,7 @@ export class RoomManager {
     // --- membership ------------------------------------------------------------------------
 
     public async addUser(spaceId: string, user: User) {
+        if (user.userId) this.online.set(user.userId, new Set([...(this.online.get(user.userId) ?? []), user]));
         const first = !this.rooms.has(spaceId);
         this.rooms.set(spaceId, [...(this.rooms.get(spaceId) ?? []), user]);
         if (this.bus) {
@@ -88,6 +97,11 @@ export class RoomManager {
     }
 
     public removeUser(user: User, spaceId: string) {
+        if (user.userId) {
+            const mine = this.online.get(user.userId);
+            mine?.delete(user);
+            if (mine && mine.size === 0) this.online.delete(user.userId);
+        }
         if (!this.rooms.has(spaceId)) return;
         if (this.bus && user.userId) this.bus.removePresence(spaceId, user.userId);
         this.lastPresenceWrite.delete(user.id);
@@ -96,6 +110,7 @@ export class RoomManager {
             this.rooms.delete(spaceId);
             this.grids.delete(spaceId);
             this.remote.delete(spaceId);
+            this.watching.delete(spaceId);
             this.bus?.unsubscribe(spaceId).catch(() => undefined);
             return;
         }
@@ -148,6 +163,32 @@ export class RoomManager {
         if (this.remote.get(roomId)?.has(userId)) this.bus?.publish(roomId, { to: userId, message });
     }
 
+    // A direct message: every connection of that user, on this instance and (through Redis) the others.
+    public sendToUser(userId: string, message: outgoingMessage) {
+        this.online.get(userId)?.forEach((u) => u.send(message));
+        this.bus?.publishToUser({ to: userId, message });
+    }
+
+    public isOnline(userId: string) {
+        return this.online.has(userId);
+    }
+
+    // --- watch parties ---------------------------------------------------------------------
+
+    public watchStates(spaceId: string): WatchState[] {
+        return [...(this.watching.get(spaceId)?.values() ?? [])];
+    }
+
+    public watchState(spaceId: string, screenId: string): WatchState | null {
+        return this.watching.get(spaceId)?.get(screenId) ?? null;
+    }
+
+    public setWatch(spaceId: string, screenId: string, state: WatchState | null) {
+        if (!this.watching.has(spaceId)) this.watching.set(spaceId, new Map());
+        const screens = this.watching.get(spaceId)!;
+        if (state) screens.set(screenId, state); else screens.delete(screenId);
+    }
+
     // A message relayed from another instance: hand it to our players and keep the remote roster current.
     private deliver(spaceId: string, env: Envelope) {
         const users = this.rooms.get(spaceId);
@@ -159,6 +200,10 @@ export class RoomManager {
     }
 
     private track(spaceId: string, message: outgoingMessage) {
+        if (message?.type === "watch-state" && message.payload?.screenId) {
+            this.setWatch(spaceId, message.payload.screenId, message.payload.state ?? null);
+            return;
+        }
         const remote = this.remote.get(spaceId);
         const p = message?.payload;
         if (!remote || !p?.userId) return;
