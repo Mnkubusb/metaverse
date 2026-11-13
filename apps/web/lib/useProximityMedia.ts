@@ -22,17 +22,24 @@ interface Peer {
 
 export interface RemoteMedia {
   userId: string;
+  // microphone + camera
   stream: MediaStream;
   hasVideo: boolean;
   hasAudio: boolean;
   // 0..1, louder when closer
   volume: number;
+  // a shared screen or tab (with its audio, if the presenter shared it)
+  screen: MediaStream | null;
 }
 
 type Position = { area?: string; x: number; y: number };
 
 /**
- * Proximity voice/video over peer-to-peer WebRTC. Signalling goes through the WebSocket server
+ * Proximity voice/video and screen sharing over peer-to-peer WebRTC.
+ * A shared screen travels as a second stream on the same connection; its id is announced with
+ * a { screen: streamId } signal so the other side can tell it from the camera. While someone
+ * presents, everyone in the same room (not just within HEAR_RANGE) is connected to them and
+ * hears them at full volume, like a talk in a hall. Signalling goes through the WebSocket server
  * ("rtc" messages); media never touches it. Uses the "perfect negotiation" pattern so either side
  * can (re)negotiate when tracks are added or removed without offer collisions.
  */
@@ -46,8 +53,24 @@ export function useProximityMedia(getSelfPosition: () => Position | null) {
   const [remote, setRemote] = useState<Map<string, RemoteMedia>>(new Map());
   const [localVersion, setLocalVersion] = useState(0);
   const [nearbyCount, setNearbyCount] = useState(0);
+  const screenStream = useRef<MediaStream | null>(null);
+  const [sharing, setSharing] = useState(false);
+  const sharingRef = useRef(false);
+  sharingRef.current = sharing;
+  // per remote player: every stream they send us, and which of them is their screen
+  const remoteStreams = useRef<Map<string, Map<string, MediaStream>>>(new Map());
+  const remoteScreenIds = useRef<Map<string, string>>(new Map());
   const usersRef = useRef(users);
   usersRef.current = users;
+
+  const sameArea = useCallback((userId: string) => {
+    const me = getSelfPosition();
+    const other = usersRef.current.get(userId);
+    return !!me && !!other && (me.area ?? 'main') === (other.area ?? 'main');
+  }, [getSelfPosition]);
+  // someone presenting reaches the whole room
+  const presenting = useCallback((userId: string) =>
+    sameArea(userId) && (sharingRef.current || remoteScreenIds.current.has(userId)), [sameArea]);
 
   const distanceTo = useCallback((userId: string) => {
     const me = getSelfPosition();
@@ -58,20 +81,29 @@ export function useProximityMedia(getSelfPosition: () => Position | null) {
     return Math.hypot(me.x - other.x, me.y - other.y);
   }, [getSelfPosition]);
 
-  const refreshRemote = useCallback((userId: string, stream: MediaStream | null) => {
+  const refreshRemote = useCallback((userId: string) => {
     setRemote((prev) => {
       const next = new Map(prev);
-      if (!stream) {
+      const streams = remoteStreams.current.get(userId);
+      // forget streams whose tracks were all removed (e.g. a screen share that stopped), so a dead
+      // stream is never mistaken for the camera stream later
+      if (streams) for (const [id, st] of streams) if (st.getTracks().length === 0) streams.delete(id);
+      if (!streams || streams.size === 0) {
         next.delete(userId);
         return next;
       }
+      const screenId = remoteScreenIds.current.get(userId);
       const live = (t: MediaStreamTrack) => t.readyState === 'live' && !t.muted;
+      const others = [...streams.values()].filter((st) => st.id !== screenId);
+      const camera = others.find((st) => st.getTracks().some((t) => t.readyState === 'live')) ?? others[0] ?? new MediaStream();
+      const screen = screenId ? streams.get(screenId) ?? null : null;
       next.set(userId, {
         userId,
-        stream,
-        hasVideo: stream.getVideoTracks().some(live),
-        hasAudio: stream.getAudioTracks().some(live),
+        stream: camera,
+        hasVideo: camera.getVideoTracks().some(live),
+        hasAudio: camera.getAudioTracks().some(live),
         volume: prev.get(userId)?.volume ?? 1,
+        screen: screen && screen.getVideoTracks().some((t) => t.readyState === 'live') ? screen : null,
       });
       return next;
     });
@@ -83,7 +115,9 @@ export function useProximityMedia(getSelfPosition: () => Position | null) {
     peers.current.delete(userId);
     peer.pc.ontrack = peer.pc.onicecandidate = peer.pc.onnegotiationneeded = peer.pc.onconnectionstatechange = null;
     peer.pc.close();
-    refreshRemote(userId, null);
+    remoteStreams.current.delete(userId);
+    remoteScreenIds.current.delete(userId);
+    refreshRemote(userId);
     if (notify) sendRtc(userId, { bye: true });
   }, [refreshRemote, sendRtc]);
 
@@ -94,6 +128,11 @@ export function useProximityMedia(getSelfPosition: () => Position | null) {
     peers.current.set(userId, peer);
 
     localStream.current.getTracks().forEach((t) => pc.addTrack(t, localStream.current));
+    const screen = screenStream.current;
+    if (screen) {
+      screen.getTracks().forEach((t) => pc.addTrack(t, screen));
+      sendRtc(userId, { screen: screen.id });
+    }
 
     pc.onicecandidate = ({ candidate }) => {
       if (candidate) sendRtc(userId, { candidate: candidate.toJSON() });
@@ -102,7 +141,7 @@ export function useProximityMedia(getSelfPosition: () => Position | null) {
       try {
         peer.makingOffer = true;
         await pc.setLocalDescription();
-        sendRtc(userId, { description: pc.localDescription?.toJSON() });
+        sendRtc(userId, { description: pc.localDescription?.toJSON(), present: sharingRef.current });
       } catch (err) {
         console.warn('negotiation failed', err);
       } finally {
@@ -111,8 +150,10 @@ export function useProximityMedia(getSelfPosition: () => Position | null) {
     };
     pc.ontrack = ({ track, streams }) => {
       const stream = streams[0] ?? new MediaStream([track]);
+      if (!remoteStreams.current.has(userId)) remoteStreams.current.set(userId, new Map());
+      remoteStreams.current.get(userId)!.set(stream.id, stream);
       // tracks fire "ended" when the connection closes; ignore events from peers we've already dropped
-      const update = () => { if (peers.current.get(userId) === peer) refreshRemote(userId, stream); };
+      const update = () => { if (peers.current.get(userId) === peer) refreshRemote(userId); };
       track.onmute = track.onunmute = track.onended = update;
       stream.onremovetrack = update;
       update();
@@ -129,10 +170,17 @@ export function useProximityMedia(getSelfPosition: () => Position | null) {
       closePeer(from, false);
       return;
     }
+    if ('screen' in (data ?? {})) {
+      // which of their streams is a shared screen (null: they stopped)
+      if (data.screen) remoteScreenIds.current.set(from, String(data.screen));
+      else remoteScreenIds.current.delete(from);
+      refreshRemote(from);
+      return;
+    }
     let peer = peers.current.get(from);
     if (!peer) {
-      // only accept connections from players who are (about to be) in range
-      if (distanceTo(from) > DROP_RANGE || !data?.description) return;
+      // only accept connections from players who are (about to be) in range, or presenting in this room
+      if (!data?.description || (distanceTo(from) > DROP_RANGE && !(data.present && sameArea(from)))) return;
       peer = createPeer(from);
     }
     const { pc } = peer;
@@ -145,7 +193,7 @@ export function useProximityMedia(getSelfPosition: () => Position | null) {
         await pc.setRemoteDescription(description);
         if (description.type === 'offer') {
           await pc.setLocalDescription();
-          sendRtc(from, { description: pc.localDescription?.toJSON() });
+          sendRtc(from, { description: pc.localDescription?.toJSON(), present: sharingRef.current });
         }
       } else if (data.candidate) {
         try {
@@ -157,7 +205,7 @@ export function useProximityMedia(getSelfPosition: () => Position | null) {
     } catch (err) {
       console.warn('rtc signal failed', err);
     }
-  }), [subscribeRtc, createPeer, closePeer, distanceTo, sendRtc]);
+  }), [subscribeRtc, createPeer, closePeer, distanceTo, sendRtc, refreshRemote, sameArea]);
 
   // connect to players who come into range, drop the ones who walk away or leave
   useEffect(() => {
@@ -166,8 +214,9 @@ export function useProximityMedia(getSelfPosition: () => Position | null) {
       for (const userId of usersRef.current.keys()) {
         if (userId === selfId) continue;
         const d = distanceTo(userId);
-        if (d <= HEAR_RANGE && !peers.current.has(userId)) createPeer(userId);
-        else if (d > DROP_RANGE && peers.current.has(userId)) closePeer(userId, true);
+        const talk = presenting(userId);
+        if ((d <= HEAR_RANGE || (talk && sharingRef.current)) && !peers.current.has(userId)) createPeer(userId);
+        else if (d > DROP_RANGE && !talk && peers.current.has(userId)) closePeer(userId, true);
       }
       for (const userId of [...peers.current.keys()]) {
         if (!usersRef.current.has(userId)) closePeer(userId, false);
@@ -178,7 +227,9 @@ export function useProximityMedia(getSelfPosition: () => Position | null) {
         let changed = false;
         const next = new Map(prev);
         for (const [id, media] of prev) {
-          const volume = Math.max(0, Math.min(1, 1 - (distanceTo(id) - 1.5) / (DROP_RANGE - 1.5)));
+          const near = Math.max(0, Math.min(1, 1 - (distanceTo(id) - 1.5) / (DROP_RANGE - 1.5)));
+          // a presenter is heard across the room
+          const volume = remoteScreenIds.current.has(id) && sameArea(id) ? Math.max(near, 0.9) : near;
           if (Math.abs(volume - media.volume) > 0.02) {
             next.set(id, { ...media, volume });
             changed = true;
@@ -188,12 +239,13 @@ export function useProximityMedia(getSelfPosition: () => Position | null) {
       });
     }, CHECK_MS);
     return () => clearInterval(timer);
-  }, [selfId, distanceTo, createPeer, closePeer]);
+  }, [selfId, distanceTo, createPeer, closePeer, presenting, sameArea]);
 
   // close everything when leaving the space
   useEffect(() => () => {
     for (const id of [...peers.current.keys()]) closePeer(id, true);
     localStream.current.getTracks().forEach((t) => t.stop());
+    screenStream.current?.getTracks().forEach((t) => t.stop());
   }, [closePeer]);
 
   const setTrack = useCallback(async (kind: 'audio' | 'video', on: boolean) => {
@@ -239,6 +291,52 @@ export function useProximityMedia(getSelfPosition: () => Position | null) {
     if (await setTrack('video', !camOn)) setCamOn((v) => !v);
   }, [camOn, setTrack]);
 
+  const stopSharing = useCallback(() => {
+    const screen = screenStream.current;
+    if (!screen) return;
+    screenStream.current = null;
+    const tracks = screen.getTracks();
+    tracks.forEach((t) => t.stop());
+    for (const [userId, { pc }] of peers.current) {
+      for (const sender of pc.getSenders()) if (sender.track && tracks.includes(sender.track)) pc.removeTrack(sender);
+      sendRtc(userId, { screen: null });
+    }
+    setSharing(false);
+    setLocalVersion((v) => v + 1);
+  }, [sendRtc]);
+
+  const toggleScreen = useCallback(async () => {
+    setMediaError('');
+    if (screenStream.current) {
+      stopSharing();
+      return;
+    }
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+      setMediaError('This browser cannot share its screen.');
+      return;
+    }
+    try {
+      const screen = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: { ideal: 15, max: 30 }, width: { max: 1920 }, height: { max: 1080 } },
+        audio: true, // tab or system audio, when the browser offers it
+      });
+      const video = screen.getVideoTracks()[0];
+      if (video) {
+        video.contentHint = 'detail'; // keep text sharp rather than motion smooth
+        video.onended = () => stopSharing(); // the browser's own "Stop sharing" button
+      }
+      screenStream.current = screen;
+      setSharing(true);
+      for (const [userId, { pc }] of peers.current) {
+        screen.getTracks().forEach((t) => pc.addTrack(t, screen));
+        sendRtc(userId, { screen: screen.id });
+      }
+      setLocalVersion((v) => v + 1);
+    } catch (err) {
+      if ((err as DOMException)?.name !== 'NotAllowedError') setMediaError('Could not start sharing your screen.');
+    }
+  }, [sendRtc, stopSharing]);
+
   return {
     micOn,
     camOn,
@@ -246,6 +344,9 @@ export function useProximityMedia(getSelfPosition: () => Position | null) {
     toggleCam,
     mediaError,
     localStream: localStream.current,
+    sharing,
+    toggleScreen,
+    screenStream: screenStream.current,
     localVersion,
     remote: [...remote.values()],
     nearbyCount,

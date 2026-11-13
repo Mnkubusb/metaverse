@@ -1115,7 +1115,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
               </button>
             )}
             <div role="toolbar" aria-label="Voice, video, chat and emotes" className="flex gap-1 rounded-xl hud p-1.5">
-              <MediaControls micOn={media.micOn} camOn={media.camOn} onMic={media.toggleMic} onCam={media.toggleCam} />
+              <MediaControls micOn={media.micOn} camOn={media.camOn} onMic={media.toggleMic} onCam={media.toggleCam} sharing={media.sharing} onShare={media.toggleScreen} />
               <button type="button" onClick={() => { setChatOpen(true); setShowEmotes(false); }} aria-label={unread ? `Chat, ${unread} new` : 'Chat'}
                 className="relative flex size-10 items-center justify-center rounded-lg text-white active:bg-white/15">
                 <MessageCircle className="size-5" />
@@ -1134,7 +1134,7 @@ const SpaceGrid = ({ id }: { id: string }) => {
         </>
       )}
       <div role="toolbar" aria-label="Voice, video and emotes" className={cn('absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 gap-1 rounded-xl hud p-1.5', touch && 'hidden')}>
-        <MediaControls micOn={media.micOn} camOn={media.camOn} onMic={media.toggleMic} onCam={media.toggleCam} />
+        <MediaControls micOn={media.micOn} camOn={media.camOn} onMic={media.toggleMic} onCam={media.toggleCam} sharing={media.sharing} onShare={media.toggleScreen} />
         {EMOTES.map((e, i) => (
           <button
             key={e.id}
@@ -1227,6 +1227,9 @@ const SpaceGrid = ({ id }: { id: string }) => {
         micOn={media.micOn}
         nearbyCount={media.nearbyCount}
         error={media.mediaError}
+        screenStream={media.screenStream}
+        sharing={media.sharing}
+        onStopSharing={media.toggleScreen}
       />
       <canvas
         ref={canvasRef}
