@@ -19,6 +19,7 @@
     "@repo/ui": "workspace:*",
     "@tailwindcss/postcss": "^4.1.4",
     "@types/jsonwebtoken": "^9.0.9",
+    "@upstash/redis": "^1.41.0",
     "axios": "^1.8.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
